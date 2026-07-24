@@ -17,7 +17,7 @@ class DashboardController extends Controller
         // ===== 1. KPI ringkas =====
         $asetQuery = Aset::query();
         $formQuery = HealthCheckForm::query()->with('items');
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $asetQuery->where('uker_kode', $ukerKode);
             $formQuery->where('uker_kode', $ukerKode);
         }

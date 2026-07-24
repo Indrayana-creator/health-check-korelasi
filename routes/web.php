@@ -46,7 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/import', [ImportController::class, 'form']);
     Route::post('/import/pekerja', [ImportController::class, 'pekerja'])->name('import.pekerja');
     Route::post('/import/petugas-it', [ImportController::class, 'petugasIt'])->name('import.petugasIt');
-    
+
     // Kelola User, Rekap per Cabang, & Log History -- khusus admin
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);

@@ -17,7 +17,7 @@ class DataImportService
         $spreadsheet = IOFactory::load($filePath);
         $sheet = $spreadsheet->getSheetByName('DATABASE');
 
-        if (!$sheet) {
+        if (! $sheet) {
             throw new \Exception('Sheet "DATABASE" tidak ditemukan di file ini.');
         }
 
@@ -46,7 +46,7 @@ class DataImportService
             $kodeSpv = $kodeSpv !== null ? (int) $kodeSpv : 0;
 
             // isi/update tabel ukers (cukup sekali per kode, tapi updateOrInsert aman diulang)
-            if (!isset($seenUkerCodes[$kodeBranch])) {
+            if (! isset($seenUkerCodes[$kodeBranch])) {
                 DB::table('ukers')->updateOrInsert(
                     ['kode' => $kodeBranch],
                     [
@@ -104,7 +104,7 @@ class DataImportService
 
         foreach ($sheetConfigs as [$sheetName, $colPn, $colHp, $startRow]) {
             $sheet = $spreadsheet->getSheetByName($sheetName);
-            if (!$sheet) {
+            if (! $sheet) {
                 continue; // skip diam-diam kalau nama sheet beda, jangan gagalin semua proses
             }
 
