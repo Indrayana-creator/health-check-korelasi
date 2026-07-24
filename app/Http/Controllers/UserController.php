@@ -72,9 +72,7 @@ class UserController extends Controller
 
     public function destroy(Request $request, User $user)
     {
-        if ($user->id === $request->user()->id) {
-            abort(403, 'Anda tidak bisa menghapus akun Anda sendiri.');
-        }
+        $this->authorize('delete', $user);
 
         $user->delete();
 

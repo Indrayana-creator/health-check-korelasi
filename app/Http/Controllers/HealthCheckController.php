@@ -79,9 +79,7 @@ class HealthCheckController extends Controller
             'pic_pn' => 'nullable|string|max:50|exists:pekerja,pn',
         ]);
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa membuat form health check untuk uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [HealthCheckForm::class, (int) $validated['uker_kode']]);
 
         $form = HealthCheckForm::create($validated);
         $this->generateItemsUntukForm($form);
@@ -91,9 +89,7 @@ class HealthCheckController extends Controller
 
     public function edit(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('update', $healthcheck);
 
         $itemsByKategori = $healthcheck->items()->orderBy('id')->get()->groupBy('kategori');
 
@@ -102,9 +98,7 @@ class HealthCheckController extends Controller
 
     public function update(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('update', $healthcheck);
 
         $validated = $request->validate([
             'items' => 'required|array',
@@ -127,9 +121,7 @@ class HealthCheckController extends Controller
 
     public function destroy(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('delete', $healthcheck);
 
         $healthcheck->delete();
 

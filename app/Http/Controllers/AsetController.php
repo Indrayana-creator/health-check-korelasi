@@ -92,9 +92,7 @@ class AsetController extends Controller
     {
         $validated = $request->validate($this->rules());
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa menambahkan aset untuk uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [Aset::class, (int) $validated['uker_kode']]);
 
         $validated['no_asset'] = Aset::generateAsetId($validated['uker_kode'], $validated['kode_aset_kode']);
 
@@ -105,9 +103,7 @@ class AsetController extends Controller
 
     public function edit(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('update', $aset);
 
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
@@ -119,15 +115,11 @@ class AsetController extends Controller
 
     public function update(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('update', $aset);
 
         $validated = $request->validate($this->rules());
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa memindahkan aset ke uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [Aset::class, (int) $validated['uker_kode']]);
 
         // ASET ID gak diregenerate saat edit, biar ID-nya tetap sama sepanjang umur aset
         $aset->update($validated);
@@ -137,9 +129,7 @@ class AsetController extends Controller
 
     public function destroy(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('delete', $aset);
 
         $aset->delete();
 
