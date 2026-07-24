@@ -15,17 +15,22 @@ return new class extends Migration
             $table->string('status_dlp')->nullable()->after('status_bitlocker');
         });
 
-        DB::statement("ALTER TABLE aset MODIFY kondisi ENUM(
-            'NORMAL', 'NON DATABASE', 'PH/DISMANTEL', 'RUSAK', 'BACKUP',
-            'SERVICE CENTER', 'TIDAK DIGUNAKAN', 'TIDAK LAYAK'
-        ) NULL");
+        // Raw MySQL-only DDL: ubah kondisi jadi ENUM & perketat panjang kolom.
+        // Di SQLite kolom-kolom ini sudah string nullable dari migration
+        // sebelumnya, jadi gak ada yang perlu diubah.
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE aset MODIFY kondisi ENUM(
+                'NORMAL', 'NON DATABASE', 'PH/DISMANTEL', 'RUSAK', 'BACKUP',
+                'SERVICE CENTER', 'TIDAK DIGUNAKAN', 'TIDAK LAYAK'
+            ) NULL");
 
-        DB::statement("ALTER TABLE aset MODIFY pemegang_nama VARCHAR(150) NULL");
-        DB::statement("ALTER TABLE aset MODIFY jabatan VARCHAR(150) NULL");
-        DB::statement("ALTER TABLE aset MODIFY pemegang_pn VARCHAR(50) NULL");
-        DB::statement("ALTER TABLE aset MODIFY ip_address VARCHAR(50) NULL");
-        DB::statement("ALTER TABLE aset MODIFY status_hardening VARCHAR(50) NULL");
-        DB::statement("ALTER TABLE aset MODIFY status_bitlocker VARCHAR(50) NULL");
+            DB::statement("ALTER TABLE aset MODIFY pemegang_nama VARCHAR(150) NULL");
+            DB::statement("ALTER TABLE aset MODIFY jabatan VARCHAR(150) NULL");
+            DB::statement("ALTER TABLE aset MODIFY pemegang_pn VARCHAR(50) NULL");
+            DB::statement("ALTER TABLE aset MODIFY ip_address VARCHAR(50) NULL");
+            DB::statement("ALTER TABLE aset MODIFY status_hardening VARCHAR(50) NULL");
+            DB::statement("ALTER TABLE aset MODIFY status_bitlocker VARCHAR(50) NULL");
+        }
     }
 
     public function down(): void

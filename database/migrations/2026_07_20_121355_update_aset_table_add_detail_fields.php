@@ -15,10 +15,14 @@ return new class extends Migration
             $table->dropColumn(['holder_pn', 'status_fisik', 'status_verifikasi']);
         });
 
-        // ganti daftar enum perangkat (harus lewat raw SQL karena MySQL enum)
-        DB::statement("ALTER TABLE aset MODIFY perangkat ENUM(
-            'Laptop', 'PC All in One', 'Switch', 'Router', 'CCTV', 'Genset', 'UPS', 'Printer'
-        ) NOT NULL");
+        // ganti daftar enum perangkat (harus lewat raw SQL karena MySQL enum;
+        // di SQLite gak ada enforcement enum jadi kolom string biasa dari
+        // create_aset_table sudah cukup, gak perlu di-modify)
+        if (DB::getDriverName() === 'mysql') {
+            DB::statement("ALTER TABLE aset MODIFY perangkat ENUM(
+                'Laptop', 'PC All in One', 'Switch', 'Router', 'CCTV', 'Genset', 'UPS', 'Printer'
+            ) NOT NULL");
+        }
 
         Schema::table('aset', function (Blueprint $table) {
             $table->string('merek')->nullable()->after('perangkat');
