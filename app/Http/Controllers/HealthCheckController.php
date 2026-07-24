@@ -20,6 +20,7 @@ class HealthCheckController extends Controller
         if ($request->user()->role !== 'admin') {
             $query->where('uker_kode', $request->user()->uker_kode);
         }
+
         return $query->orderBy('uker_kode');
     }
 
@@ -28,7 +29,7 @@ class HealthCheckController extends Controller
         $query = $this->scopedQuery($request);
 
         if ($request->filled('q')) {
-            $query->where('periode', 'like', '%' . $request->input('q') . '%');
+            $query->where('periode', 'like', '%'.$request->input('q').'%');
         }
 
         if ($request->filled('uker_kode')) {
@@ -158,17 +159,19 @@ class HealthCheckController extends Controller
             $tanggal = $sheet->getCell("B{$row}")->getValue();
             $periode = trim((string) $sheet->getCell("C{$row}")->getValue());
 
-            if (!$ukerKode || !$tanggal || !$periode) {
+            if (! $ukerKode || ! $tanggal || ! $periode) {
                 continue;
             }
 
-            if (!$isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
+            if (! $isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
                 $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan milik Anda";
+
                 continue;
             }
 
-            if (!Uker::where('kode', $ukerKode)->exists()) {
+            if (! Uker::where('kode', $ukerKode)->exists()) {
                 $gagal[] = "Baris {$row}: kode uker {$ukerKode} tidak ditemukan";
+
                 continue;
             }
 
@@ -182,7 +185,7 @@ class HealthCheckController extends Controller
                 $this->generateItemsUntukForm($form);
                 $berhasil++;
             } catch (\Throwable $e) {
-                $gagal[] = "Baris {$row}: " . $e->getMessage();
+                $gagal[] = "Baris {$row}: ".$e->getMessage();
             }
         }
 
@@ -221,18 +224,19 @@ class HealthCheckController extends Controller
             $ukerKode = $sheet->getCell("A{$row}")->getValue();
             $periode = trim((string) $sheet->getCell("B{$row}")->getValue());
 
-            if (!$ukerKode || !$periode) {
+            if (! $ukerKode || ! $periode) {
                 continue;
             }
 
             $query = HealthCheckForm::where('uker_kode', $ukerKode)->where('periode', $periode);
-            if (!$isAdmin) {
+            if (! $isAdmin) {
                 $query->where('uker_kode', $ukerSendiri);
             }
 
             $form = $query->first();
-            if (!$form) {
+            if (! $form) {
                 $tidakKetemu[] = "Baris {$row}: uker {$ukerKode} periode {$periode} tidak ditemukan (atau bukan milik Anda)";
+
                 continue;
             }
 
@@ -266,6 +270,7 @@ class HealthCheckController extends Controller
                 'persen' => $total ? round($ok / $total * 100, 1) : 0,
             ];
         }
+
         return $hasil;
     }
 
@@ -273,7 +278,7 @@ class HealthCheckController extends Controller
     {
         $formList = $this->filteredQuery($request)->get();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Health Check');
 
@@ -304,7 +309,7 @@ class HealthCheckController extends Controller
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'health-check-' . now()->format('Ymd-His') . '.xlsx';
+        $filename = 'health-check-'.now()->format('Ymd-His').'.xlsx';
         $writer = new Xlsx($spreadsheet);
 
         return response()->streamDownload(function () use ($writer) {
@@ -327,6 +332,6 @@ class HealthCheckController extends Controller
 
         $pdf = Pdf::loadView('healthcheck.pdf', compact('ringkasanPerForm'))->setPaper('a4', 'landscape');
 
-        return $pdf->download('health-check-' . now()->format('Ymd-His') . '.pdf');
+        return $pdf->download('health-check-'.now()->format('Ymd-His').'.pdf');
     }
 }

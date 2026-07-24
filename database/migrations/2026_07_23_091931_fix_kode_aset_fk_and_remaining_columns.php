@@ -24,12 +24,12 @@ return new class extends Migration
                 'SERVICE CENTER', 'TIDAK DIGUNAKAN', 'TIDAK LAYAK'
             ) NULL");
 
-            DB::statement("ALTER TABLE aset MODIFY pemegang_nama VARCHAR(150) NULL");
-            DB::statement("ALTER TABLE aset MODIFY jabatan VARCHAR(150) NULL");
-            DB::statement("ALTER TABLE aset MODIFY pemegang_pn VARCHAR(50) NULL");
-            DB::statement("ALTER TABLE aset MODIFY ip_address VARCHAR(50) NULL");
-            DB::statement("ALTER TABLE aset MODIFY status_hardening VARCHAR(50) NULL");
-            DB::statement("ALTER TABLE aset MODIFY status_bitlocker VARCHAR(50) NULL");
+            DB::statement('ALTER TABLE aset MODIFY pemegang_nama VARCHAR(150) NULL');
+            DB::statement('ALTER TABLE aset MODIFY jabatan VARCHAR(150) NULL');
+            DB::statement('ALTER TABLE aset MODIFY pemegang_pn VARCHAR(50) NULL');
+            DB::statement('ALTER TABLE aset MODIFY ip_address VARCHAR(50) NULL');
+            DB::statement('ALTER TABLE aset MODIFY status_hardening VARCHAR(50) NULL');
+            DB::statement('ALTER TABLE aset MODIFY status_bitlocker VARCHAR(50) NULL');
         }
     }
 

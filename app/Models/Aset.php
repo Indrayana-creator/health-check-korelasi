@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Aset extends Model
 {
+    use HasFactory;
+
     protected $table = 'aset';
 
     protected $fillable = [
@@ -46,9 +49,10 @@ class Aset extends Model
 
     public function getUmurTahunAttribute(): ?int
     {
-        if (!$this->tahun_perolehan) {
+        if (! $this->tahun_perolehan) {
             return null;
         }
+
         return now()->year - $this->tahun_perolehan;
     }
 

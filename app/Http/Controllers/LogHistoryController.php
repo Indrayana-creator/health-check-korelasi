@@ -27,10 +27,11 @@ class LogHistoryController extends Controller
             ->groupBy('modul', 'aksi')
             ->get();
 
-        $tahunTersedia = ActivityLog::selectRaw('YEAR(created_at) as tahun')
-            ->distinct()
-            ->orderByDesc('tahun')
-            ->pluck('tahun');
+        $tahunTersedia = ActivityLog::pluck('created_at')
+            ->map(fn ($tanggal) => $tanggal->year)
+            ->unique()
+            ->sortDesc()
+            ->values();
 
         return view('log-history.index', compact('logs', 'ringkasan', 'tahunRingkasan', 'tahunTersedia'));
     }

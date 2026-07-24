@@ -26,7 +26,7 @@ class AsetController extends Controller
             'sn' => 'required|string|max:100',
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
-            'kondisi' => 'nullable|in:' . implode(',', Aset::DAFTAR_KONDISI),
+            'kondisi' => 'nullable|in:'.implode(',', Aset::DAFTAR_KONDISI),
             'pemegang_nama' => 'nullable|string|max:150',
             'jabatan' => 'nullable|string|max:150',
             'pemegang_pn' => 'nullable|string|max:50',
@@ -45,6 +45,7 @@ class AsetController extends Controller
         if ($request->user()->role !== 'admin') {
             $query->where('uker_kode', $request->user()->uker_kode);
         }
+
         return $query->orderBy('uker_kode');
     }
 
@@ -167,28 +168,31 @@ class AsetController extends Controller
             $ukerKode = $sheet->getCell("A{$row}")->getValue();
             $kodeAset = trim((string) $sheet->getCell("B{$row}")->getValue());
 
-            if (!$ukerKode || !$kodeAset) {
+            if (! $ukerKode || ! $kodeAset) {
                 continue;
             }
 
-            if (!$isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
+            if (! $isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
                 $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan milik Anda";
+
                 continue;
             }
 
-            if (!Uker::where('kode', $ukerKode)->exists()) {
+            if (! Uker::where('kode', $ukerKode)->exists()) {
                 $gagal[] = "Baris {$row}: kode uker {$ukerKode} tidak ditemukan";
+
                 continue;
             }
 
-            if (!KodeAset::where('kode', $kodeAset)->exists()) {
+            if (! KodeAset::where('kode', $kodeAset)->exists()) {
                 $gagal[] = "Baris {$row}: kode aset {$kodeAset} tidak ditemukan di master";
+
                 continue;
             }
 
             try {
                 $noAsset = trim((string) $sheet->getCell("F{$row}")->getValue());
-                if (!$noAsset) {
+                if (! $noAsset) {
                     $noAsset = Aset::generateAsetId((int) $ukerKode, $kodeAset);
                 }
 
@@ -214,7 +218,7 @@ class AsetController extends Controller
                 ]);
                 $berhasil++;
             } catch (\Throwable $e) {
-                $gagal[] = "Baris {$row}: " . $e->getMessage();
+                $gagal[] = "Baris {$row}: ".$e->getMessage();
             }
         }
 
@@ -250,18 +254,19 @@ class AsetController extends Controller
 
         for ($row = 2; $row <= $highestRow; $row++) {
             $sn = trim((string) $sheet->getCell("A{$row}")->getValue());
-            if (!$sn) {
+            if (! $sn) {
                 continue;
             }
 
             $query = Aset::where('sn', $sn);
-            if (!$isAdmin) {
+            if (! $isAdmin) {
                 $query->where('uker_kode', $ukerSendiri);
             }
 
             $aset = $query->first();
-            if (!$aset) {
+            if (! $aset) {
                 $tidakKetemu[] = "Baris {$row}: SN {$sn} tidak ditemukan (atau bukan milik uker Anda)";
+
                 continue;
             }
 
@@ -283,7 +288,7 @@ class AsetController extends Controller
     {
         $asetList = $this->filteredQuery($request)->get();
 
-        $spreadsheet = new Spreadsheet();
+        $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
         $sheet->setTitle('Data Aset');
 
@@ -323,7 +328,7 @@ class AsetController extends Controller
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
-        $filename = 'data-aset-' . now()->format('Ymd-His') . '.xlsx';
+        $filename = 'data-aset-'.now()->format('Ymd-His').'.xlsx';
         $writer = new Xlsx($spreadsheet);
 
         return response()->streamDownload(function () use ($writer) {
@@ -339,6 +344,6 @@ class AsetController extends Controller
 
         $pdf = Pdf::loadView('aset.pdf', compact('asetList'))->setPaper('a4', 'landscape');
 
-        return $pdf->download('data-aset-' . now()->format('Ymd-His') . '.pdf');
+        return $pdf->download('data-aset-'.now()->format('Ymd-His').'.pdf');
     }
 }

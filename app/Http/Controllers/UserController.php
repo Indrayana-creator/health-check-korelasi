@@ -13,12 +13,14 @@ class UserController extends Controller
     public function index()
     {
         $users = User::with('ukerRelasi')->orderBy('name')->paginate(20);
+
         return view('users.index', compact('users'));
     }
 
     public function create()
     {
         $ukerList = Uker::orderBy('nama')->get();
+
         return view('users.create', compact('ukerList'));
     }
 
@@ -51,6 +53,7 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $ukerList = Uker::orderBy('nama')->get();
+
         return view('users.edit', compact('user', 'ukerList'));
     }
 
@@ -62,7 +65,7 @@ class UserController extends Controller
         $user->email = $validated['email'];
         $user->role = $validated['role'];
         $user->uker_kode = $validated['role'] === 'user' ? $validated['uker_kode'] : null;
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
         $user->save();

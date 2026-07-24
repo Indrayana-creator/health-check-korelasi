@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class HealthCheckItem extends Model
 {
+    use HasFactory;
+
     protected $fillable = ['health_check_form_id', 'kategori', 'item_pemeriksaan', 'status', 'catatan'];
 
     public function form()
