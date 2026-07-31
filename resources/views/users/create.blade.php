@@ -36,6 +36,12 @@
                     </div>
 
                     <div>
+                        <label class="block text-sm font-medium text-gray-700">PN (Personal Number, opsional)</label>
+                        <input type="text" name="pn" value="{{ old('pn') }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                        <p class="text-xs text-gray-400 mt-1">Kalau diisi, harus PN yang sudah terdaftar di data pekerja. Kosongkan dulu kalau data pekerja belum diimport.</p>
+                    </div>
+
+                    <div>
                         <label class="block text-sm font-medium text-gray-700">Password</label>
                         <input type="password" name="password" class="mt-1 block w-full border-gray-300 rounded-md" required>
                     </div>

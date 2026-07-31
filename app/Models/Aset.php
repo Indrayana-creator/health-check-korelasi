@@ -37,6 +37,14 @@ class Aset extends Model
         'SERVICE CENTER', 'TIDAK DIGUNAKAN', 'TIDAK LAYAK',
     ];
 
+    // Kategori Kode Aset yang "dipegang" oleh 1 orang -- field pemegang/PN/IP/
+    // security wajib diisi kalau kategori-nya masuk daftar ini. Kategori lain
+    // (UPS, Panel Listrik, Access Switch, dst) gak punya "pemegang", jadi field
+    // itu opsional buat mereka.
+    public const KATEGORI_PEMEGANG_INDIVIDU = [
+        'PERSONAL COMPUTER', 'NOTEBOOK', 'TABLET', 'LAYAR MONITOR',
+    ];
+
     public function uker()
     {
         return $this->belongsTo(Uker::class, 'uker_kode', 'kode');
@@ -45,6 +53,31 @@ class Aset extends Model
     public function kodeAset()
     {
         return $this->belongsTo(KodeAset::class, 'kode_aset_kode', 'kode');
+    }
+
+    public function editRequests()
+    {
+        return $this->hasMany(AsetEditRequest::class);
+    }
+
+    // Admin selalu bisa edit tanpa perlu izin. User biasa cuma bisa edit
+    // kalau ada permintaan yang sudah Disetujui dan belum pernah dipakai.
+    public function bisaDiedit(User $user): bool
+    {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        return $this->editRequests()
+            ->where('requested_by', $user->id)
+            ->where('status', 'Disetujui')
+            ->where('sudah_dipakai', false)
+            ->exists();
+    }
+
+    public function permintaanEditMenunggu(): ?AsetEditRequest
+    {
+        return $this->editRequests()->where('status', 'Menunggu')->latest()->first();
     }
 
     public function getUmurTahunAttribute(): ?int

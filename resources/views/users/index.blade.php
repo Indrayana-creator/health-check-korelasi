@@ -22,6 +22,7 @@
                         <tr>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Nama</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Email</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">PN</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Role</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Uker</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Aksi</th>
@@ -32,6 +33,7 @@
                             <tr>
                                 <td class="px-4 py-2">{{ $user->name }}</td>
                                 <td class="px-4 py-2">{{ $user->email }}</td>
+                                <td class="px-4 py-2">{{ $user->pn ?? '-' }}</td>
                                 <td class="px-4 py-2">
                                     <span class="px-2 py-1 text-xs rounded {{ $user->role === 'admin' ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-700' }}">
                                         {{ $user->role }}
@@ -48,7 +50,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">Belum ada user.</td></tr>
+                            <tr><td colspan="6" class="px-4 py-4 text-center text-gray-500">Belum ada user.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

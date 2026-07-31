@@ -80,7 +80,9 @@ class HealthCheckController extends Controller
             'pic_pn' => 'nullable|string|max:50|exists:pekerja,pn',
         ]);
 
-        $this->authorize('assignToUker', [HealthCheckForm::class, (int) $validated['uker_kode']]);
+        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
+            abort(403, 'Anda hanya bisa membuat form health check untuk uker Anda sendiri.');
+        }
 
         $form = HealthCheckForm::create($validated);
         $this->generateItemsUntukForm($form);
@@ -90,7 +92,9 @@ class HealthCheckController extends Controller
 
     public function edit(Request $request, HealthCheckForm $healthcheck)
     {
-        $this->authorize('update', $healthcheck);
+        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke form ini.');
+        }
 
         $itemsByKategori = $healthcheck->items()->orderBy('id')->get()->groupBy('kategori');
 
@@ -99,30 +103,117 @@ class HealthCheckController extends Controller
 
     public function update(Request $request, HealthCheckForm $healthcheck)
     {
-        $this->authorize('update', $healthcheck);
+        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke form ini.');
+        }
 
         $validated = $request->validate([
             'items' => 'required|array',
             'items.*.id' => 'required|integer|exists:health_check_items,id',
             'items.*.status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
             'items.*.catatan' => 'nullable|string',
+            'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
+            'catatan_tindak_lanjut' => 'nullable|string',
         ]);
 
-        foreach ($validated['items'] as $itemInput) {
-            HealthCheckItem::where('id', $itemInput['id'])
-                ->where('health_check_form_id', $healthcheck->id)
-                ->update([
-                    'status' => $itemInput['status'],
-                    'catatan' => $itemInput['catatan'] ?? null,
-                ]);
+        // Item checklist cuma boleh diubah kalau form masih Draft/Ditolak.
+        // Kalau statusnya "Menunggu Approval" atau "Disetujui", perubahan
+        // item ditolak -- tapi status tindak lanjut tetap boleh diupdate,
+        // karena remediasi berjalan terpisah dari proses approval datanya.
+        if ($healthcheck->itemsBisaDiedit()) {
+            foreach ($validated['items'] as $itemInput) {
+                HealthCheckItem::where('id', $itemInput['id'])
+                    ->where('health_check_form_id', $healthcheck->id)
+                    ->update([
+                        'status' => $itemInput['status'],
+                        'catatan' => $itemInput['catatan'] ?? null,
+                    ]);
+            }
         }
 
-        return redirect()->route('healthcheck.index')->with('status', 'Hasil pemeriksaan berhasil disimpan.');
+        $healthcheck->update([
+            'status_tindak_lanjut' => $validated['status_tindak_lanjut'],
+            'catatan_tindak_lanjut' => $validated['catatan_tindak_lanjut'] ?? null,
+        ]);
+
+        $pesan = $healthcheck->itemsBisaDiedit()
+            ? 'Hasil pemeriksaan berhasil disimpan.'
+            : 'Status tindak lanjut disimpan. Item checklist tidak diubah karena form sudah disubmit untuk approval.';
+
+        return redirect()->route('healthcheck.index')->with('status', $pesan);
+    }
+
+    // ===================== APPROVAL WORKFLOW =====================
+
+    public function submitForApproval(Request $request, HealthCheckForm $healthcheck)
+    {
+        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke form ini.');
+        }
+
+        if (! $healthcheck->itemsBisaDiedit()) {
+            $pesan = $healthcheck->sudahLewatTanggal()
+                ? 'Form ini sudah melewati tanggal pemeriksaannya, tidak bisa disubmit lagi.'
+                : 'Form ini sudah disubmit sebelumnya.';
+            abort(403, $pesan);
+        }
+
+        $healthcheck->update([
+            'status_approval' => 'Menunggu Approval',
+            'catatan_approval' => null,
+        ]);
+
+        return redirect()->route('healthcheck.index')->with('status', 'Form berhasil disubmit, menunggu approval admin.');
+    }
+
+    public function approve(Request $request, HealthCheckForm $healthcheck)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa approve form health check.');
+        }
+
+        if ($healthcheck->status_approval !== 'Menunggu Approval') {
+            abort(403, 'Form ini tidak dalam status menunggu approval.');
+        }
+
+        $healthcheck->update([
+            'status_approval' => 'Disetujui',
+            'approved_by_pn' => $request->user()->pn,
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('healthcheck.index')->with('status', 'Form health check disetujui.');
+    }
+
+    public function reject(Request $request, HealthCheckForm $healthcheck)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa menolak form health check.');
+        }
+
+        if ($healthcheck->status_approval !== 'Menunggu Approval') {
+            abort(403, 'Form ini tidak dalam status menunggu approval.');
+        }
+
+        $validated = $request->validate([
+            'catatan_approval' => 'required|string',
+        ]);
+
+        $healthcheck->update([
+            'status_approval' => 'Ditolak',
+            'catatan_approval' => $validated['catatan_approval'],
+            'approved_by_pn' => $request->user()->pn,
+            'approved_at' => now(),
+        ]);
+
+        return redirect()->route('healthcheck.index')->with('status', 'Form health check ditolak, perlu direvisi.');
     }
 
     public function destroy(Request $request, HealthCheckForm $healthcheck)
     {
-        $this->authorize('delete', $healthcheck);
+        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke form ini.');
+        }
 
         $healthcheck->delete();
 
@@ -138,6 +229,32 @@ class HealthCheckController extends Controller
         return view('healthcheck.bulk-upload');
     }
 
+    public function downloadTemplate(Request $request)
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Upload Health Check');
+
+        $headers = ['uker_kode', 'tanggal_pemeriksaan', 'periode', 'pic_pn'];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:D1')->getFont()->setBold(true);
+
+        // 1 baris contoh, biar jelas format isiannya
+        $sheet->fromArray([999, '2026-08-01', 'Agustus 2026', ''], null, 'A2');
+
+        foreach (range('A', 'D') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, 'template_upload_healthcheck.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     public function bulkUpload(Request $request)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls']);
@@ -146,6 +263,16 @@ class HealthCheckController extends Controller
         $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
         $sheet = $spreadsheet->getActiveSheet();
         $highestRow = $sheet->getHighestRow();
+
+        $headerSeharusnya = ['uker_kode', 'tanggal_pemeriksaan', 'periode', 'pic_pn'];
+        $headerFile = [];
+        foreach (range('A', 'D') as $col) {
+            $headerFile[] = trim((string) $sheet->getCell("{$col}1")->getValue());
+        }
+
+        if ($headerFile !== $headerSeharusnya) {
+            return back()->with('formatSalah', true);
+        }
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;

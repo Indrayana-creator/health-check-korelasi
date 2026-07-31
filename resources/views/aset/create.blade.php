@@ -24,47 +24,38 @@
                     method="POST"
                     class="space-y-4"
                     x-data="{
-                        semuaUker: {{ $ukerList->map(fn($u) => ['kode' => $u->kode, 'nama' => $u->nama, 'kode_spv' => $u->kode_spv, 'uker_spv' => $u->uker_spv])->toJson() }},
-                        kodeIndukTerpilih: '{{ old('kode_induk_terpilih') }}',
                         ukerKodeTerpilih: '{{ old('uker_kode') }}',
-                        get daftarInduk() {
-                            const map = {};
-                            this.semuaUker.forEach(u => { map[u.kode_spv] = u.uker_spv; });
-                            return Object.entries(map).map(([kode_spv, uker_spv]) => ({ kode_spv, uker_spv }));
-                        },
-                        get anggotaUker() {
-                            if (!this.kodeIndukTerpilih) return [];
-                            return this.semuaUker.filter(u => String(u.kode_spv) === String(this.kodeIndukTerpilih));
+                        perangkatTerpilih: '{{ old('perangkat') }}',
+                        statusLookupPn: '',
+                        async cariUkerDariPn(pn) {
+                            if (!pn) { this.statusLookupPn = ''; return; }
+                            this.statusLookupPn = 'Mencari...';
+                            try {
+                                const res = await fetch(`/api/pekerja-uker/${pn}`);
+                                if (!res.ok) { this.statusLookupPn = 'PN tidak ditemukan di data pekerja.'; return; }
+                                const data = await res.json();
+                                this.ukerKodeTerpilih = String(data.uker_kode);
+                                this.statusLookupPn = `Ditemukan: ${data.nama} - ${data.uker_nama}`;
+                            } catch (e) {
+                                this.statusLookupPn = 'Gagal mencari PN.';
+                            }
                         }
                     }"
                 >
                     @csrf
 
-                    {{-- STEP 1: pilih uker induk --}}
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">1. Uker Induk</label>
-                        <select x-model="kodeIndukTerpilih" @change="ukerKodeTerpilih = ''" class="mt-1 block w-full border-gray-300 rounded-md">
-                            <option value="">-- Pilih Uker Induk --</option>
-                            <template x-for="induk in daftarInduk" :key="induk.kode_spv">
-                                <option :value="induk.kode_spv" x-text="induk.uker_spv"></option>
-                            </template>
-                        </select>
-                    </div>
+                    {{-- STEP 1: cari & pilih uker langsung (combobox pencarian, gak perlu 2 tahap lagi) --}}
+                    <x-uker-combobox
+                        name="uker_kode"
+                        label="1. Uker"
+                        :daftar-uker="$ukerList->map(fn($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                        model-value="ukerKodeTerpilih"
+                        placeholder="Ketik nama atau kode uker..."
+                    />
 
-                    {{-- STEP 2: cabang/unit --}}
-                    <div x-show="kodeIndukTerpilih" x-cloak>
-                        <label class="block text-sm font-medium text-gray-700">2. Cabang / Unit</label>
-                        <select name="uker_kode" x-model="ukerKodeTerpilih" class="mt-1 block w-full border-gray-300 rounded-md">
-                            <option value="">-- Pilih Cabang/Unit --</option>
-                            <template x-for="anggota in anggotaUker" :key="anggota.kode">
-                                <option :value="anggota.kode" x-text="anggota.nama"></option>
-                            </template>
-                        </select>
-                    </div>
-
-                    {{-- STEP 3: Kode Aset resmi (dikelompokkan per kategori) --}}
+                    {{-- STEP 2: Kode Aset resmi (dikelompokkan per kategori) --}}
                     <div x-show="ukerKodeTerpilih" x-cloak>
-                        <label class="block text-sm font-medium text-gray-700">3. Kode Aset</label>
+                        <label class="block text-sm font-medium text-gray-700">2. Kode Aset</label>
                         <select name="kode_aset_kode" class="mt-1 block w-full border-gray-300 rounded-md">
                             <option value="">-- Pilih Kode Aset --</option>
                             @foreach ($kodeAsetList->groupBy('kategori') as $kategori => $daftar)
@@ -127,7 +118,9 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">Personal Number (PN)</label>
-                            <input type="text" name="pemegang_pn" value="{{ old('pemegang_pn') }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <input type="text" name="pemegang_pn" value="{{ old('pemegang_pn') }}" @change="cariUkerDariPn($event.target.value)" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <p class="text-xs mt-1" :class="statusLookupPn.startsWith('Ditemukan') ? 'text-green-600' : 'text-gray-400'" x-text="statusLookupPn"></p>
+                            <p class="text-xs text-gray-400">Isi PN dulu biar Uker di atas otomatis terpilih (opsional, tetap bisa dipilih manual).</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-gray-700">IP Address</label>

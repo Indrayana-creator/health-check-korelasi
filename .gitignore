@@ -26,3 +26,9 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# Data mentah BRI (aset, pegawai, uker) -- JANGAN pernah di-commit,
+# ini data internal, bukan dummy. Simpan lokal aja / backup terpisah.
+storage/app/*.csv
+storage/app/*.xlsx
+database/database.sqlite

@@ -68,7 +68,10 @@ test('user tidak bisa mengakses form health check milik uker lain', function () 
 test('update menyimpan status dan catatan tiap item pemeriksaan', function () {
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
-    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
     $item = HealthCheckItem::factory()->create([
         'health_check_form_id' => $form->id,
         'kategori' => 'A - Ruang Server/Jaringan',
@@ -78,11 +81,54 @@ test('update menyimpan status dan catatan tiap item pemeriksaan', function () {
         'items' => [
             ['id' => $item->id, 'status' => 'Not OK', 'catatan' => 'AC mati'],
         ],
+        'status_tindak_lanjut' => 'Sedang Diproses',
+        'catatan_tindak_lanjut' => 'Sudah diajukan perbaikan AC ke vendor.',
     ]);
 
     $response->assertRedirect(route('healthcheck.index'));
     expect($item->fresh()->status)->toBe('Not OK');
     expect($item->fresh()->catatan)->toBe('AC mati');
+    expect($form->fresh()->status_tindak_lanjut)->toBe('Sedang Diproses');
+    expect($form->fresh()->catatan_tindak_lanjut)->toBe('Sudah diajukan perbaikan AC ke vendor.');
+});
+
+test('item checklist terkunci kalau tanggal pemeriksaan sudah lewat, tapi status tindak lanjut tetap bisa diupdate', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->subDay()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id,
+        'status' => 'Belum Diperiksa',
+    ]);
+
+    $response = $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $item->id, 'status' => 'Not OK', 'catatan' => 'AC mati'],
+        ],
+        'status_tindak_lanjut' => 'Sedang Diproses',
+    ]);
+
+    $response->assertRedirect(route('healthcheck.index'));
+    expect($item->fresh()->status)->toBe('Belum Diperiksa');
+    expect($form->fresh()->status_tindak_lanjut)->toBe('Sedang Diproses');
+});
+
+test('update tanpa status_tindak_lanjut ditolak validasi', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $response = $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $item->id, 'status' => 'OK'],
+        ],
+    ]);
+
+    $response->assertSessionHasErrors('status_tindak_lanjut');
 });
 
 test('destroy form health check ikut menghapus semua item-nya', function () {

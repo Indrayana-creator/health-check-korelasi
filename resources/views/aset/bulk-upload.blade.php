@@ -7,6 +7,14 @@
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white p-6 shadow-sm sm:rounded-lg">
 
+                @if (session('formatSalah'))
+                    <div class="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded">
+                        <p class="font-semibold mb-1">Format file tidak sesuai template.</p>
+                        <p class="text-sm">Susunan kolom di file kamu berbeda dari template resmi. Silakan
+                        <a href="{{ route('aset.downloadTemplate') }}" class="underline font-medium">download template Excel</a>
+                        di bawah, isi datanya di file itu (jangan ubah urutan/nama kolom header), lalu upload ulang.</p>
+                    </div>
+                @endif
                 @if (session('status'))
                     <div class="mb-4 p-4 bg-green-100 text-green-800 rounded">{{ session('status') }}</div>
                 @endif
@@ -31,13 +39,14 @@
                         B: kode_aset_kode (contoh: A1, B2, C3 &mdash; sesuai master Kode Aset) &middot;
                         C: merek &middot; D: tipe_model &middot; E: sn &middot;
                         F: no_asset (opsional, kalau kosong di-generate otomatis format Z5-K-uker-kode-urutan) &middot;
-                        G: kapasitas_memori (opsional) &middot; H: tahun_perolehan (opsional) &middot;
-                        I: kondisi (opsional &mdash; NORMAL/NON DATABASE/PH-DISMANTEL/RUSAK/BACKUP/SERVICE CENTER/TIDAK DIGUNAKAN/TIDAK LAYAK) &middot;
+                        G: kapasitas_memori &middot; H: tahun_perolehan &middot;
+                        I: kondisi (NORMAL/NON DATABASE/PH-DISMANTEL/RUSAK/BACKUP/SERVICE CENTER/TIDAK DIGUNAKAN/TIDAK LAYAK) &middot;
                         J: pemegang_nama &middot; K: jabatan &middot; L: pemegang_pn &middot; M: ip_address &middot;
                         N: status_hardening &middot; O: status_bitlocker &middot; P: status_dlp &middot;
                         Q: status_antivirus &middot; R: keterangan
                     </p>
-                    <p class="mt-2 text-xs text-gray-400">Kolom J-R semuanya opsional, isi kalau relevan buat aset yang bersangkutan.</p>
+                    <p class="mt-2 text-xs font-semibold text-red-600">Kolom C-I wajib diisi untuk semua jenis aset. Kolom J-Q wajib diisi khusus untuk kategori Personal Computer, Notebook, Tablet, dan Layar Monitor (kategori lain seperti UPS/Switch/Panel boleh dikosongkan). Kolom F (no_asset) dan R (keterangan) selalu opsional.</p>
+                    <a href="{{ route('aset.downloadTemplate') }}" class="inline-block mt-3 text-indigo-600 font-medium text-sm hover:underline">&darr; Download Template Excel</a>
                 </div>
 
                 <form action="{{ route('aset.bulkUpload') }}" method="POST" enctype="multipart/form-data" class="space-y-4">

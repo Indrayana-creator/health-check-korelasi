@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Aset;
+use App\Models\AsetEditRequest;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
@@ -96,21 +97,53 @@ test('user tidak bisa mengedit aset milik uker lain', function () {
     expect(Aset::find($aset->id))->not->toBeNull();
 });
 
-test('user bisa mengelola aset milik uker sendiri', function () {
+test('user bisa melihat dan menghapus aset milik uker sendiri, tapi tidak bisa update tanpa izin edit', function () {
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Dell']);
+
+    $this->actingAs($user)->get(route('aset.edit', $aset))->assertOk();
+
+    // Belum ada permintaan edit yang disetujui -> data masih terkunci
+    $this->actingAs($user)
+        ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['merek' => 'HP']))
+        ->assertForbidden();
+    expect($aset->fresh()->merek)->toBe('Dell');
+
+    // Hapus gak butuh izin edit, tetap boleh langsung
+    $this->actingAs($user)->delete(route('aset.destroy', $aset))->assertRedirect(route('aset.index'));
+    expect(Aset::find($aset->id))->toBeNull();
+});
+
+test('user bisa update aset kalau permintaan edit sudah disetujui admin', function () {
+    $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
     $kodeAset = KodeAset::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
     $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
 
-    $this->actingAs($user)->get(route('aset.edit', $aset))->assertOk();
+    $this->actingAs($user)->post(route('aset.requestEdit', $aset), ['alasan' => 'Salah input merek'])
+        ->assertRedirect(route('aset.edit', $aset));
+
+    $editRequest = AsetEditRequest::first();
+    expect($editRequest)->not->toBeNull();
+    expect($editRequest->status)->toBe('Menunggu');
+
+    $this->actingAs($admin)->post(route('aset.editRequests.approve', $editRequest))
+        ->assertRedirect();
+    expect($editRequest->fresh()->status)->toBe('Disetujui');
 
     $this->actingAs($user)
         ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['merek' => 'HP']))
         ->assertRedirect(route('aset.index'));
     expect($aset->fresh()->merek)->toBe('HP');
 
-    $this->actingAs($user)->delete(route('aset.destroy', $aset))->assertRedirect(route('aset.index'));
-    expect(Aset::find($aset->id))->toBeNull();
+    // Izin edit yang sudah dipakai gak bisa dipakai lagi buat update kedua
+    $this->actingAs($user)
+        ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['merek' => 'Asus']))
+        ->assertForbidden();
+    expect($aset->fresh()->merek)->toBe('HP');
 });
 
 test('user tidak bisa memindahkan aset ke uker lain lewat update', function () {

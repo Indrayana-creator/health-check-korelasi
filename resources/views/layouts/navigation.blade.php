@@ -25,6 +25,9 @@
                         <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                             {{ __('Kelola User') }}
                         </x-nav-link>
+                        <x-nav-link :href="route('ukers.index')" :active="request()->routeIs('ukers.*')">
+                            {{ __('Kelola Uker') }}
+                        </x-nav-link>
                         <x-nav-link :href="route('rekap.cabang')" :active="request()->routeIs('rekap.*')">
                             {{ __('Rekap Cabang') }}
                         </x-nav-link>
@@ -95,6 +98,9 @@
             @if (auth()->user()->role === 'admin')
                 <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
                     {{ __('Kelola User') }}
+                </x-responsive-nav-link>
+                <x-responsive-nav-link :href="route('ukers.index')" :active="request()->routeIs('ukers.*')">
+                    {{ __('Kelola Uker') }}
                 </x-responsive-nav-link>
                 <x-responsive-nav-link :href="route('rekap.cabang')" :active="request()->routeIs('rekap.*')">
                     {{ __('Rekap Cabang') }}

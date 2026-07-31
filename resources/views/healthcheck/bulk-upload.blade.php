@@ -7,6 +7,14 @@
         <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white p-6 shadow-sm sm:rounded-lg">
 
+                @if (session('formatSalah'))
+                    <div class="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded">
+                        <p class="font-semibold mb-1">Format file tidak sesuai template.</p>
+                        <p class="text-sm">Susunan kolom di file kamu berbeda dari template resmi. Silakan
+                        <a href="{{ route('healthcheck.downloadTemplate') }}" class="underline font-medium">download template Excel</a>
+                        di bawah, isi datanya di file itu (jangan ubah urutan/nama kolom header), lalu upload ulang.</p>
+                    </div>
+                @endif
                 @if (session('status'))
                     <div class="mb-4 p-4 bg-green-100 text-green-800 rounded">{{ session('status') }}</div>
                 @endif
@@ -28,6 +36,7 @@
                     <p class="font-semibold mb-2">Format kolom Excel (baris 1 = header, data mulai baris 2):</p>
                     <p>A: uker_kode &middot; B: tanggal_pemeriksaan (format YYYY-MM-DD) &middot; C: periode &middot; D: pic_pn (opsional, harus PN yang sudah ada di data pekerja)</p>
                     <p class="mt-2 text-xs text-gray-400">Setiap baris akan jadi 1 form baru, otomatis berisi 61 item checklist dengan status awal "Belum Diperiksa".</p>
+                    <a href="{{ route('healthcheck.downloadTemplate') }}" class="inline-block mt-3 text-indigo-600 font-medium text-sm hover:underline">&darr; Download Template Excel</a>
                 </div>
 
                 <form action="{{ route('healthcheck.bulkUpload') }}" method="POST" enctype="multipart/form-data" class="space-y-4">

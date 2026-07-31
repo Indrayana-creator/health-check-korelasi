@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Aset;
+use App\Models\AsetEditRequest;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -93,7 +94,9 @@ class AsetController extends Controller
     {
         $validated = $request->validate($this->rules());
 
-        $this->authorize('assignToUker', [Aset::class, (int) $validated['uker_kode']]);
+        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
+            abort(403, 'Anda hanya bisa menambahkan aset untuk uker Anda sendiri.');
+        }
 
         $validated['no_asset'] = Aset::generateAsetId($validated['uker_kode'], $validated['kode_aset_kode']);
 
@@ -104,33 +107,116 @@ class AsetController extends Controller
 
     public function edit(Request $request, Aset $aset)
     {
-        $this->authorize('update', $aset);
+        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke aset ini.');
+        }
 
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
             : Uker::where('kode', $request->user()->uker_kode)->get();
         $kodeAsetList = KodeAset::orderBy('kategori')->orderBy('kode')->get();
+        $bisaDiedit = $aset->bisaDiedit($request->user());
+        $permintaanMenunggu = $aset->permintaanEditMenunggu();
 
-        return view('aset.edit', compact('aset', 'ukerList', 'kodeAsetList'));
+        return view('aset.edit', compact('aset', 'ukerList', 'kodeAsetList', 'bisaDiedit', 'permintaanMenunggu'));
     }
 
     public function update(Request $request, Aset $aset)
     {
-        $this->authorize('update', $aset);
+        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke aset ini.');
+        }
+
+        if (! $aset->bisaDiedit($request->user())) {
+            abort(403, 'Data ini terkunci. Ajukan permintaan edit dan tunggu disetujui admin sebelum bisa mengubah data.');
+        }
 
         $validated = $request->validate($this->rules());
 
-        $this->authorize('assignToUker', [Aset::class, (int) $validated['uker_kode']]);
+        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
+            abort(403, 'Anda hanya bisa memindahkan aset ke uker Anda sendiri.');
+        }
 
         // ASET ID gak diregenerate saat edit, biar ID-nya tetap sama sepanjang umur aset
         $aset->update($validated);
 
+        // Kalau yang edit bukan admin, tandai izin edit yang dipakai barusan
+        // biar "habis" -- gak bisa dipakai buat edit lagi tanpa ngajuin ulang
+        if ($request->user()->role !== 'admin') {
+            AsetEditRequest::where('aset_id', $aset->id)
+                ->where('requested_by', $request->user()->id)
+                ->where('status', 'Disetujui')
+                ->where('sudah_dipakai', false)
+                ->update(['sudah_dipakai' => true]);
+        }
+
         return redirect()->route('aset.index')->with('status', 'Aset berhasil diupdate.');
+    }
+
+    public function requestEdit(Request $request, Aset $aset)
+    {
+        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke aset ini.');
+        }
+
+        $validated = $request->validate(['alasan' => 'nullable|string|max:255']);
+
+        // Cegah ngajuin dobel kalau masih ada yang Menunggu
+        $sudahAda = AsetEditRequest::where('aset_id', $aset->id)
+            ->where('requested_by', $request->user()->id)
+            ->where('status', 'Menunggu')
+            ->exists();
+
+        if (! $sudahAda) {
+            AsetEditRequest::create([
+                'aset_id' => $aset->id,
+                'requested_by' => $request->user()->id,
+                'alasan' => $validated['alasan'] ?? null,
+                'status' => 'Menunggu',
+            ]);
+        }
+
+        return redirect()->route('aset.edit', $aset)->with('status', 'Permintaan edit berhasil diajukan, menunggu approval admin.');
+    }
+
+    public function approveEdit(Request $request, AsetEditRequest $editRequest)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa approve permintaan edit.');
+        }
+
+        $editRequest->update([
+            'status' => 'Disetujui',
+            'handled_by' => $request->user()->id,
+            'handled_at' => now(),
+        ]);
+
+        return back()->with('status', 'Permintaan edit disetujui.');
+    }
+
+    public function rejectEdit(Request $request, AsetEditRequest $editRequest)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa menolak permintaan edit.');
+        }
+
+        $validated = $request->validate(['catatan_admin' => 'required|string']);
+
+        $editRequest->update([
+            'status' => 'Ditolak',
+            'catatan_admin' => $validated['catatan_admin'],
+            'handled_by' => $request->user()->id,
+            'handled_at' => now(),
+        ]);
+
+        return back()->with('status', 'Permintaan edit ditolak.');
     }
 
     public function destroy(Request $request, Aset $aset)
     {
-        $this->authorize('delete', $aset);
+        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
+            abort(403, 'Anda tidak punya akses ke aset ini.');
+        }
 
         $aset->delete();
 
@@ -144,6 +230,41 @@ class AsetController extends Controller
         return view('aset.bulk-upload');
     }
 
+    public function downloadTemplate(Request $request)
+    {
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Template Upload Aset');
+
+        $headers = [
+            'uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset',
+            'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan',
+            'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker',
+            'status_dlp', 'status_antivirus', 'keterangan',
+        ];
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:R1')->getFont()->setBold(true);
+
+        // 1 baris contoh, biar jelas format isiannya -- bukan data sungguhan
+        $sheet->fromArray([
+            999, 'A1', 'Lenovo', 'ThinkPad T14', 'SN-CONTOH-001', '',
+            '8GB', 2023, 'NORMAL', 'Contoh Nama', 'Staff', '00000',
+            '10.0.0.1', 'Sudah', 'Aktif', 'Aktif', 'Aktif', 'Contoh baris, hapus sebelum upload data asli',
+        ], null, 'A2');
+
+        foreach (range('A', 'R') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, 'template_upload_aset.xlsx', [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
     public function bulkUpload(Request $request)
     {
         $request->validate(['file' => 'required|file|mimes:xlsx,xls']);
@@ -152,6 +273,23 @@ class AsetController extends Controller
         $spreadsheet = IOFactory::load($request->file('file')->getRealPath());
         $sheet = $spreadsheet->getActiveSheet();
         $highestRow = $sheet->getHighestRow();
+
+        // Validasi header dulu -- kalau formatnya gak cocok sama template resmi,
+        // tolak dari awal dengan pesan yang jelas, jangan diem-diem cuma "0 berhasil"
+        $headerSeharusnya = [
+            'uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset',
+            'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan',
+            'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker',
+            'status_dlp', 'status_antivirus', 'keterangan',
+        ];
+        $headerFile = [];
+        foreach (range('A', 'R') as $col) {
+            $headerFile[] = trim((string) $sheet->getCell("{$col}1")->getValue());
+        }
+
+        if ($headerFile !== $headerSeharusnya) {
+            return back()->with('formatSalah', true);
+        }
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;
@@ -169,11 +307,18 @@ class AsetController extends Controller
             $kodeAset = trim((string) $sheet->getCell("B{$row}")->getValue());
 
             if (! $ukerKode || ! $kodeAset) {
-                continue;
+                continue; // baris benar-benar kosong, dilewati diam-diam
             }
 
             if (! $isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
                 $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan milik Anda";
+
+                continue;
+            }
+
+            $kodeAsetModel = KodeAset::where('kode', $kodeAset)->first();
+            if (! $kodeAsetModel) {
+                $gagal[] = "Baris {$row}: kode aset {$kodeAset} tidak ditemukan di master";
 
                 continue;
             }
@@ -184,14 +329,60 @@ class AsetController extends Controller
                 continue;
             }
 
-            if (! KodeAset::where('kode', $kodeAset)->exists()) {
-                $gagal[] = "Baris {$row}: kode aset {$kodeAset} tidak ditemukan di master";
+            // Baca semua kolom dulu
+            $merek = trim((string) $sheet->getCell("C{$row}")->getValue());
+            $tipeModel = trim((string) $sheet->getCell("D{$row}")->getValue());
+            $sn = trim((string) $sheet->getCell("E{$row}")->getValue());
+            $noAsset = trim((string) $sheet->getCell("F{$row}")->getValue());
+            $kapasitasMemori = trim((string) $sheet->getCell("G{$row}")->getValue());
+            $tahunPerolehan = $sheet->getCell("H{$row}")->getValue();
+            $kondisi = trim((string) $sheet->getCell("I{$row}")->getValue());
+            $pemegangNama = trim((string) $sheet->getCell("J{$row}")->getValue());
+            $jabatan = trim((string) $sheet->getCell("K{$row}")->getValue());
+            $pemegangPn = trim((string) $sheet->getCell("L{$row}")->getValue());
+            $ipAddress = trim((string) $sheet->getCell("M{$row}")->getValue());
+            $statusHardening = trim((string) $sheet->getCell("N{$row}")->getValue());
+            $statusBitlocker = trim((string) $sheet->getCell("O{$row}")->getValue());
+            $statusDlp = trim((string) $sheet->getCell("P{$row}")->getValue());
+            $statusAntivirus = trim((string) $sheet->getCell("Q{$row}")->getValue());
+            $keterangan = trim((string) $sheet->getCell("R{$row}")->getValue());
+
+            // Validasi wajib: field dasar selalu wajib buat semua jenis aset
+            $kolomWajibDasar = compact('merek', 'tipeModel', 'sn', 'kapasitasMemori', 'kondisi');
+            $labelDasar = ['merek' => 'merek', 'tipeModel' => 'tipe_model', 'sn' => 'sn', 'kapasitasMemori' => 'kapasitas_memori', 'kondisi' => 'kondisi'];
+            $kosong = [];
+            foreach ($kolomWajibDasar as $key => $val) {
+                if ($val === '') {
+                    $kosong[] = $labelDasar[$key];
+                }
+            }
+            if (! $tahunPerolehan) {
+                $kosong[] = 'tahun_perolehan';
+            }
+
+            // Validasi wajib tambahan: khusus kategori yang "dipegang" 1 orang
+            // (Personal Computer, Notebook, Tablet, Layar Monitor)
+            if (in_array($kodeAsetModel->kategori, Aset::KATEGORI_PEMEGANG_INDIVIDU)) {
+                $kolomWajibPemegang = compact('pemegangNama', 'jabatan', 'pemegangPn', 'ipAddress', 'statusHardening', 'statusBitlocker', 'statusDlp', 'statusAntivirus');
+                $labelPemegang = [
+                    'pemegangNama' => 'pemegang_nama', 'jabatan' => 'jabatan', 'pemegangPn' => 'pemegang_pn',
+                    'ipAddress' => 'ip_address', 'statusHardening' => 'status_hardening',
+                    'statusBitlocker' => 'status_bitlocker', 'statusDlp' => 'status_dlp', 'statusAntivirus' => 'status_antivirus',
+                ];
+                foreach ($kolomWajibPemegang as $key => $val) {
+                    if ($val === '') {
+                        $kosong[] = $labelPemegang[$key];
+                    }
+                }
+            }
+
+            if (! empty($kosong)) {
+                $gagal[] = "Baris {$row}: kolom wajib masih kosong (".implode(', ', $kosong).')';
 
                 continue;
             }
 
             try {
-                $noAsset = trim((string) $sheet->getCell("F{$row}")->getValue());
                 if (! $noAsset) {
                     $noAsset = Aset::generateAsetId((int) $ukerKode, $kodeAset);
                 }
@@ -199,22 +390,22 @@ class AsetController extends Controller
                 Aset::create([
                     'uker_kode' => (int) $ukerKode,
                     'kode_aset_kode' => $kodeAset,
-                    'merek' => (string) $sheet->getCell("C{$row}")->getValue(),
-                    'tipe_model' => (string) $sheet->getCell("D{$row}")->getValue(),
-                    'sn' => (string) $sheet->getCell("E{$row}")->getValue(),
+                    'merek' => $merek,
+                    'tipe_model' => $tipeModel,
+                    'sn' => $sn,
                     'no_asset' => $noAsset,
-                    'kapasitas_memori' => (string) $sheet->getCell("G{$row}")->getValue() ?: null,
-                    'tahun_perolehan' => is_numeric($sheet->getCell("H{$row}")->getValue()) ? (int) $sheet->getCell("H{$row}")->getValue() : null,
-                    'kondisi' => (string) $sheet->getCell("I{$row}")->getValue() ?: null,
-                    'pemegang_nama' => (string) $sheet->getCell("J{$row}")->getValue() ?: null,
-                    'jabatan' => (string) $sheet->getCell("K{$row}")->getValue() ?: null,
-                    'pemegang_pn' => (string) $sheet->getCell("L{$row}")->getValue() ?: null,
-                    'ip_address' => (string) $sheet->getCell("M{$row}")->getValue() ?: null,
-                    'status_hardening' => (string) $sheet->getCell("N{$row}")->getValue() ?: null,
-                    'status_bitlocker' => (string) $sheet->getCell("O{$row}")->getValue() ?: null,
-                    'status_dlp' => (string) $sheet->getCell("P{$row}")->getValue() ?: null,
-                    'status_antivirus' => (string) $sheet->getCell("Q{$row}")->getValue() ?: null,
-                    'keterangan' => (string) $sheet->getCell("R{$row}")->getValue() ?: null,
+                    'kapasitas_memori' => $kapasitasMemori,
+                    'tahun_perolehan' => (int) $tahunPerolehan,
+                    'kondisi' => $kondisi,
+                    'pemegang_nama' => $pemegangNama ?: null,
+                    'jabatan' => $jabatan ?: null,
+                    'pemegang_pn' => $pemegangPn ?: null,
+                    'ip_address' => $ipAddress ?: null,
+                    'status_hardening' => $statusHardening ?: null,
+                    'status_bitlocker' => $statusBitlocker ?: null,
+                    'status_dlp' => $statusDlp ?: null,
+                    'status_antivirus' => $statusAntivirus ?: null,
+                    'keterangan' => $keterangan ?: null,
                 ]);
                 $berhasil++;
             } catch (\Throwable $e) {

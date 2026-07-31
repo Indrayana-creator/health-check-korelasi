@@ -21,6 +21,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'pn',
         'password',
         'role',
         'uker_kode',
@@ -52,5 +53,17 @@ class User extends Authenticatable
     public function ukerRelasi()
     {
         return $this->belongsTo(Uker::class, 'uker_kode', 'kode');
+    }
+
+    public function pekerja()
+    {
+        return $this->belongsTo(Pekerja::class, 'pn', 'pn');
+    }
+
+    // Jabatan diambil otomatis dari data pekerja yang nempel ke PN,
+    // bukan disimpan manual -- biar selalu sinkron sama data master
+    public function getJabatanAttribute(): ?string
+    {
+        return $this->pekerja?->jabatan;
     }
 }

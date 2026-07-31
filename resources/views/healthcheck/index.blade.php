@@ -60,6 +60,8 @@
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Periode</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Tanggal</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Compliance</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Tindak Lanjut</th>
+                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Approval</th>
                             <th class="px-4 py-2 text-left text-xs font-medium text-gray-500">Aksi</th>
                         </tr>
                     </thead>
@@ -76,6 +78,23 @@
                                         {{ $persen }}%
                                     </span>
                                 </td>
+                                <td class="px-4 py-2">
+                                    <span class="px-2 py-1 text-xs rounded
+                                        {{ $form->status_tindak_lanjut === 'Selesai Diperbaiki' ? 'bg-green-100 text-green-700' : ($form->status_tindak_lanjut === 'Sedang Diproses' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-600') }}">
+                                        {{ $form->status_tindak_lanjut }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-2">
+                                    <span class="px-2 py-1 text-xs rounded font-semibold
+                                        {{ match($form->status_approval) {
+                                            'Disetujui' => 'bg-green-100 text-green-700',
+                                            'Menunggu Approval' => 'bg-yellow-100 text-yellow-700',
+                                            'Ditolak' => 'bg-red-100 text-red-700',
+                                            default => 'bg-gray-100 text-gray-600',
+                                        } }}">
+                                        {{ $form->status_approval }}
+                                    </span>
+                                </td>
                                 <td class="px-4 py-2 space-x-2 whitespace-nowrap">
                                     <a href="{{ route('healthcheck.edit', $form) }}" class="text-indigo-600">Isi/Edit</a>
                                     <form action="{{ route('healthcheck.destroy', $form) }}" method="POST" class="inline" onsubmit="return confirm('Hapus form ini?')">
@@ -86,7 +105,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="px-4 py-4 text-center text-gray-500">Belum ada form health check.</td></tr>
+                            <tr><td colspan="7" class="px-4 py-4 text-center text-gray-500">Belum ada form health check.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
