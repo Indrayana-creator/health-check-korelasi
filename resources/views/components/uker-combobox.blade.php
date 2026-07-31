@@ -29,7 +29,7 @@
     })"
     class="relative"
 >
-    <label class="block text-sm font-medium text-gray-700">{{ $label }}</label>
+    <label class="block text-sm font-semibold text-gray-700">{{ $label }}</label>
     <input type="hidden" name="{{ $name }}" :value="{{ $modelValue }}">
     <input
         type="text"
@@ -37,13 +37,13 @@
         @focus="bukaDaftar = true"
         @click.away="bukaDaftar = false"
         placeholder="{{ $placeholder }}"
-        class="mt-1 block w-full border-gray-300 rounded-md"
+        class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala"
     >
-    <div x-show="bukaDaftar" x-cloak class="absolute z-20 mt-1 w-full bg-white border border-gray-300 rounded-md shadow-lg max-h-56 overflow-y-auto">
+    <div x-show="bukaDaftar" x-cloak class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
         <template x-for="u in hasilFilter" :key="u.kode">
             <div
                 @click="{{ $modelValue }} = u.kode; cariTeks = u.nama; bukaDaftar = false"
-                class="px-3 py-2 text-sm hover:bg-indigo-50 cursor-pointer"
+                class="px-3 py-2 text-sm hover:bg-cakrawala/10 cursor-pointer"
                 x-text="u.kode + ' - ' + u.nama"
             ></div>
         </template>

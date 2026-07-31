@@ -12,7 +12,12 @@ export default {
     theme: {
         extend: {
             fontFamily: {
-                sans: ['Figtree', ...defaultTheme.fontFamily.sans],
+                sans: ['Inter', ...defaultTheme.fontFamily.sans],
+            },
+            colors: {
+                nusantara: '#0857C3',
+                cakrawala: '#307FE2',
+                mentari: '#71C5E8',
             },
         },
     },

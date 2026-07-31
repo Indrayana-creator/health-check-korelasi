@@ -1,17 +1,17 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="font-extrabold text-lg text-gray-800">
             Edit Aset
         </h2>
     </x-slot>
 
-    <div class="py-12">
-        <div class="max-w-2xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white p-6 shadow-sm sm:rounded-lg">
+    <div class="p-7">
+        <div class="max-w-2xl mx-auto">
+            <x-card padding="p-6">
 
                 @if ($errors->any())
-                    <div class="mb-4 p-4 bg-red-100 text-red-800 rounded">
-                        <ul>
+                    <div class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
+                        <ul class="list-disc list-inside space-y-0.5">
                             @foreach ($errors->all() as $error)
                                 <li>{{ $error }}</li>
                             @endforeach
@@ -20,12 +20,12 @@
                 @endif
 
                 @if (session('status'))
-                    <div class="mb-4 p-4 bg-green-100 text-green-800 rounded">{{ session('status') }}</div>
+                    <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
                 @endif
 
                 @if (!$bisaDiedit)
-                    <div class="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
-                        <p class="font-semibold text-yellow-800 mb-1">Data ini terkunci.</p>
+                    <div class="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded-xl">
+                        <p class="font-bold text-yellow-800 mb-1 text-sm">Data ini terkunci.</p>
 
                         @if ($permintaanMenunggu)
                             <p class="text-sm text-yellow-700">Permintaan edit sudah diajukan, menunggu approval admin.</p>
@@ -33,8 +33,8 @@
                             <p class="text-sm text-yellow-700 mb-3">Ajukan permintaan edit dulu, tunggu admin approve sebelum bisa mengubah data ini.</p>
                             <form action="{{ route('aset.requestEdit', $aset) }}" method="POST" class="space-y-2">
                                 @csrf
-                                <input type="text" name="alasan" placeholder="Alasan minta edit (opsional)" class="block w-full border-gray-300 rounded-md text-sm">
-                                <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded text-sm hover:bg-yellow-700">Ajukan Permintaan Edit</button>
+                                <input type="text" name="alasan" placeholder="Alasan minta edit (opsional)" class="block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
+                                <button type="submit" class="bg-yellow-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-yellow-700">Ajukan Permintaan Edit</button>
                             </form>
                         @endif
                     </div>
@@ -78,8 +78,8 @@
 
                     {{-- STEP 2: Kode Aset resmi (dikelompokkan per kategori) --}}
                     <div x-show="ukerKodeTerpilih" x-cloak>
-                        <label class="block text-sm font-medium text-gray-700">2. Kode Aset</label>
-                        <select name="kode_aset_kode" class="mt-1 block w-full border-gray-300 rounded-md">
+                        <label class="block text-sm font-semibold text-gray-700">2. Kode Aset</label>
+                        <select name="kode_aset_kode" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                             <option value="">-- Pilih Kode Aset --</option>
                             @foreach ($kodeAsetList->groupBy('kategori') as $kategori => $daftar)
                                 <optgroup label="{{ $kategori }}">
@@ -89,38 +89,38 @@
                                 </optgroup>
                             @endforeach
                         </select>
-                        <p class="text-xs text-gray-400 mt-1">ID Aset saat ini: <strong>{{ $aset->no_asset }}</strong> (tidak berubah walau kode aset diedit).</p>
+                        <p class="text-xs text-gray-400 mt-1.5">ID Aset saat ini: <strong>{{ $aset->no_asset }}</strong> (tidak berubah walau kode aset diedit).</p>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Merek</label>
-                        <input type="text" name="merek" value="{{ old('merek', $aset->merek) }}" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                        <label class="block text-sm font-semibold text-gray-700">Merek</label>
+                        <input type="text" name="merek" value="{{ old('merek', $aset->merek) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" required>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Type</label>
-                        <input type="text" name="tipe_model" value="{{ old('tipe_model', $aset->tipe_model) }}" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                        <label class="block text-sm font-semibold text-gray-700">Type</label>
+                        <input type="text" name="tipe_model" value="{{ old('tipe_model', $aset->tipe_model) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" required>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Serial Number (SN)</label>
-                        <input type="text" name="sn" value="{{ old('sn', $aset->sn) }}" class="mt-1 block w-full border-gray-300 rounded-md" required>
+                        <label class="block text-sm font-semibold text-gray-700">Serial Number (SN)</label>
+                        <input type="text" name="sn" value="{{ old('sn', $aset->sn) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" required>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Kapasitas Memori (opsional)</label>
-                        <input type="text" name="kapasitas_memori" value="{{ old('kapasitas_memori', $aset->kapasitas_memori) }}" placeholder="contoh: 8GB" class="mt-1 block w-full border-gray-300 rounded-md">
+                        <label class="block text-sm font-semibold text-gray-700">Kapasitas Memori (opsional)</label>
+                        <input type="text" name="kapasitas_memori" value="{{ old('kapasitas_memori', $aset->kapasitas_memori) }}" placeholder="contoh: 8GB" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Tahun Distribusi (opsional)</label>
-                        <input type="number" name="tahun_perolehan" value="{{ old('tahun_perolehan', $aset->tahun_perolehan) }}" min="2000" max="{{ date('Y') }}" class="mt-1 block w-full border-gray-300 rounded-md">
-                        <p class="text-xs text-gray-400 mt-1">Kosongkan jika tidak diketahui pasti (misal aset lama tanpa catatan tahun). Umur & status PH dihitung otomatis dari sini.</p>
+                        <label class="block text-sm font-semibold text-gray-700">Tahun Distribusi (opsional)</label>
+                        <input type="number" name="tahun_perolehan" value="{{ old('tahun_perolehan', $aset->tahun_perolehan) }}" min="2000" max="{{ date('Y') }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
+                        <p class="text-xs text-gray-400 mt-1.5">Kosongkan jika tidak diketahui pasti (misal aset lama tanpa catatan tahun). Umur & status PH dihitung otomatis dari sini.</p>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Kondisi (opsional)</label>
-                        <select name="kondisi" class="mt-1 block w-full border-gray-300 rounded-md">
+                        <label class="block text-sm font-semibold text-gray-700">Kondisi (opsional)</label>
+                        <select name="kondisi" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                             <option value="">-- Pilih Kondisi --</option>
                             @foreach (\App\Models\Aset::DAFTAR_KONDISI as $k)
                                 <option value="{{ $k }}" @selected(old('kondisi', $aset->kondisi) == $k)>{{ $k }}</option>
@@ -128,57 +128,57 @@
                         </select>
                     </div>
 
-                    <div class="border-t pt-4 space-y-4">
-                        <p class="text-sm font-semibold text-gray-600">Data Pemegang / Perangkat (opsional, isi jika relevan)</p>
+                    <div class="border-t border-gray-100 pt-4 space-y-4">
+                        <p class="text-sm font-bold text-gray-600">Data Pemegang / Perangkat (opsional, isi jika relevan)</p>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Nama User (Pemegang Perangkat)</label>
-                            <input type="text" name="pemegang_nama" value="{{ old('pemegang_nama', $aset->pemegang_nama) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Nama User (Pemegang Perangkat)</label>
+                            <input type="text" name="pemegang_nama" value="{{ old('pemegang_nama', $aset->pemegang_nama) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Jabatan</label>
-                            <input type="text" name="jabatan" value="{{ old('jabatan', $aset->jabatan) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Jabatan</label>
+                            <input type="text" name="jabatan" value="{{ old('jabatan', $aset->jabatan) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Personal Number (PN)</label>
-                            <input type="text" name="pemegang_pn" value="{{ old('pemegang_pn', $aset->pemegang_pn) }}" @change="cariUkerDariPn($event.target.value)" class="mt-1 block w-full border-gray-300 rounded-md">
-                            <p class="text-xs mt-1" :class="statusLookupPn.startsWith('Ditemukan') ? 'text-green-600' : 'text-gray-400'" x-text="statusLookupPn"></p>
+                            <label class="block text-sm font-semibold text-gray-700">Personal Number (PN)</label>
+                            <input type="text" name="pemegang_pn" value="{{ old('pemegang_pn', $aset->pemegang_pn) }}" @change="cariUkerDariPn($event.target.value)" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
+                            <p class="text-xs mt-1.5" :class="statusLookupPn.startsWith('Ditemukan') ? 'text-green-600' : 'text-gray-400'" x-text="statusLookupPn"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">IP Address</label>
-                            <input type="text" name="ip_address" value="{{ old('ip_address', $aset->ip_address) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">IP Address</label>
+                            <input type="text" name="ip_address" value="{{ old('ip_address', $aset->ip_address) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Status Hardening</label>
-                            <input type="text" name="status_hardening" value="{{ old('status_hardening', $aset->status_hardening) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Status Hardening</label>
+                            <input type="text" name="status_hardening" value="{{ old('status_hardening', $aset->status_hardening) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Status Bitlocker</label>
-                            <input type="text" name="status_bitlocker" value="{{ old('status_bitlocker', $aset->status_bitlocker) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Status Bitlocker</label>
+                            <input type="text" name="status_bitlocker" value="{{ old('status_bitlocker', $aset->status_bitlocker) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Status DLP</label>
-                            <input type="text" name="status_dlp" value="{{ old('status_dlp', $aset->status_dlp) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Status DLP</label>
+                            <input type="text" name="status_dlp" value="{{ old('status_dlp', $aset->status_dlp) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-gray-700">Status Antivirus</label>
-                            <input type="text" name="status_antivirus" value="{{ old('status_antivirus', $aset->status_antivirus) }}" class="mt-1 block w-full border-gray-300 rounded-md">
+                            <label class="block text-sm font-semibold text-gray-700">Status Antivirus</label>
+                            <input type="text" name="status_antivirus" value="{{ old('status_antivirus', $aset->status_antivirus) }}" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
                         </div>
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Keterangan (opsional)</label>
-                        <textarea name="keterangan" class="mt-1 block w-full border-gray-300 rounded-md" rows="3" placeholder="contoh: Lantai 21">{{ old('keterangan', $aset->keterangan) }}</textarea>
+                        <label class="block text-sm font-semibold text-gray-700">Keterangan (opsional)</label>
+                        <textarea name="keterangan" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" rows="3" placeholder="contoh: Lantai 21">{{ old('keterangan', $aset->keterangan) }}</textarea>
                     </div>
 
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 pt-2">
                         @if ($bisaDiedit)
-                            <button type="submit" class="bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">Simpan</button>
+                            <button type="submit" class="bg-cakrawala text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-nusantara">Simpan</button>
                         @endif
-                        <a href="{{ route('aset.index') }}" class="px-4 py-2 rounded border">Batal</a>
+                        <a href="{{ route('aset.index') }}" class="px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</a>
                     </div>
                 </form>
-            </div>
+            </x-card>
         </div>
     </div>
 </x-app-layout>

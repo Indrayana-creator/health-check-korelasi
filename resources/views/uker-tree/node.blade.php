@@ -32,7 +32,7 @@
                 {{ $node['jenis'] ?? '-' }}
             </span>
 
-            <span class="text-sm font-medium text-gray-800 truncate">{{ $node['nama'] }}</span>
+            <span class="text-sm font-semibold text-gray-800 truncate">{{ $node['nama'] }}</span>
             <span class="text-xs text-gray-400 flex-shrink-0">({{ $node['kode'] }})</span>
         </button>
 
@@ -40,12 +40,12 @@
             @if ($node['jumlah_unit_bawah'] > 0)
                 <span>{{ $node['jumlah_unit_bawah'] }} unit di bawah</span>
             @endif
-            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="font-medium text-gray-700 hover:underline cursor-pointer">
+            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="font-semibold text-gray-700 hover:underline cursor-pointer">
                 {{ $node['total_aset'] }} aset
             </button>
             @if ($node['rata_compliance'] !== null)
                 <button @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})"
-                    class="px-2 py-0.5 rounded font-semibold hover:opacity-75 cursor-pointer
+                    class="px-2 py-0.5 rounded-full font-semibold hover:opacity-75 cursor-pointer
                     {{ $node['rata_compliance'] >= 95 ? 'bg-green-100 text-green-700' : ($node['rata_compliance'] >= 80 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
                     {{ $node['rata_compliance'] }}%
                 </button>
@@ -54,7 +54,7 @@
                     - compliance
                 </button>
             @endif
-            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="text-indigo-600 hover:underline font-medium">
+            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="text-cakrawala hover:underline font-semibold">
                 Detail
             </button>
         </div>
