@@ -29,23 +29,28 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($rekap as $r)
-                        <tr>
-                            <td class="px-4 py-2.5 text-sm font-semibold text-gray-800">{{ $r['cabang'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['jumlah_uker_lapor'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['total_item'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['ok'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['not_ok'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['na'] }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $r['belum'] }}</td>
-                            <td class="px-4 py-2.5 text-sm font-bold text-gray-800">{{ $r['persen'] }}%</td>
-                            <td class="px-4 py-2.5">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $r['cabang'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['jumlah_uker_lapor'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['total_item'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['ok'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['not_ok'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['na'] }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $r['belum'] }}</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-800">{{ $r['persen'] }}%</td>
+                            <td class="px-4 py-3">
                                 <x-badge :color="$r['status'] === 'SANGAT BAIK' ? 'green' : ($r['status'] === 'BAIK' ? 'yellow' : 'red')">
                                     {{ $r['status'] }}
                                 </x-badge>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="9" class="px-4 py-6 text-center text-gray-400 text-sm">Belum ada data health check.</td></tr>
+                        <tr>
+                            <td colspan="9" class="px-4 py-10 text-center">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
+                                <p class="text-gray-400 text-sm">Belum ada data health check.</p>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

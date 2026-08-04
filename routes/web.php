@@ -67,8 +67,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/aset-edit-requests/{editRequest}/approve', [AsetController::class, 'approveEdit'])->name('aset.editRequests.approve');
         Route::post('/aset-edit-requests/{editRequest}/reject', [AsetController::class, 'rejectEdit'])->name('aset.editRequests.reject');
         Route::resource('ukers', UkerController::class)->except(['show']);
-        // Halaman index-nya sudah dipindah & digabung ke Dashboard, tapi 2
-        // endpoint AJAX di bawah ini tetap dipakai buat modal detail di sana.
+        Route::get('/uker-tree', [\App\Http\Controllers\UkerTreeController::class, 'index'])->name('uker-tree.index');
         Route::get('/uker-tree/{kode}/detail', [\App\Http\Controllers\UkerTreeController::class, 'detail'])->name('uker-tree.detail');
         Route::get('/uker-tree/{kode}/compliance-detail', [\App\Http\Controllers\UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
     });

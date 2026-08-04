@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
 use App\Models\Uker;
@@ -9,9 +10,17 @@ use Illuminate\Http\Request;
 
 class UkerTreeController extends Controller
 {
-    // Method index() (halaman tree berdiri sendiri) sudah dipindah & digabung
-    // ke DashboardController::bangunTreeUker() + dashboard.blade.php. Di sini
-    // cuma sisa 2 endpoint AJAX yang dipanggil dari modal-modal di dashboard.
+    use BuildsUkerTree;
+
+    // Halaman tree lengkap, berdiri sendiri (sebelumnya sempat digabung ke
+    // dashboard, tapi di-revert karena bikin dashboard kepanjangan). Dashboard
+    // sekarang cuma nampilin ringkasan kecil yang link ke sini.
+    public function index(Request $request)
+    {
+        $tree = $this->bangunTreeUker();
+
+        return view('uker-tree.index', compact('tree'));
+    }
 
     // Dipanggil via AJAX pas tombol "Detail" diklik -- hitung rekap khusus
     // buat 1 node + semua anak-cucunya, cuma pas dibutuhkan (bukan pas load

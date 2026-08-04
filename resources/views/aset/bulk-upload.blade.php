@@ -53,8 +53,8 @@
                     @csrf
                     <input type="file" name="file" accept=".xlsx,.xls" required class="block w-full text-sm rounded-lg border-gray-300 focus:border-cakrawala focus:ring-cakrawala">
                     <div class="flex gap-2">
-                        <button type="submit" class="bg-cakrawala text-white px-5 py-2.5 rounded-lg text-sm font-semibold hover:bg-nusantara">Upload &amp; Proses</button>
-                        <a href="{{ route('aset.index') }}" class="px-5 py-2.5 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</a>
+                        <x-button type="submit" class="px-5 py-2.5">Upload &amp; Proses</x-button>
+                        <x-button variant="secondary" :href="route('aset.index')" class="px-5 py-2.5">Batal</x-button>
                     </div>
                 </form>
             </x-card>

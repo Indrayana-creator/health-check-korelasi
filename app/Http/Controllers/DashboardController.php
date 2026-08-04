@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
 use App\Models\Uker;
@@ -9,6 +10,8 @@ use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    use BuildsUkerTree;
+
     public function index(Request $request)
     {
         $isAdmin = $request->user()->role === 'admin';
@@ -48,6 +51,7 @@ class DashboardController extends Controller
                 ->map(function ($form) {
                     return [
                         'uker' => $form->uker?->nama,
+                        'kode' => $form->uker_kode,
                         'periode' => $form->periode,
                         'persen' => $form->persenCompliance(),
                         'status_tindak_lanjut' => $form->status_tindak_lanjut,
@@ -103,10 +107,12 @@ class DashboardController extends Controller
         });
         $aktivitasTerbaru = $aktivitasAset->concat($aktivitasHc)->sortByDesc('waktu')->take(8)->values();
 
-        // ===== 5. Struktur Organisasi (Tree) -- khusus admin =====
-        // Dipindah dari halaman /uker-tree yang berdiri sendiri, gabung ke
-        // dashboard karena isinya sama-sama rekap. Logic sama persis dengan
-        // UkerTreeController::index(), cuma dieksekusi di sini sekarang.
+        // ===== 5. Struktur Organisasi -- khusus admin =====
+        // Halaman tree lengkap sekarang balik jadi halaman sendiri (/uker-tree,
+        // lihat UkerTreeController::index()). Di dashboard cuma dipakai buat
+        // card ringkasan (ambil root node-nya aja: jumlah_unit_bawah & rata_compliance),
+        // bukan nge-render seluruh tree lagi. bangunTreeUker() dipakai bareng lewat
+        // trait BuildsUkerTree biar gak duplikat logicnya di 2 controller.
         $tree = null;
         if ($isAdmin) {
             $tree = $this->bangunTreeUker();
@@ -116,86 +122,5 @@ class DashboardController extends Controller
             'totalAset', 'totalFormHc', 'rataCompliance',
             'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree'
         ));
-    }
-
-    // Sama seperti logic asli di UkerTreeController::index() -- disalin ke
-    // sini karena tree-nya sekarang ditampilkan di dashboard, bukan halaman
-    // tersendiri lagi. Endpoint detail() & complianceDetail() (buat modal
-    // AJAX) tetap ada di UkerTreeController, gak perlu dipindah.
-    private function bangunTreeUker(): ?array
-    {
-        $semuaUker = Uker::all()->keyBy('kode');
-
-        $jumlahAsetPerUker = Aset::selectRaw('uker_kode, count(*) as jumlah')
-            ->groupBy('uker_kode')->pluck('jumlah', 'uker_kode');
-
-        $formPerUker = HealthCheckForm::with('items')->get()->groupBy('uker_kode');
-        $complianceePerUker = $formPerUker->map(function ($forms) {
-            $total = $forms->sum(fn ($f) => $f->items->count());
-            $ok = $forms->sum(fn ($f) => $f->items->where('status', 'OK')->count());
-            return $total > 0 ? round($ok / $total * 100, 1) : null;
-        });
-
-        $children = [];
-        foreach ($semuaUker as $u) {
-            if ($u->kode_spv && $u->kode_spv != $u->kode) {
-                $children[$u->kode_spv][] = $u->kode;
-            }
-        }
-
-        $kumpulan = [];
-        $hitung = function ($kode) use (&$hitung, &$kumpulan, $children, $jumlahAsetPerUker, $complianceePerUker) {
-            if (isset($kumpulan[$kode])) {
-                return $kumpulan[$kode];
-            }
-            $totalAset = $jumlahAsetPerUker->get($kode, 0);
-            $complianceList = [];
-            if ($complianceePerUker->get($kode) !== null) {
-                $complianceList[] = $complianceePerUker->get($kode);
-            }
-            $jumlahAnak = count($children[$kode] ?? []);
-
-            foreach ($children[$kode] ?? [] as $kodeAnak) {
-                $hasilAnak = $hitung($kodeAnak);
-                $totalAset += $hasilAnak['total_aset'];
-                $complianceList = array_merge($complianceList, $hasilAnak['compliance_list']);
-                $jumlahAnak += $hasilAnak['jumlah_unit_bawah'];
-            }
-
-            $kumpulan[$kode] = [
-                'total_aset' => $totalAset,
-                'compliance_list' => $complianceList,
-                'rata_compliance' => count($complianceList) ? round(array_sum($complianceList) / count($complianceList), 1) : null,
-                'jumlah_unit_bawah' => $jumlahAnak,
-            ];
-            return $kumpulan[$kode];
-        };
-
-        // Mulai dari Kanwil (146) sebagai root
-        $hitung(146);
-
-        $bangunNode = function ($kode) use (&$bangunNode, $semuaUker, $children, $kumpulan) {
-            $u = $semuaUker[$kode] ?? null;
-            if (!$u) {
-                return null;
-            }
-            $anak = collect($children[$kode] ?? [])
-                ->map(fn ($k) => $bangunNode($k))
-                ->filter()
-                ->sortBy('nama')
-                ->values();
-
-            return [
-                'kode' => $u->kode,
-                'nama' => $u->nama,
-                'jenis' => $u->jenis,
-                'total_aset' => $kumpulan[$kode]['total_aset'] ?? 0,
-                'rata_compliance' => $kumpulan[$kode]['rata_compliance'] ?? null,
-                'jumlah_unit_bawah' => $kumpulan[$kode]['jumlah_unit_bawah'] ?? 0,
-                'anak' => $anak,
-            ];
-        };
-
-        return $bangunNode(146);
     }
 }

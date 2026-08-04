@@ -10,13 +10,13 @@
         @endif
 
         <div class="flex flex-wrap gap-2 items-end">
-            <a href="{{ route('ukers.create') }}" class="bg-cakrawala text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-nusantara inline-flex items-center gap-1.5">
+            <x-button :href="route('ukers.create')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 5v14M5 12h14"></path></svg>
                 Tambah Uker/Cabang
-            </a>
+            </x-button>
             <form method="GET" class="flex gap-2">
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama/kode uker..." class="border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
-                <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900">Cari</button>
+                <x-text-input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama/kode uker..." />
+                <x-button type="submit">Cari</x-button>
             </form>
         </div>
 
@@ -34,25 +34,36 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($ukers as $u)
-                        <tr>
-                            <td class="px-4 py-2.5 font-mono text-xs text-gray-700">{{ $u->kode }}</td>
-                            <td class="px-4 py-2.5 text-sm font-semibold text-gray-800">{{ $u->nama }}</td>
-                            <td class="px-4 py-2.5">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $u->kode }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $u->nama }}</td>
+                            <td class="px-4 py-3">
                                 <x-badge color="gray">{{ $u->jenis }}</x-badge>
                             </td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $u->uker_spv }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ Str::limit($u->alamat, 40) ?: '-' }}</td>
-                            <td class="px-4 py-2.5 whitespace-nowrap text-right">
-                                <a href="{{ route('ukers.edit', $u) }}" class="text-cakrawala text-sm font-semibold">Edit</a>
-                                <form action="{{ route('ukers.destroy', $u) }}" method="POST" class="inline" onsubmit="return confirm('Hapus uker ini?')">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-red-600 text-sm font-semibold ml-2">Hapus</button>
-                                </form>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $u->uker_spv }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ Str::limit($u->alamat, 40) ?: '-' }}</td>
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <div class="inline-flex items-center gap-1.5">
+                                    <x-icon-button variant="edit" label="Edit" :href="route('ukers.edit', $u)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                    </x-icon-button>
+                                    <form action="{{ route('ukers.destroy', $u) }}" method="POST" class="inline" onsubmit="return confirm('Hapus uker ini?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <x-icon-button variant="danger" label="Hapus" type="submit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                                        </x-icon-button>
+                                    </form>
+                                </div>
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400 text-sm">Belum ada data uker.</td></tr>
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1M9 21v-4h6v4"></path></svg>
+                                <p class="text-gray-400 text-sm">Belum ada data uker.</p>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

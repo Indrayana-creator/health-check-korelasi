@@ -23,44 +23,57 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($requests as $r)
-                        <tr>
-                            <td class="px-4 py-2.5 font-mono text-xs text-gray-700">{{ $r->aset->no_asset }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-700">{{ $r->aset->uker?->nama }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-700">{{ $r->requester?->name }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-500">{{ $r->alasan ?: '-' }}</td>
-                            <td class="px-4 py-2.5">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $r->aset->no_asset }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ $r->aset->uker?->nama }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ $r->requester?->name }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">{{ $r->alasan ?: '-' }}</td>
+                            <td class="px-4 py-3">
                                 <x-badge :color="match($r->status) { 'Disetujui' => 'green', 'Menunggu' => 'yellow', 'Ditolak' => 'red', default => 'gray' }">
                                     {{ $r->status }}
                                 </x-badge>
                             </td>
-                            <td class="px-4 py-2.5 whitespace-nowrap text-right">
+                            <td class="px-4 py-3 whitespace-nowrap text-right">
                                 @if ($r->status === 'Menunggu')
-                                    <form action="{{ route('aset.editRequests.approve', $r) }}" method="POST" class="inline">
-                                        @csrf
-                                        <button type="submit" class="text-green-600 text-sm font-semibold mr-2">Approve</button>
-                                    </form>
-                                    <button type="button" onclick="document.getElementById('modal-tolak-{{ $r->id }}').classList.remove('hidden')" class="text-red-600 text-sm font-semibold">Tolak</button>
+                                    <div x-data="{ open: false }" class="inline-flex items-center gap-1.5">
+                                        <form action="{{ route('aset.editRequests.approve', $r) }}" method="POST" class="inline">
+                                            @csrf
+                                            <x-icon-button variant="success" label="Approve" type="submit">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M20 6L9 17l-5-5"></path></svg>
+                                            </x-icon-button>
+                                        </form>
+                                        <x-icon-button variant="danger" label="Tolak" type="button" @click="open = true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                                        </x-icon-button>
 
-                                    <div id="modal-tolak-{{ $r->id }}" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-                                        <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
-                                            <h3 class="font-extrabold text-sm text-gray-800 mb-3">Alasan Penolakan</h3>
-                                            <form action="{{ route('aset.editRequests.reject', $r) }}" method="POST">
-                                                @csrf
-                                                <textarea name="catatan_admin" rows="3" class="w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala mb-3" required></textarea>
-                                                <div class="flex gap-2">
-                                                    <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700">Tolak &amp; Kirim</button>
-                                                    <button type="button" onclick="document.getElementById('modal-tolak-{{ $r->id }}').classList.add('hidden')" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</button>
-                                                </div>
-                                            </form>
+                                        <div x-show="open" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="open = false">
+                                            <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                                <h3 class="font-extrabold text-sm text-gray-800 mb-3">Alasan Penolakan</h3>
+                                                <form action="{{ route('aset.editRequests.reject', $r) }}" method="POST">
+                                                    @csrf
+                                                    <textarea name="catatan_admin" rows="3" class="w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala mb-3" required></textarea>
+                                                    <div class="flex gap-2">
+                                                        <x-button variant="danger" type="submit">Tolak &amp; Kirim</x-button>
+                                                        <x-button variant="secondary" type="button" @click="open = false">Batal</x-button>
+                                                    </div>
+                                                </form>
+                                            </div>
                                         </div>
                                     </div>
                                 @else
-                                    <a href="{{ route('aset.edit', $r->aset) }}" class="text-cakrawala text-sm font-semibold">Lihat Aset</a>
+                                    <x-icon-button variant="neutral" label="Lihat Aset" :href="route('aset.edit', $r->aset)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </x-icon-button>
                                 @endif
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400 text-sm">Belum ada permintaan edit.</td></tr>
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+                                <p class="text-gray-400 text-sm">Belum ada permintaan edit.</p>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>

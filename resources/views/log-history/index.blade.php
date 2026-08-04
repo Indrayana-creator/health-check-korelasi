@@ -10,11 +10,11 @@
             <div class="flex items-center justify-between mb-4">
                 <h3 class="font-extrabold text-sm text-gray-800">Ringkasan Tahun {{ $tahunRingkasan }}</h3>
                 <form method="GET" class="flex items-center gap-2">
-                    <select name="tahun" onchange="this.form.submit()" class="border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
+                    <x-select name="tahun" onchange="this.form.submit()">
                         @foreach ($tahunTersedia as $t)
                             <option value="{{ $t }}" @selected($tahunRingkasan == $t)>{{ $t }}</option>
                         @endforeach
-                    </select>
+                    </x-select>
                 </form>
             </div>
 
@@ -38,15 +38,15 @@
             <form method="GET" class="flex flex-wrap gap-3 items-end">
                 <input type="hidden" name="tahun" value="{{ $tahunRingkasan }}">
                 <div class="min-w-[200px]">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Filter Modul</label>
-                    <select name="modul" class="block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">
+                    <x-input-label class="text-xs font-semibold text-gray-500 mb-1">Filter Modul</x-input-label>
+                    <x-select name="modul" class="block w-full">
                         <option value="">Semua Modul</option>
                         <option value="aset" @selected(request('modul') == 'aset')>Aset</option>
                         <option value="health_check" @selected(request('modul') == 'health_check')>Health Check</option>
                         <option value="pekerja_uker" @selected(request('modul') == 'pekerja_uker')>Pekerja/Uker</option>
-                    </select>
+                    </x-select>
                 </div>
-                <button type="submit" class="bg-gray-800 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-gray-900">Terapkan</button>
+                <x-button type="submit">Terapkan</x-button>
             </form>
         </x-card>
 
@@ -65,18 +65,23 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($logs as $log)
-                        <tr>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $log->created_at->format('d M Y H:i') }}</td>
-                            <td class="px-4 py-2.5 text-sm font-semibold text-gray-700">{{ $log->user?->name }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $log->modul)) }}</td>
-                            <td class="px-4 py-2.5">
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $log->created_at->format('d M Y H:i') }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $log->user?->name }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $log->modul)) }}</td>
+                            <td class="px-4 py-3">
                                 <x-badge :color="$log->aksi === 'delete_massal' ? 'red' : 'green'">{{ str_replace('_', ' ', $log->aksi) }}</x-badge>
                             </td>
-                            <td class="px-4 py-2.5 text-sm text-gray-600">{{ $log->jumlah_baris }}</td>
-                            <td class="px-4 py-2.5 text-sm text-gray-500">{{ $log->keterangan }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">{{ $log->jumlah_baris }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500">{{ $log->keterangan }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="6" class="px-4 py-6 text-center text-gray-400 text-sm">Belum ada log aktivitas.</td></tr>
+                        <tr>
+                            <td colspan="6" class="px-4 py-10 text-center">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M12 22a10 10 0 100-20 10 10 0 000 20zM12 6v6l4 2"></path></svg>
+                                <p class="text-gray-400 text-sm">Belum ada log aktivitas.</p>
+                            </td>
+                        </tr>
                     @endforelse
                 </tbody>
             </table>
