@@ -22,4 +22,21 @@ class NotificationController extends Controller
 
         return back();
     }
+
+    // Dipanggil berkala via fetch dari lonceng notifikasi di topbar, biar
+    // badge & daftarnya keupdate tanpa user harus reload halaman.
+    public function poll(Request $request)
+    {
+        $notifications = $request->user()->notifications()->latest()->take(8)->get();
+
+        return response()->json([
+            'count' => $request->user()->unreadNotifications()->count(),
+            'items' => $notifications->map(fn ($n) => [
+                'id' => $n->id,
+                'message' => $n->data['message'] ?? '',
+                'read' => (bool) $n->read_at,
+                'created_at' => $n->created_at->diffForHumans(),
+            ]),
+        ]);
+    }
 }

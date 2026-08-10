@@ -111,6 +111,16 @@ class RekapController extends Controller
         $avgPersenSehat = $totalCabang > 0 ? round($rekap->avg('persen_sehat'), 1) : 0;
         $totalPerluPerhatian = $rekap->where('status', 'PERLU PERHATIAN')->count();
 
-        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'totalPerluPerhatian'));
+        // Distribusi kondisi keseluruhan -- ini snapshot KONDISI SAAT INI, bukan
+        // tren dari waktu ke waktu, karena tabel aset gak nyimpen riwayat
+        // perubahan kondisi (beda sama health check yang emang per-periode).
+        $distribusiKondisi = [
+            'Normal' => $asetList->where('kondisi', 'NORMAL')->count(),
+            'Rusak' => $asetList->where('kondisi', 'RUSAK')->count(),
+            'Tidak Layak' => $asetList->where('kondisi', 'TIDAK LAYAK')->count(),
+            'Lainnya' => $asetList->whereNotIn('kondisi', ['NORMAL', 'RUSAK', 'TIDAK LAYAK'])->count(),
+        ];
+
+        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'totalPerluPerhatian', 'distribusiKondisi'));
     }
 }

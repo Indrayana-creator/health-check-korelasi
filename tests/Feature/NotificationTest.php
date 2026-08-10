@@ -160,6 +160,29 @@ test('user tidak bisa menandai notifikasi milik orang lain', function () {
     $this->actingAs($userB)->post(route('notifications.read', $notif->id))->assertNotFound();
 });
 
+test('poll notifikasi mengembalikan count unread dan daftar terbaru dalam json', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    $editRequest = AsetEditRequest::create(['aset_id' => $aset->id, 'requested_by' => $user->id, 'status' => 'Disetujui']);
+
+    $user->notify(new AsetEditRequestDecided($editRequest));
+    $notifDibaca = $user->notifications()->first();
+    $notifDibaca->markAsRead();
+    $user->notify(new AsetEditRequestDecided($editRequest));
+
+    $response = $this->actingAs($user)->getJson(route('notifications.poll'));
+
+    $response->assertOk();
+    $response->assertJson(['count' => 1]);
+    expect($response->json('items'))->toHaveCount(2);
+});
+
+test('guest tidak bisa akses poll notifikasi', function () {
+    $this->get(route('notifications.poll'))->assertRedirect(route('login'));
+});
+
 test('user bisa menandai semua notifikasi sudah dibaca sekaligus', function () {
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();

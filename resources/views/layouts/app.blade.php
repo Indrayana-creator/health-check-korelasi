@@ -195,43 +195,57 @@
                     </div>
 
                     <div class="flex items-center gap-2.5">
-                    @php $unreadNotifCount = auth()->user()->unreadNotifications->count(); @endphp
-                    <x-dropdown align="right" width="w-80">
-                        <x-slot name="trigger">
-                            <button class="relative w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"></path></svg>
-                                @if ($unreadNotifCount > 0)
-                                    <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white"></span>
-                                @endif
-                            </button>
-                        </x-slot>
+                    @php
+                        $notifInitial = [
+                            'count' => auth()->user()->unreadNotifications->count(),
+                            'pollUrl' => route('notifications.poll'),
+                            'items' => auth()->user()->notifications->take(8)->map(fn ($n) => [
+                                'id' => $n->id,
+                                'message' => $n->data['message'] ?? '',
+                                'read' => (bool) $n->read_at,
+                                'created_at' => $n->created_at->diffForHumans(),
+                            ])->values(),
+                        ];
+                    @endphp
+                    <div x-data="notifBell(@js($notifInitial))">
+                        <x-dropdown align="right" width="w-80">
+                            <x-slot name="trigger">
+                                <button class="relative w-9 h-9 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-500 hover:bg-gray-100">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 01-3.46 0"></path></svg>
+                                    <span x-show="count > 0" x-cloak class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500 border border-white"></span>
+                                </button>
+                            </x-slot>
 
-                        <x-slot name="content">
-                            <div class="px-4 pt-1 pb-2 flex items-center justify-between gap-2">
-                                <p class="text-sm font-bold text-gray-800">Notifikasi</p>
-                                @if ($unreadNotifCount > 0)
-                                    <form method="POST" action="{{ route('notifications.readAll') }}">
+                            <x-slot name="content">
+                                <div class="px-4 pt-1 pb-2 flex items-center justify-between gap-2">
+                                    <p class="text-sm font-bold text-gray-800">Notifikasi</p>
+                                    <form x-show="count > 0" x-cloak method="POST" action="{{ route('notifications.readAll') }}">
                                         @csrf
                                         <button type="submit" class="text-xs font-semibold text-cakrawala hover:underline">Tandai semua dibaca</button>
                                     </form>
-                                @endif
-                            </div>
-                            <div class="border-t border-gray-100"></div>
-                            <div class="max-h-80 overflow-y-auto">
-                                @forelse (auth()->user()->notifications->take(8) as $notif)
-                                    <form method="POST" action="{{ route('notifications.read', $notif->id) }}">
-                                        @csrf
-                                        <button type="submit" class="w-full text-left px-4 py-2.5 hover:bg-gray-50 {{ $notif->read_at ? '' : 'bg-cakrawala/5' }}">
-                                            <p class="text-xs text-gray-700 leading-snug">{{ $notif->data['message'] ?? '' }}</p>
-                                            <p class="text-[11px] text-gray-400 mt-1">{{ $notif->created_at->diffForHumans() }}</p>
-                                        </button>
-                                    </form>
-                                @empty
-                                    <p class="px-4 py-6 text-xs text-gray-400 text-center">Belum ada notifikasi.</p>
-                                @endforelse
-                            </div>
-                        </x-slot>
-                    </x-dropdown>
+                                </div>
+                                <div class="px-4 pb-2 flex items-center gap-1.5">
+                                    <button type="button" @click="filter = 'semua'" class="text-[11px] font-semibold px-2 py-0.5 rounded-full" :class="filter === 'semua' ? 'bg-cakrawala text-white' : 'bg-gray-100 text-gray-500'">Semua</button>
+                                    <button type="button" @click="filter = 'belum'" class="text-[11px] font-semibold px-2 py-0.5 rounded-full" :class="filter === 'belum' ? 'bg-cakrawala text-white' : 'bg-gray-100 text-gray-500'">Belum dibaca</button>
+                                </div>
+                                <div class="border-t border-gray-100"></div>
+                                <div class="max-h-80 overflow-y-auto">
+                                    <template x-if="itemsTertampil.length === 0">
+                                        <p class="px-4 py-6 text-xs text-gray-400 text-center" x-text="filter === 'belum' ? 'Semua notifikasi sudah dibaca.' : 'Belum ada notifikasi.'"></p>
+                                    </template>
+                                    <template x-for="notif in itemsTertampil" :key="notif.id">
+                                        <form method="POST" :action="'/notifications/' + notif.id + '/read'">
+                                            <input type="hidden" name="_token" :value="csrfToken">
+                                            <button type="submit" class="w-full text-left px-4 py-2.5 hover:bg-gray-50" :class="notif.read ? '' : 'bg-cakrawala/5'">
+                                                <p class="text-xs text-gray-700 leading-snug" x-text="notif.message"></p>
+                                                <p class="text-[11px] text-gray-400 mt-1" x-text="notif.created_at"></p>
+                                            </button>
+                                        </form>
+                                    </template>
+                                </div>
+                            </x-slot>
+                        </x-dropdown>
+                    </div>
 
                     <x-dropdown align="right" width="56">
                         <x-slot name="trigger">

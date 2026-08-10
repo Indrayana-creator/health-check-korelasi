@@ -5,6 +5,8 @@
         </h2>
     </x-slot>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
     <div class="p-7 space-y-4 max-w-[1360px]">
 
         <x-page-tabs :tabs="[
@@ -42,6 +44,36 @@
                 <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalPerluPerhatian }}</p>
             </x-card>
         </div>
+
+        @if (array_sum($distribusiKondisi) > 0)
+            <x-card>
+                <h3 class="font-extrabold text-sm text-gray-800 mb-1">Distribusi Kondisi Aset</h3>
+                <p class="text-xs text-gray-400 mb-3">Snapshot kondisi aset saat ini (bukan tren dari waktu ke waktu -- kondisi aset gak dicatat historinya).</p>
+                <div class="h-64">
+                    <canvas
+                        x-data="{
+                            init() {
+                                new Chart(this.$el, {
+                                    type: 'doughnut',
+                                    data: {
+                                        labels: @js(array_keys($distribusiKondisi)),
+                                        datasets: [{
+                                            data: @js(array_values($distribusiKondisi)),
+                                            backgroundColor: ['#22C55E', '#EF4444', '#F59E0B', '#94A3B8'],
+                                            borderWidth: 0,
+                                        }],
+                                    },
+                                    options: {
+                                        maintainAspectRatio: false,
+                                        plugins: { legend: { position: 'right' } },
+                                    },
+                                });
+                            }
+                        }"
+                    ></canvas>
+                </div>
+            </x-card>
+        @endif
 
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">

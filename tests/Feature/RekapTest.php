@@ -100,4 +100,12 @@ test('rekap aset menjumlahkan kondisi aset semua uker dalam satu cabang (uker_sp
     // 6 normal dari 10 total = 60%, di bawah ambang 80% jadi "PERLU PERHATIAN"
     expect($rekap['persen_sehat'])->toBe(60.0);
     expect($rekap['status'])->toBe('PERLU PERHATIAN');
+
+    $distribusiKondisi = $response->viewData('distribusiKondisi');
+    expect($distribusiKondisi)->toBe([
+        'Normal' => 6,
+        'Rusak' => 2,
+        'Tidak Layak' => 1,
+        'Lainnya' => 1,
+    ]);
 });

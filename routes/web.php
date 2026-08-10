@@ -74,6 +74,7 @@ Route::middleware('auth')->group(function () {
     // notifiable milik user yang login sendiri di controller-nya
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
+    Route::get('/notifications/poll', [NotificationController::class, 'poll'])->name('notifications.poll');
 
     // Kelola User, Rekap per Cabang, Log History, Permintaan Edit Aset, & Kelola Uker -- khusus admin
     Route::middleware('role:admin')->group(function () {
