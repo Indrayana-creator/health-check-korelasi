@@ -26,6 +26,11 @@
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => true],
         ]" />
 
+        <div class="flex justify-end gap-2">
+            <x-button variant="secondary" :href="route('log-history.export.excel', request()->query())">Export Excel</x-button>
+            <x-button variant="secondary" :href="route('log-history.export.pdf', request()->query())">Export PDF</x-button>
+        </div>
+
         {{-- Ringkasan tahun --}}
         <x-card>
             <div class="flex items-center justify-between mb-4">
