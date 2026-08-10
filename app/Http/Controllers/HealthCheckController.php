@@ -12,6 +12,7 @@ use App\Notifications\HealthCheckItemFlaggedNotOk;
 use App\Notifications\HealthCheckSubmittedForApproval;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -49,7 +50,7 @@ class HealthCheckController extends Controller
 
     public function index(Request $request)
     {
-        $formList = $this->filteredQuery($request)->withCount('items')->orderByDesc('id')->paginate(20)->withQueryString();
+        $formList = $this->filteredQuery($request)->withCount('items')->reorder('id', 'desc')->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
         // Ringkasan -- dihitung dari scope user (bukan hasil filter aktif),
@@ -94,8 +95,16 @@ class HealthCheckController extends Controller
         $validated = $request->validate([
             'uker_kode' => 'required|integer|exists:ukers,kode',
             'tanggal_pemeriksaan' => 'required|date',
-            'periode' => 'required|string|max:50',
+            'periode' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('health_check_forms')
+                    ->where(fn ($query) => $query->where('uker_kode', $request->input('uker_kode'))->whereNull('deleted_at')),
+            ],
             'pic_pn' => 'nullable|string|max:50|exists:pekerja,pn',
+        ], [
+            'periode.unique' => 'Form health check untuk uker dan periode ini sudah ada.',
         ]);
 
         $this->authorize('assignToUker', [HealthCheckForm::class, $validated['uker_kode']]);

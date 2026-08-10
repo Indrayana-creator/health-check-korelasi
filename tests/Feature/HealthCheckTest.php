@@ -25,6 +25,53 @@ test('store form health check otomatis generate 61 item checklist', function () 
     expect($form->items()->where('status', 'Belum Diperiksa')->count())->toBe(61);
 });
 
+test('gak bisa bikin form health check dobel buat uker & periode yang sama', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Triwulan I 2026']);
+
+    $response = $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertSessionHasErrors('periode');
+    expect(HealthCheckForm::where('uker_kode', $uker->kode)->count())->toBe(1);
+});
+
+test('periode yang sama tetap boleh dipakai uker lain', function () {
+    $ukerA = Uker::factory()->create();
+    $ukerB = Uker::factory()->create();
+    $userB = User::factory()->forUker($ukerB->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode, 'periode' => 'Triwulan I 2026']);
+
+    $response = $this->actingAs($userB)->post(route('healthcheck.store'), [
+        'uker_kode' => $ukerB->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertRedirect();
+    expect(HealthCheckForm::where('uker_kode', $ukerB->kode)->count())->toBe(1);
+});
+
+test('form yang sudah dihapus (soft delete) boleh dibuat ulang dengan periode sama', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $formLama = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Triwulan I 2026']);
+    $formLama->delete();
+
+    $response = $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertRedirect();
+    expect(HealthCheckForm::where('uker_kode', $uker->kode)->count())->toBe(1);
+});
+
 test('user tidak bisa membuat form health check untuk uker lain', function () {
     $ukerSendiri = Uker::factory()->create();
     $ukerLain = Uker::factory()->create();

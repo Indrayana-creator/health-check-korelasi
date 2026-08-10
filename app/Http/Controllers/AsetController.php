@@ -81,7 +81,7 @@ class AsetController extends Controller
 
     public function index(Request $request)
     {
-        $asetList = $this->filteredQuery($request)->orderByDesc('id')->paginate(20)->withQueryString();
+        $asetList = $this->filteredQuery($request)->reorder('id', 'desc')->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
         // Ringkasan kondisi -- dihitung dari scope user (bukan hasil filter aktif),
