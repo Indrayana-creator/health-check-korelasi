@@ -22,6 +22,7 @@
         <x-page-tabs :tabs="[
             ['label' => 'Kelola User', 'href' => route('users.index'), 'active' => false],
             ['label' => 'Kelola Uker', 'href' => route('ukers.index'), 'active' => false],
+            ['label' => 'Kelola Kode Aset', 'href' => route('kode-aset.index'), 'active' => false],
             ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => true],
         ]" />
@@ -79,6 +80,7 @@
                         <option value="health_check" @selected(request('modul') == 'health_check')>Health Check</option>
                         <option value="user" @selected(request('modul') == 'user')>User</option>
                         <option value="uker" @selected(request('modul') == 'uker')>Uker</option>
+                        <option value="kode_aset" @selected(request('modul') == 'kode_aset')>Kode Aset</option>
                         <option value="pekerja_uker" @selected(request('modul') == 'pekerja_uker')>Import Pekerja/Uker</option>
                     </x-select>
                 </div>

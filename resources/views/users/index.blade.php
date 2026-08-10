@@ -8,6 +8,7 @@
         <x-page-tabs :tabs="[
             ['label' => 'Kelola User', 'href' => route('users.index'), 'active' => true],
             ['label' => 'Kelola Uker', 'href' => route('ukers.index'), 'active' => false],
+            ['label' => 'Kelola Kode Aset', 'href' => route('kode-aset.index'), 'active' => false],
             ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
         ]" />

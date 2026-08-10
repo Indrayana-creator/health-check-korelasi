@@ -5,6 +5,7 @@ use App\Http\Controllers\AsetEditRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ImportController;
+use App\Http\Controllers\KodeAsetController;
 use App\Http\Controllers\LogHistoryController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
@@ -95,6 +96,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/aset-edit-requests/{editRequest}/approve', [AsetController::class, 'approveEdit'])->name('aset.editRequests.approve');
         Route::post('/aset-edit-requests/{editRequest}/reject', [AsetController::class, 'rejectEdit'])->name('aset.editRequests.reject');
         Route::resource('ukers', UkerController::class)->except(['show']);
+        Route::resource('kode-aset', KodeAsetController::class)->except(['show'])->parameters(['kode-aset' => 'kodeAset']);
         Route::get('/uker-tree', [UkerTreeController::class, 'index'])->name('uker-tree.index');
         Route::get('/uker-tree/{kode}/detail', [UkerTreeController::class, 'detail'])->name('uker-tree.detail');
         Route::get('/uker-tree/{kode}/compliance-detail', [UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
