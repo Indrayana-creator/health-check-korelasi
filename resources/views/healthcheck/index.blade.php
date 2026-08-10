@@ -1,45 +1,100 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-extrabold text-lg text-gray-800">Health Check</h2>
+        <p class="text-xs text-gray-500 mt-0.5">{{ $formList->total() }} dari {{ $totalKeseluruhan }} form ditampilkan</p>
     </x-slot>
 
-    <div class="p-7 space-y-4">
+    <div class="p-7 space-y-4 max-w-[1360px]">
 
         @if (session('status'))
             <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
         @endif
 
-        <div class="flex flex-wrap gap-2">
+        <div class="flex flex-wrap gap-2 items-center">
             <x-button :href="route('healthcheck.create')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 5v14M5 12h14"></path></svg>
                 Buat Form Health Check
             </x-button>
-            <x-button variant="secondary" :href="route('healthcheck.bulkUploadForm')">Upload Massal (Excel)</x-button>
-            <x-button variant="secondary" :href="route('healthcheck.bulkDeleteForm')">Delete Massal (Excel)</x-button>
-            <x-button variant="secondary" :href="route('healthcheck.export.excel', request()->query())">Export Excel</x-button>
-            <x-button variant="secondary" :href="route('healthcheck.export.pdf', request()->query())">Export PDF</x-button>
+            <x-dropdown align="left" width="48">
+                <x-slot name="trigger">
+                    <button type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50">
+                        Kelola Massal
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M6 9l6 6 6-6"></path></svg>
+                    </button>
+                </x-slot>
+                <x-slot name="content">
+                    <x-dropdown-link :href="route('healthcheck.bulkUploadForm')">Upload Massal (Excel)</x-dropdown-link>
+                    <x-dropdown-link :href="route('healthcheck.bulkDeleteForm')" class="!text-red-600">Delete Massal (Excel)</x-dropdown-link>
+                </x-slot>
+            </x-dropdown>
+            <x-dropdown align="left" width="48">
+                <x-slot name="trigger">
+                    <button type="button" class="flex items-center gap-1.5 px-4 py-2 rounded-lg border border-gray-200 bg-white text-gray-700 text-sm font-semibold hover:bg-gray-50">
+                        Export
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M6 9l6 6 6-6"></path></svg>
+                    </button>
+                </x-slot>
+                <x-slot name="content">
+                    <x-dropdown-link :href="route('healthcheck.export.excel', request()->query())">Excel (.xlsx)</x-dropdown-link>
+                    <x-dropdown-link :href="route('healthcheck.export.pdf', request()->query())">PDF</x-dropdown-link>
+                </x-slot>
+            </x-dropdown>
+            <x-button variant="secondary" :href="route('healthcheck.trash')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                Sampah
+            </x-button>
         </div>
 
-        <x-card padding="p-4">
-            <form method="GET" action="{{ route('healthcheck.index') }}" class="flex flex-wrap gap-3 items-end">
-                <div class="flex-1 min-w-[200px]">
-                    <x-input-label class="text-xs font-semibold text-gray-500 mb-1">Cari Periode</x-input-label>
-                    <x-text-input type="text" name="q" value="{{ request('q') }}" placeholder="contoh: Juli 2026" class="block w-full" />
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <x-card padding="p-5">
+                <div class="w-[38px] h-[38px] rounded-[10px] bg-nusantara/10 text-nusantara flex items-center justify-center mb-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path></svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Form</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalKeseluruhan }}</p>
+            </x-card>
+            <x-card padding="p-5">
+                <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 mb-0.5">Rata-rata Compliance</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $avgCompliance }}%</p>
+            </x-card>
+            <x-card padding="p-5">
+                <div class="w-[38px] h-[38px] rounded-[10px] bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 mb-0.5">Menunggu Approval</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalMenunggu }}</p>
+            </x-card>
+        </div>
+
+        <x-card padding="p-3.5">
+            <form method="GET" action="{{ route('healthcheck.index') }}" class="flex flex-wrap gap-3 items-center">
+                <div class="relative flex-1 min-w-[220px]">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4-4"></path></svg>
+                    <x-text-input type="text" name="q" value="{{ request('q') }}" placeholder="Cari periode, contoh: Juli 2026" class="block w-full !pl-9" />
                 </div>
                 @if ($ukerFilterList->isNotEmpty())
-                    <div class="min-w-[200px]">
-                        <x-input-label class="text-xs font-semibold text-gray-500 mb-1">Filter Uker</x-input-label>
-                        <x-select name="uker_kode" class="block w-full">
-                            <option value="">Semua Uker</option>
-                            @foreach ($ukerFilterList as $u)
-                                <option value="{{ $u->kode }}" @selected(request('uker_kode') == $u->kode)>{{ $u->nama }}</option>
-                            @endforeach
-                        </x-select>
-                    </div>
+                    <x-select name="uker_kode" class="min-w-[190px]">
+                        <option value="">Semua Uker</option>
+                        @foreach ($ukerFilterList as $u)
+                            <option value="{{ $u->kode }}" @selected(request('uker_kode') == $u->kode)>{{ $u->nama }}</option>
+                        @endforeach
+                    </x-select>
                 @endif
+                <div class="flex gap-1.5 flex-wrap">
+                    @foreach ([null => 'Semua', 'Menunggu Approval' => 'Menunggu Approval', 'Disetujui' => 'Disetujui', 'Ditolak' => 'Ditolak'] as $value => $label)
+                        @php $aktif = request('status_approval') == $value; @endphp
+                        <a
+                            href="{{ route('healthcheck.index', array_merge(request()->except(['status_approval', 'page']), $value ? ['status_approval' => $value] : [])) }}"
+                            class="px-3 py-1.5 rounded-full border text-xs font-bold whitespace-nowrap {{ $aktif ? 'bg-cakrawala text-white border-cakrawala' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50' }}"
+                        >{{ $label }}</a>
+                    @endforeach
+                </div>
                 <div class="flex gap-2">
                     <x-button type="submit">Terapkan</x-button>
-                    @if (request('q') || request('uker_kode'))
+                    @if (request('q') || request('uker_kode') || request('status_approval'))
                         <x-button variant="secondary" :href="route('healthcheck.index')">Reset</x-button>
                     @endif
                 </div>

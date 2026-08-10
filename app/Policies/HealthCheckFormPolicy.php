@@ -20,6 +20,11 @@ class HealthCheckFormPolicy
         return $this->update($user, $healthcheck);
     }
 
+    public function restore(User $user, HealthCheckForm $healthcheck): Response
+    {
+        return $this->update($user, $healthcheck);
+    }
+
     // Dipakai di store() buat validasi uker_kode yang diinput dari form,
     // bukan buat form yang sudah ada di database.
     public function assignToUker(User $user, int $ukerKode): Response

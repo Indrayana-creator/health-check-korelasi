@@ -34,9 +34,9 @@
                     </div>
 
                     <div>
-                        <x-input-label value="PN (Personal Number, opsional)" />
-                        <x-text-input type="text" name="pn" value="{{ old('pn') }}" class="mt-1.5 block w-full" />
-                        <p class="text-xs text-gray-400 mt-1.5">Kalau diisi, harus PN yang sudah terdaftar di data pekerja. Kosongkan dulu kalau data pekerja belum diimport.</p>
+                        <x-input-label value="PN (Personal Number)" required />
+                        <x-text-input type="text" name="pn" value="{{ old('pn') }}" class="mt-1.5 block w-full" required />
+                        <p class="text-xs text-gray-400 mt-1.5">Harus PN yang sudah terdaftar di data pekerja -- dipakai buat login.</p>
                         <x-input-error :messages="$errors->get('pn')" class="mt-1.5" />
                     </div>
 

@@ -1,25 +1,21 @@
 {{--
-    Partial rekursif buat 1 node tree + semua anaknya.
-    Dipanggil ulang buat tiap level (Kanwil -> Area -> Cabang -> Unit).
+    Partial rekursif buat 1 node org chart + semua anaknya.
+    Dipanggil ulang buat tiap level (Kanwil -> Area -> KC -> KCP -> Unit).
+    Anak baru di-render ke DOM pas expand pertama kali (x-if, bukan x-show),
+    biar cabang yang masih ketutup gak ikut nge-bloat DOM di render awal --
+    penting karena total unit di seluruh tree bisa ratusan.
 --}}
-<div
-    x-data="{ terbuka: {{ $level === 0 ? 'true' : 'false' }} }"
-    class="{{ $level > 0 ? 'ml-6 border-l border-gray-200 pl-4' : '' }} py-1"
->
-    <div class="flex items-center justify-between gap-3 py-1.5 group">
-        <button
-            @click="terbuka = !terbuka"
-            class="flex items-center gap-2 text-left flex-1 min-w-0"
-            @if ($node['anak']->isEmpty()) disabled @endif
-        >
-            @if ($node['anak']->isNotEmpty())
-                <svg class="w-3.5 h-3.5 text-gray-400 flex-shrink-0 transition-transform" :class="terbuka ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 20 20">
-                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
-                </svg>
-            @else
-                <span class="w-3.5 flex-shrink-0"></span>
-            @endif
-
+<li x-data="{ terbuka: {{ $level === 0 ? 'true' : 'false' }} }">
+    <div class="org-box inline-flex flex-col items-stretch gap-1.5 rounded-xl border-2 bg-white px-3.5 py-2.5 text-left shadow-sm w-[200px]
+        {{ match($node['jenis']) {
+            'KANWIL' => 'border-purple-300',
+            'AREA' => 'border-blue-300',
+            'KC' => 'border-indigo-300',
+            'KCP' => 'border-teal-300',
+            'UNIT' => 'border-gray-300',
+            default => 'border-gray-200',
+        } }}">
+        <div class="flex items-center gap-1.5">
             <span class="px-1.5 py-0.5 text-[10px] font-semibold rounded flex-shrink-0
                 {{ match($node['jenis']) {
                     'KANWIL' => 'bg-purple-100 text-purple-700',
@@ -31,40 +27,49 @@
                 } }}">
                 {{ $node['jenis'] ?? '-' }}
             </span>
+            <span class="text-[11px] text-gray-400">({{ $node['kode'] }})</span>
+        </div>
 
-            <span class="text-sm font-semibold text-gray-800 truncate">{{ $node['nama'] }}</span>
-            <span class="text-xs text-gray-400 flex-shrink-0">({{ $node['kode'] }})</span>
-        </button>
+        <p class="text-sm font-bold text-gray-800 leading-snug" title="{{ $node['nama'] }}">{{ $node['nama'] }}</p>
 
-        <div class="flex items-center gap-3 text-xs text-gray-500 flex-shrink-0 whitespace-nowrap">
-            @if ($node['jumlah_unit_bawah'] > 0)
-                <span>{{ $node['jumlah_unit_bawah'] }} unit di bawah</span>
-            @endif
-            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="font-semibold text-gray-700 hover:underline cursor-pointer">
+        <div class="flex items-center gap-1.5 text-[11px] text-gray-500 flex-wrap">
+            <button type="button" @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="font-semibold text-gray-700 hover:underline">
                 {{ $node['total_aset'] }} aset
             </button>
             @if ($node['rata_compliance'] !== null)
-                <button @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})"
-                    class="px-2 py-0.5 rounded-full font-semibold hover:opacity-75 cursor-pointer
+                <button type="button" @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})"
+                    class="px-1.5 py-0.5 rounded-full font-semibold hover:opacity-75
                     {{ $node['rata_compliance'] >= 95 ? 'bg-green-100 text-green-700' : ($node['rata_compliance'] >= 80 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
                     {{ $node['rata_compliance'] }}%
                 </button>
             @else
-                <button @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})" class="text-gray-300 hover:text-gray-500 cursor-pointer">
+                <button type="button" @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})" class="text-gray-300 hover:text-gray-500">
                     - compliance
                 </button>
             @endif
-            <button @click.stop="$store.ukerDetail.buka({{ $node['kode'] }})" class="text-cakrawala hover:underline font-semibold">
-                Detail
-            </button>
         </div>
+
+        @if ($node['anak']->isNotEmpty())
+            <button
+                type="button"
+                @click="terbuka = !terbuka"
+                class="mt-1 flex items-center justify-center gap-1 text-[11px] font-semibold rounded-lg py-1 border border-gray-200 text-cakrawala hover:bg-cakrawala/5"
+            >
+                <svg class="w-3 h-3 transition-transform flex-shrink-0" :class="terbuka ? 'rotate-90' : ''" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                </svg>
+                <span x-text="terbuka ? 'Tutup' : 'Buka'"></span> ({{ $node['anak']->count() }})
+            </button>
+        @endif
     </div>
 
     @if ($node['anak']->isNotEmpty())
-        <div x-show="terbuka" x-cloak>
-            @foreach ($node['anak'] as $anak)
-                @include('uker-tree.node', ['node' => $anak, 'level' => $level + 1])
-            @endforeach
-        </div>
+        <template x-if="terbuka">
+            <ul>
+                @foreach ($node['anak'] as $anak)
+                    @include('uker-tree.node', ['node' => $anak, 'level' => $level + 1])
+                @endforeach
+            </ul>
+        </template>
     @endif
-</div>
+</li>

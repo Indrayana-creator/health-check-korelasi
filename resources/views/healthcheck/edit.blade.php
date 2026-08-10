@@ -100,44 +100,141 @@
                     </div>
                 @endif
 
-                @php $globalIndex = 0; @endphp
+                @php
+                    // Progress per kategori (berapa item yang statusnya udah bukan
+                    // "Belum Diperiksa") -- dipakai buat progress bar di tab & nentuin
+                    // tab mana yang otomatis kebuka duluan pas form dibuka/dibuka lagi.
+                    $editable = $healthcheck->itemsBisaDiedit();
+                    $kategoriProgress = [];
+                    $tabAwal = 0;
+                    foreach ($itemsByKategori as $kategori => $items) {
+                        $total = $items->count();
+                        $selesai = $items->where('status', '!=', 'Belum Diperiksa')->count();
+                        $kategoriProgress[] = ['total' => $total, 'selesai' => $selesai];
+                    }
+                    foreach ($kategoriProgress as $i => $p) {
+                        if ($p['selesai'] < $p['total']) {
+                            $tabAwal = $i;
+                            break;
+                        }
+                    }
+                    $overallTotal = array_sum(array_column($kategoriProgress, 'total'));
+                    $overallSelesai = array_sum(array_column($kategoriProgress, 'selesai'));
+                    $overallPct = $overallTotal > 0 ? round($overallSelesai / $overallTotal * 100) : 0;
 
-                @foreach ($itemsByKategori as $kategori => $items)
-                    <x-card padding="p-6">
-                        <h3 class="font-extrabold text-sm text-gray-800 mb-3.5">{{ $kategori }}</h3>
+                    $statusActiveClass = [
+                        'Belum Diperiksa' => 'bg-gray-500 text-white border-gray-500',
+                        'OK' => 'bg-green-600 text-white border-green-600',
+                        'Not OK' => 'bg-red-600 text-white border-red-600',
+                        'N/A' => 'bg-gray-400 text-white border-gray-400',
+                    ];
+                @endphp
 
-                        <div class="space-y-3.5">
-                            @foreach ($items as $item)
-                                <div class="border-b border-gray-100 pb-3">
-                                    <input type="hidden" name="items[{{ $globalIndex }}][id]" value="{{ $item->id }}">
-                                    <p class="text-sm text-gray-700 mb-2">{{ $item->item_pemeriksaan }}</p>
-
-                                    <div class="flex flex-wrap items-center gap-3">
-                                        <x-select name="items[{{ $globalIndex }}][status]" class="{{ !$healthcheck->itemsBisaDiedit() ? 'pointer-events-none opacity-60 bg-gray-100' : '' }}" tabindex="{{ !$healthcheck->itemsBisaDiedit() ? '-1' : '0' }}">
-                                            @foreach (['Belum Diperiksa', 'OK', 'Not OK', 'N/A'] as $opsi)
-                                                <option value="{{ $opsi }}" @selected($item->status === $opsi)>{{ $opsi }}</option>
-                                            @endforeach
-                                        </x-select>
-
-                                        <x-text-input
-                                            type="text"
-                                            name="items[{{ $globalIndex }}][catatan]"
-                                            value="{{ $item->catatan }}"
-                                            placeholder="Catatan (opsional)"
-                                            class="flex-1 min-w-[200px]"
-                                            :readonly="!$healthcheck->itemsBisaDiedit()"
-                                        />
+                <div x-data="{ tab: {{ $tabAwal }} }">
+                    {{-- Tab kategori A/B/C/D -- bebas diklik urutan apa aja, progress
+                         per kategori kesimpen tiap kali "Simpan" ditekan (item yang
+                         belum disentuh di kategori lain gak ikut berubah/ilang). --}}
+                    <x-card padding="p-1.5" class="mb-4">
+                        <div class="flex flex-wrap gap-1">
+                            @foreach ($itemsByKategori as $kategori => $items)
+                                @php
+                                    $p = $kategoriProgress[$loop->index];
+                                    $pct = $p['total'] > 0 ? round($p['selesai'] / $p['total'] * 100) : 0;
+                                    $lengkap = $p['selesai'] === $p['total'];
+                                @endphp
+                                <button
+                                    type="button"
+                                    @click="tab = {{ $loop->index }}"
+                                    :class="tab === {{ $loop->index }} ? 'bg-cakrawala/10' : 'hover:bg-gray-50'"
+                                    class="flex-1 min-w-[160px] flex flex-col gap-1.5 p-3 rounded-lg text-left transition"
+                                >
+                                    <span :class="tab === {{ $loop->index }} ? 'text-cakrawala' : 'text-gray-600'" class="text-xs font-bold">{{ $kategori }}</span>
+                                    <div class="flex items-center gap-2">
+                                        <div class="flex-1 h-[5px] rounded-full bg-gray-200">
+                                            <div class="h-[5px] rounded-full {{ $lengkap ? 'bg-green-500' : 'bg-cakrawala' }}" style="width: {{ $pct }}%"></div>
+                                        </div>
+                                        <span :class="tab === {{ $loop->index }} ? 'text-cakrawala' : 'text-gray-500'" class="text-[10.5px] font-bold whitespace-nowrap">{{ $p['selesai'] }}/{{ $p['total'] }}</span>
                                     </div>
-                                </div>
-                                @php $globalIndex++; @endphp
+                                </button>
                             @endforeach
                         </div>
                     </x-card>
-                @endforeach
 
-                <div class="flex gap-2">
-                    <x-button type="submit" class="px-6 py-2.5">Simpan</x-button>
-                    <x-button variant="secondary" :href="route('healthcheck.index')" class="px-5 py-2.5">Kembali</x-button>
+                    @php $globalIndex = 0; @endphp
+
+                    @foreach ($itemsByKategori as $kategori => $items)
+                        <div x-show="tab === {{ $loop->index }}" x-cloak>
+                            <x-card padding="p-6">
+                                <h3 class="font-extrabold text-sm text-gray-800 mb-1">{{ $kategori }}</h3>
+                                <p class="text-xs text-gray-400 mb-4">{{ $items->count() }} item pemeriksaan</p>
+
+                                <div class="flex flex-col">
+                                    @foreach ($items as $item)
+                                        <div class="border-b border-gray-100 py-3.5 first:pt-0" x-data="{ status: '{{ $item->status }}' }">
+                                            <input type="hidden" name="items[{{ $globalIndex }}][id]" value="{{ $item->id }}">
+                                            <input type="hidden" name="items[{{ $globalIndex }}][status]" :value="status">
+                                            <p class="text-sm text-gray-700 mb-2.5">{{ $loop->iteration }}. {{ $item->item_pemeriksaan }}</p>
+
+                                            <div class="flex flex-wrap items-center gap-1.5">
+                                                @foreach (['Belum Diperiksa', 'OK', 'Not OK', 'N/A'] as $opsi)
+                                                    <button
+                                                        type="button"
+                                                        @disabled(!$editable)
+                                                        @if ($editable) @click="status = '{{ $opsi }}'" @endif
+                                                        :class="status === '{{ $opsi }}' ? '{{ $statusActiveClass[$opsi] }}' : 'bg-white text-gray-600 border-gray-200'"
+                                                        class="px-3 py-1.5 rounded-lg border text-xs font-bold transition {{ $editable ? 'hover:bg-gray-50 cursor-pointer' : 'opacity-60 cursor-not-allowed' }}"
+                                                    >{{ $opsi }}</button>
+                                                @endforeach
+
+                                                <x-text-input
+                                                    type="text"
+                                                    name="items[{{ $globalIndex }}][catatan]"
+                                                    value="{{ $item->catatan }}"
+                                                    placeholder="Catatan (opsional)"
+                                                    class="flex-1 min-w-[180px]"
+                                                    x-show="status === 'Not OK'"
+                                                    :readonly="!$editable"
+                                                />
+                                            </div>
+                                        </div>
+                                        @php $globalIndex++; @endphp
+                                    @endforeach
+                                </div>
+                            </x-card>
+
+                            <div class="flex items-center justify-between mt-3">
+                                <x-button
+                                    type="button"
+                                    variant="secondary"
+                                    x-show="tab > 0"
+                                    @click="tab = tab - 1"
+                                >&larr; Kategori Sebelumnya</x-button>
+                                <span x-show="tab === 0"></span>
+                                <x-button
+                                    type="button"
+                                    variant="secondary"
+                                    x-show="tab < {{ count($kategoriProgress) - 1 }}"
+                                    @click="tab = tab + 1"
+                                >Kategori Berikutnya &rarr;</x-button>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+
+                {{-- Simpan selalu keliatan di step manapun -- submit nyimpen SEMUA
+                     kategori (bukan cuma yang lagi dibuka), jadi aman ditekan kapan
+                     aja mau berhenti isi, gak harus nunggu sampai kategori terakhir. --}}
+                <div class="sticky bottom-0 bg-gray-50/95 backdrop-blur-sm -mx-7 px-7 py-4 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
+                    <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
+                        <div class="flex-1 h-2 rounded-full bg-gray-200">
+                            <div class="h-2 rounded-full bg-gradient-to-r from-nusantara to-cakrawala" style="width: {{ $overallPct }}%"></div>
+                        </div>
+                        <span class="text-xs font-bold text-gray-600 whitespace-nowrap">{{ $overallSelesai }}/{{ $overallTotal }} diperiksa</span>
+                    </div>
+                    <div class="flex gap-2">
+                        <x-button type="submit" class="px-6 py-2.5">Simpan</x-button>
+                        <x-button variant="secondary" :href="route('healthcheck.index')" class="px-5 py-2.5">Kembali</x-button>
+                    </div>
                 </div>
             </form>
         </div>

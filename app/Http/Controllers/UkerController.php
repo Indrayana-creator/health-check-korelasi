@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ActivityLog;
 use App\Models\Uker;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -53,6 +54,7 @@ class UkerController extends Controller
         $validated['uker_spv'] = $induk?->nama;
 
         Uker::create($validated);
+        ActivityLog::catat('uker', 'tambah', 1, "Uker {$validated['nama']} ({$validated['kode']}) ditambahkan");
 
         return redirect()->route('ukers.index')->with('status', "Uker/cabang '{$validated['nama']}' berhasil ditambahkan.");
     }
@@ -71,6 +73,7 @@ class UkerController extends Controller
         $validated['uker_spv'] = $induk?->nama;
 
         $uker->update($validated);
+        ActivityLog::catat('uker', 'update', 1, "Uker {$uker->nama} ({$uker->kode}) diupdate");
 
         return redirect()->route('ukers.index')->with('status', 'Data uker berhasil diupdate.');
     }
@@ -81,7 +84,10 @@ class UkerController extends Controller
             return back()->with('status', 'Uker ini masih punya data aset/pekerja terkait, tidak bisa dihapus.');
         }
 
+        $nama = $uker->nama;
+        $kode = $uker->kode;
         $uker->delete();
+        ActivityLog::catat('uker', 'hapus', 1, "Uker {$nama} ({$kode}) dihapus");
 
         return redirect()->route('ukers.index')->with('status', 'Uker berhasil dihapus.');
     }

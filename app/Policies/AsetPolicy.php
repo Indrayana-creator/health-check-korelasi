@@ -20,6 +20,11 @@ class AsetPolicy
         return $this->update($user, $aset);
     }
 
+    public function restore(User $user, Aset $aset): Response
+    {
+        return $this->update($user, $aset);
+    }
+
     // Dipakai di store()/update() buat validasi uker_kode yang diinput dari
     // form, bukan buat aset yang sudah ada di database.
     public function assignToUker(User $user, int $ukerKode): Response

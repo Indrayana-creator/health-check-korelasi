@@ -95,7 +95,10 @@ test('import petugas IT menandai is_petugas_it berdasarkan PN', function () {
 
 test('import petugas IT dengan PN yang gak ketemu di pekerja tetap lanjut jalan', function () {
     $user = User::factory()->admin()->create();
-    // sengaja gak import pekerja dulu, jadi PN di file petugas IT gak akan ketemu
+    // sengaja gak import pekerja dulu, jadi PN di file petugas IT gak akan ketemu.
+    // Satu-satunya baris pekerja yang ada cuma pasangan dummy dari User factory
+    // (dibutuhkan buat FK users.pn -> pekerja.pn sejak login pakai PN).
+    $jumlahPekerjaSebelum = DB::table('pekerja')->count();
 
     $response = $this->actingAs($user)->post(route('import.petugasIt'), [
         'file' => buatFilePetugasIt(),
@@ -103,5 +106,5 @@ test('import petugas IT dengan PN yang gak ketemu di pekerja tetap lanjut jalan'
 
     $response->assertRedirect();
     $response->assertSessionHas('status');
-    expect(DB::table('pekerja')->count())->toBe(0);
+    expect(DB::table('pekerja')->count())->toBe($jumlahPekerjaSebelum);
 });

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
+use App\Models\HealthCheckItem;
 use App\Models\Uker;
 use Illuminate\Http\Request;
 
@@ -114,13 +115,20 @@ class DashboardController extends Controller
         // bukan nge-render seluruh tree lagi. bangunTreeUker() dipakai bareng lewat
         // trait BuildsUkerTree biar gak duplikat logicnya di 2 controller.
         $tree = null;
+        $totalKendalaAktif = null;
         if ($isAdmin) {
             $tree = $this->bangunTreeUker();
+
+            // Item checklist "Not OK" yang belum selesai ditindaklanjuti --
+            // ringkasan kecil doang, detailnya di halaman Monitoring Kendala.
+            $totalKendalaAktif = HealthCheckItem::where('status', 'Not OK')
+                ->where('status_tindak_lanjut', '!=', 'Selesai Diperbaiki')
+                ->count();
         }
 
         return view('dashboard', compact(
             'totalAset', 'totalFormHc', 'rataCompliance',
-            'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree'
+            'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }
 }

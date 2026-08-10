@@ -27,6 +27,13 @@ class User extends Authenticatable
         'uker_kode',
     ];
 
+    // Default in-memory sebelum di-save, biar konsisten sama default kolom
+    // DB-nya (is_active) -- kepake misal ada kode yang baca $user->is_active
+    // dari instance yang baru dibikin tapi belum di-refresh dari DB.
+    protected $attributes = [
+        'is_active' => true,
+    ];
+
     /**
      * The attributes that should be hidden for serialization.
      *
@@ -47,6 +54,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'is_active' => 'boolean',
         ];
     }
 
