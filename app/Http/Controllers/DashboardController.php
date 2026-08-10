@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
+use App\Models\AsetEditRequest;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
@@ -21,7 +22,7 @@ class DashboardController extends Controller
         // ===== 1. KPI ringkas =====
         $asetQuery = Aset::query();
         $formQuery = HealthCheckForm::query()->with('items');
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $asetQuery->where('uker_kode', $ukerKode);
             $formQuery->where('uker_kode', $ukerKode);
         }
@@ -41,7 +42,7 @@ class DashboardController extends Controller
         $editRequestsMenunggu = collect();
         $editRequestsSaya = collect();
         if ($isAdmin) {
-            $editRequestsMenunggu = \App\Models\AsetEditRequest::with(['aset.uker', 'requester'])
+            $editRequestsMenunggu = AsetEditRequest::with(['aset.uker', 'requester'])
                 ->where('status', 'Menunggu')
                 ->latest()
                 ->take(5)
@@ -76,7 +77,7 @@ class DashboardController extends Controller
         } else {
             // User biasa: nampilin riwayat permintaan edit aset dia sendiri,
             // biar tau statusnya tanpa harus buka satu-satu tiap aset
-            $editRequestsSaya = \App\Models\AsetEditRequest::with('aset')
+            $editRequestsSaya = AsetEditRequest::with('aset')
                 ->where('requested_by', $request->user()->id)
                 ->latest()
                 ->take(5)

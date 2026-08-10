@@ -18,9 +18,7 @@ class ReminderPengisianHealthCheck extends Notification
         9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
     ];
 
-    public function __construct(protected Uker $uker)
-    {
-    }
+    public function __construct(protected Uker $uker) {}
 
     public function via(object $notifiable): array
     {

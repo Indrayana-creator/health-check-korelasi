@@ -39,8 +39,8 @@ return new class extends Migration
             return;
         }
 
-        DB::statement("ALTER TABLE activity_logs MODIFY modul VARCHAR(50) NOT NULL");
-        DB::statement("ALTER TABLE activity_logs MODIFY aksi VARCHAR(50) NOT NULL");
+        DB::statement('ALTER TABLE activity_logs MODIFY modul VARCHAR(50) NOT NULL');
+        DB::statement('ALTER TABLE activity_logs MODIFY aksi VARCHAR(50) NOT NULL');
     }
 
     /**

@@ -29,7 +29,7 @@ class UkerTreeController extends Controller
     {
         $semuaUker = Uker::all()->keyBy('kode');
         $node = $semuaUker->get($kode);
-        if (!$node) {
+        if (! $node) {
             abort(404);
         }
 
@@ -91,7 +91,7 @@ class UkerTreeController extends Controller
     {
         $semuaUker = Uker::all()->keyBy('kode');
         $node = $semuaUker->get($kode);
-        if (!$node) {
+        if (! $node) {
             abort(404);
         }
 
@@ -119,6 +119,7 @@ class UkerTreeController extends Controller
         $perKategori = $semuaItems->groupBy('kategori')->map(function ($items, $kategori) {
             $total = $items->count();
             $ok = $items->where('status', 'OK')->count();
+
             return [
                 'label' => $kategori,
                 'total' => $total,

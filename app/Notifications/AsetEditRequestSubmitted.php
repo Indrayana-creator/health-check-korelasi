@@ -11,9 +11,7 @@ class AsetEditRequestSubmitted extends Notification
 {
     use Queueable;
 
-    public function __construct(protected AsetEditRequest $editRequest)
-    {
-    }
+    public function __construct(protected AsetEditRequest $editRequest) {}
 
     public function via(object $notifiable): array
     {

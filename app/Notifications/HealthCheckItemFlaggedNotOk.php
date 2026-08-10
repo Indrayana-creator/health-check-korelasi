@@ -14,9 +14,7 @@ class HealthCheckItemFlaggedNotOk extends Notification
 {
     use Queueable;
 
-    public function __construct(protected HealthCheckForm $healthcheck, protected int $jumlahItemBaru)
-    {
-    }
+    public function __construct(protected HealthCheckForm $healthcheck, protected int $jumlahItemBaru) {}
 
     public function via(object $notifiable): array
     {

@@ -31,6 +31,7 @@ class UkerController extends Controller
     public function create()
     {
         $ukerIndukList = Uker::orderBy('nama')->get();
+
         return view('ukers.create', compact('ukerIndukList'));
     }
 
@@ -40,7 +41,7 @@ class UkerController extends Controller
             'kode' => ['required', 'integer', Rule::unique('ukers', 'kode')->ignore($uker?->kode, 'kode')],
             'nama' => 'required|string|max:255',
             'alamat' => 'nullable|string|max:1000',
-            'jenis' => 'required|in:' . implode(',', self::DAFTAR_JENIS),
+            'jenis' => 'required|in:'.implode(',', self::DAFTAR_JENIS),
             'kode_spv' => 'required|integer|exists:ukers,kode',
         ];
     }
@@ -62,6 +63,7 @@ class UkerController extends Controller
     public function edit(Uker $uker)
     {
         $ukerIndukList = Uker::where('kode', '!=', $uker->kode)->orderBy('nama')->get();
+
         return view('ukers.edit', compact('uker', 'ukerIndukList'));
     }
 

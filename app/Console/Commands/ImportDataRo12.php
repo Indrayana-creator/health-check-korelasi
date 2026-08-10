@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\DB;
 class ImportDataRo12 extends Command
 {
     protected $signature = 'import:ro12-data';
+
     protected $description = 'Import data master uker + data aset historis RO 12 Surabaya';
 
     public function handle()
@@ -27,8 +28,9 @@ class ImportDataRo12 extends Command
     protected function importUker()
     {
         $path = storage_path('app/seed_ukers_ro12.csv');
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $this->error("File tidak ditemukan: {$path}");
+
             return;
         }
 
@@ -57,8 +59,9 @@ class ImportDataRo12 extends Command
     protected function importAset()
     {
         $path = storage_path('app/aset_ro12_ready_import.csv');
-        if (!file_exists($path)) {
+        if (! file_exists($path)) {
             $this->error("File tidak ditemukan: {$path}");
+
             return;
         }
 
@@ -73,8 +76,9 @@ class ImportDataRo12 extends Command
         while (($row = fgetcsv($handle)) !== false) {
             [$ukerKode, $kodeAset, $merek, $tipeModel, $sn, $noAsset, $tahun, $kondisi, $pemegangPn, $keterangan] = $row;
 
-            if (!isset($ukerValid[(int) $ukerKode]) || !isset($kodeAsetValid[$kodeAset])) {
+            if (! isset($ukerValid[(int) $ukerKode]) || ! isset($kodeAsetValid[$kodeAset])) {
                 $dilewati++;
+
                 continue;
             }
 

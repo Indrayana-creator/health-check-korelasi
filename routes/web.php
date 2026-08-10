@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AsetController;
+use App\Http\Controllers\AsetEditRequestController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ImportController;
@@ -12,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekapController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\UkerController;
+use App\Http\Controllers\UkerTreeController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -87,13 +89,13 @@ Route::middleware('auth')->group(function () {
         Route::get('/monitoring-kendala/export/pdf', [MonitoringController::class, 'exportPdf'])->name('monitoring.export.pdf');
         Route::post('/monitoring-kendala/{item}/tindak-lanjut', [MonitoringController::class, 'updateTindakLanjut'])->name('monitoring.updateTindakLanjut');
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');
-        Route::get('/aset-edit-requests', [\App\Http\Controllers\AsetEditRequestController::class, 'index'])->name('aset.editRequests.index');
+        Route::get('/aset-edit-requests', [AsetEditRequestController::class, 'index'])->name('aset.editRequests.index');
         Route::post('/aset-edit-requests/{editRequest}/approve', [AsetController::class, 'approveEdit'])->name('aset.editRequests.approve');
         Route::post('/aset-edit-requests/{editRequest}/reject', [AsetController::class, 'rejectEdit'])->name('aset.editRequests.reject');
         Route::resource('ukers', UkerController::class)->except(['show']);
-        Route::get('/uker-tree', [\App\Http\Controllers\UkerTreeController::class, 'index'])->name('uker-tree.index');
-        Route::get('/uker-tree/{kode}/detail', [\App\Http\Controllers\UkerTreeController::class, 'detail'])->name('uker-tree.detail');
-        Route::get('/uker-tree/{kode}/compliance-detail', [\App\Http\Controllers\UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
+        Route::get('/uker-tree', [UkerTreeController::class, 'index'])->name('uker-tree.index');
+        Route::get('/uker-tree/{kode}/detail', [UkerTreeController::class, 'detail'])->name('uker-tree.detail');
+        Route::get('/uker-tree/{kode}/compliance-detail', [UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
     });
 });
 

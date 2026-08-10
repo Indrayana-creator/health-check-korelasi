@@ -13,9 +13,7 @@ class KendalaSlaTerlambat extends Notification
 {
     use Queueable;
 
-    public function __construct(protected int $jumlahItem)
-    {
-    }
+    public function __construct(protected int $jumlahItem) {}
 
     public function via(object $notifiable): array
     {

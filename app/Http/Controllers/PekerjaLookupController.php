@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Pekerja;
-use Illuminate\Http\Request;
 
 class PekerjaLookupController extends Controller
 {
@@ -14,7 +13,7 @@ class PekerjaLookupController extends Controller
     {
         $pekerja = Pekerja::with('uker')->find($pn);
 
-        if (!$pekerja || !$pekerja->uker) {
+        if (! $pekerja || ! $pekerja->uker) {
             return response()->json(['message' => 'PN tidak ditemukan'], 404);
         }
 

@@ -11,9 +11,7 @@ class HealthCheckSubmittedForApproval extends Notification
 {
     use Queueable;
 
-    public function __construct(protected HealthCheckForm $healthcheck)
-    {
-    }
+    public function __construct(protected HealthCheckForm $healthcheck) {}
 
     public function via(object $notifiable): array
     {
