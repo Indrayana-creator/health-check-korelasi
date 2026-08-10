@@ -84,6 +84,58 @@ test('admin bisa menambahkan aset untuk uker manapun', function () {
     expect(Aset::count())->toBe(1);
 });
 
+test('gak bisa nambah aset dengan SN yang sudah dipakai aset lain', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-DUPLIKAT']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['sn' => 'SN-DUPLIKAT']));
+
+    $response->assertSessionHasErrors('sn');
+    expect(Aset::count())->toBe(1);
+});
+
+test('SN yang sama tetap boleh dipakai kalau aset lama sudah di-soft-delete', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $asetLama = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-BEKAS']);
+    $asetLama->delete();
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['sn' => 'SN-BEKAS']));
+
+    $response->assertRedirect(route('aset.index'));
+    expect(Aset::where('sn', 'SN-BEKAS')->count())->toBe(1);
+});
+
+test('update aset boleh simpan ulang SN miliknya sendiri tanpa dianggap duplikat', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-SENDIRI']);
+
+    $response = $this->actingAs($admin)
+        ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['sn' => 'SN-SENDIRI', 'merek' => 'HP']));
+
+    $response->assertRedirect(route('aset.index'));
+    expect($aset->fresh()->merek)->toBe('HP');
+});
+
+test('gak bisa update aset pakai SN yang udah dipakai aset lain', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-A']);
+    $asetB = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-B']);
+
+    $response = $this->actingAs($admin)
+        ->put(route('aset.update', $asetB), asetPayload($uker, $kodeAset, ['sn' => 'SN-A']));
+
+    $response->assertSessionHasErrors('sn');
+    expect($asetB->fresh()->sn)->toBe('SN-B');
+});
+
 test('user tidak bisa mengedit aset milik uker lain', function () {
     $ukerSendiri = Uker::factory()->create();
     $ukerLain = Uker::factory()->create();

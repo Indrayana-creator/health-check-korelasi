@@ -12,13 +12,14 @@ use App\Notifications\AsetEditRequestDecided;
 use App\Notifications\AsetEditRequestSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AsetController extends Controller
 {
-    protected function rules(): array
+    protected function rules(?Aset $aset = null): array
     {
         $tahunSekarang = (int) date('Y');
 
@@ -27,7 +28,17 @@ class AsetController extends Controller
             'kode_aset_kode' => 'required|string|exists:kode_aset,kode',
             'merek' => 'required|string|max:100',
             'tipe_model' => 'required|string|max:100',
-            'sn' => 'required|string|max:100',
+            'sn' => [
+                'required',
+                'string',
+                'max:100',
+                // SN itu identitas fisik perangkat -- harus unik antar aset yang
+                // masih aktif (belum di-soft-delete), biar bulk-delete by SN
+                // (lihat bulkDelete()) gak ambigu nemuin aset yang salah.
+                Rule::unique('aset', 'sn')
+                    ->ignore($aset?->id)
+                    ->where(fn ($query) => $query->whereNull('deleted_at')),
+            ],
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
             'kondisi' => 'nullable|in:'.implode(',', Aset::DAFTAR_KONDISI),
@@ -40,6 +51,13 @@ class AsetController extends Controller
             'status_dlp' => 'nullable|string|max:50',
             'status_antivirus' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string',
+        ];
+    }
+
+    protected function ruleMessages(): array
+    {
+        return [
+            'sn.unique' => 'SN ini sudah dipakai oleh aset lain.',
         ];
     }
 
@@ -106,7 +124,7 @@ class AsetController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules(), $this->ruleMessages());
 
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
@@ -140,7 +158,7 @@ class AsetController extends Controller
             abort(403, 'Data ini terkunci. Ajukan permintaan edit dan tunggu disetujui admin sebelum bisa mengubah data.');
         }
 
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules($aset), $this->ruleMessages());
 
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
@@ -336,6 +354,7 @@ class AsetController extends Controller
 
         $berhasil = 0;
         $gagal = [];
+        $snDalamFile = []; // lacak SN yang udah muncul di baris sebelumnya dalam file yang sama
 
         // Kolom: A=uker_kode, B=kode_aset_kode, C=merek, D=tipe_model, E=sn,
         // F=no_asset (opsional, kalau kosong di-generate otomatis),
@@ -421,6 +440,20 @@ class AsetController extends Controller
 
                 continue;
             }
+
+            // SN harus unik -- baik terhadap aset aktif yang udah ada di
+            // database, maupun terhadap baris lain di file yang sama.
+            if (isset($snDalamFile[$sn])) {
+                $gagal[] = "Baris {$row}: SN {$sn} duplikat dengan baris {$snDalamFile[$sn]} di file ini";
+
+                continue;
+            }
+            if (Aset::where('sn', $sn)->whereNull('deleted_at')->exists()) {
+                $gagal[] = "Baris {$row}: SN {$sn} sudah dipakai oleh aset lain";
+
+                continue;
+            }
+            $snDalamFile[$sn] = $row;
 
             try {
                 if (! $noAsset) {
