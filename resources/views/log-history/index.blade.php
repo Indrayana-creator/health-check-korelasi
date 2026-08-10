@@ -3,7 +3,28 @@
         <h2 class="font-extrabold text-lg text-gray-800">Log History</h2>
     </x-slot>
 
-    <div class="p-7 space-y-5">
+    @php
+        // Klasifikasi warna badge aksi -- destructive (hapus/tolak) = merah,
+        // constructive (tambah/approve) = hijau, sisanya (update/submit) = abu.
+        $aksiWarna = function (string $aksi) {
+            if (in_array($aksi, ['hapus', 'delete_massal', 'reject', 'reject_edit'])) {
+                return 'red';
+            }
+            if (in_array($aksi, ['tambah', 'upload_massal', 'approve', 'approve_edit'])) {
+                return 'green';
+            }
+            return 'gray';
+        };
+    @endphp
+
+    <div class="p-7 space-y-5 max-w-[1360px]">
+
+        <x-page-tabs :tabs="[
+            ['label' => 'Kelola User', 'href' => route('users.index'), 'active' => false],
+            ['label' => 'Kelola Uker', 'href' => route('ukers.index'), 'active' => false],
+            ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
+            ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => true],
+        ]" />
 
         {{-- Ringkasan tahun --}}
         <x-card>
@@ -23,7 +44,15 @@
             @else
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     @foreach ($ringkasan as $r)
-                        <div class="p-4 rounded-xl border {{ $r->aksi === 'delete_massal' ? 'border-red-200 bg-red-50' : 'border-green-200 bg-green-50' }}">
+                        @php
+                            $warna = $aksiWarna($r->aksi);
+                            $kartuClass = match($warna) {
+                                'red' => 'border-red-200 bg-red-50',
+                                'green' => 'border-green-200 bg-green-50',
+                                default => 'border-gray-200 bg-gray-50',
+                            };
+                        @endphp
+                        <div class="p-4 rounded-xl border {{ $kartuClass }}">
                             <p class="text-xs text-gray-500">{{ ucfirst(str_replace('_', ' ', $r->modul)) }} &middot; {{ str_replace('_', ' ', $r->aksi) }}</p>
                             <p class="text-2xl font-extrabold text-gray-800">{{ $r->jumlah_kejadian }}x</p>
                             <p class="text-xs text-gray-400">{{ $r->total_baris }} baris data</p>
@@ -43,7 +72,9 @@
                         <option value="">Semua Modul</option>
                         <option value="aset" @selected(request('modul') == 'aset')>Aset</option>
                         <option value="health_check" @selected(request('modul') == 'health_check')>Health Check</option>
-                        <option value="pekerja_uker" @selected(request('modul') == 'pekerja_uker')>Pekerja/Uker</option>
+                        <option value="user" @selected(request('modul') == 'user')>User</option>
+                        <option value="uker" @selected(request('modul') == 'uker')>Uker</option>
+                        <option value="pekerja_uker" @selected(request('modul') == 'pekerja_uker')>Import Pekerja/Uker</option>
                     </x-select>
                 </div>
                 <x-button type="submit">Terapkan</x-button>
@@ -70,7 +101,7 @@
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $log->user?->name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $log->modul)) }}</td>
                             <td class="px-4 py-3">
-                                <x-badge :color="$log->aksi === 'delete_massal' ? 'red' : 'green'">{{ str_replace('_', ' ', $log->aksi) }}</x-badge>
+                                <x-badge :color="$aksiWarna($log->aksi)">{{ str_replace('_', ' ', $log->aksi) }}</x-badge>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $log->jumlah_baris }}</td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ $log->keterangan }}</td>

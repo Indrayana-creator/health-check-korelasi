@@ -84,6 +84,58 @@ test('admin bisa menambahkan aset untuk uker manapun', function () {
     expect(Aset::count())->toBe(1);
 });
 
+test('gak bisa nambah aset dengan SN yang sudah dipakai aset lain', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-DUPLIKAT']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['sn' => 'SN-DUPLIKAT']));
+
+    $response->assertSessionHasErrors('sn');
+    expect(Aset::count())->toBe(1);
+});
+
+test('SN yang sama tetap boleh dipakai kalau aset lama sudah di-soft-delete', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $asetLama = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-BEKAS']);
+    $asetLama->delete();
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['sn' => 'SN-BEKAS']));
+
+    $response->assertRedirect(route('aset.index'));
+    expect(Aset::where('sn', 'SN-BEKAS')->count())->toBe(1);
+});
+
+test('update aset boleh simpan ulang SN miliknya sendiri tanpa dianggap duplikat', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-SENDIRI']);
+
+    $response = $this->actingAs($admin)
+        ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['sn' => 'SN-SENDIRI', 'merek' => 'HP']));
+
+    $response->assertRedirect(route('aset.index'));
+    expect($aset->fresh()->merek)->toBe('HP');
+});
+
+test('gak bisa update aset pakai SN yang udah dipakai aset lain', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-A']);
+    $asetB = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-B']);
+
+    $response = $this->actingAs($admin)
+        ->put(route('aset.update', $asetB), asetPayload($uker, $kodeAset, ['sn' => 'SN-A']));
+
+    $response->assertSessionHasErrors('sn');
+    expect($asetB->fresh()->sn)->toBe('SN-B');
+});
+
 test('user tidak bisa mengedit aset milik uker lain', function () {
     $ukerSendiri = Uker::factory()->create();
     $ukerLain = Uker::factory()->create();
@@ -144,6 +196,61 @@ test('user bisa update aset kalau permintaan edit sudah disetujui admin', functi
         ->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['merek' => 'Asus']))
         ->assertForbidden();
     expect($aset->fresh()->merek)->toBe('HP');
+});
+
+test('aset yang dihapus masuk sampah (soft delete), bukan hilang permanen dari database', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode]);
+
+    $this->actingAs($admin)->delete(route('aset.destroy', $aset))->assertRedirect(route('aset.index'));
+
+    expect(Aset::find($aset->id))->toBeNull(); // gak muncul di query normal
+    expect(Aset::onlyTrashed()->find($aset->id))->not->toBeNull(); // tapi masih ada di database
+});
+
+test('admin bisa lihat semua aset di sampah dan memulihkannya', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerA = Uker::factory()->create();
+    $ukerB = Uker::factory()->create();
+    $asetA = Aset::factory()->create(['uker_kode' => $ukerA->kode]);
+    $asetB = Aset::factory()->create(['uker_kode' => $ukerB->kode]);
+    $asetA->delete();
+    $asetB->delete();
+
+    $response = $this->actingAs($admin)->get(route('aset.trash'));
+    $response->assertOk();
+    expect($response->viewData('asetList')->total())->toBe(2);
+
+    $this->actingAs($admin)->post(route('aset.restore', $asetA->id))->assertRedirect();
+    expect(Aset::find($asetA->id))->not->toBeNull();
+});
+
+test('user cuma lihat aset uker sendiri di sampah dan cuma bisa restore punya sendiri', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $asetSendiri = Aset::factory()->create(['uker_kode' => $ukerSendiri->kode]);
+    $asetLain = Aset::factory()->create(['uker_kode' => $ukerLain->kode]);
+    $asetSendiri->delete();
+    $asetLain->delete();
+
+    $response = $this->actingAs($user)->get(route('aset.trash'));
+    $response->assertOk();
+    expect($response->viewData('asetList')->total())->toBe(1);
+
+    $this->actingAs($user)->post(route('aset.restore', $asetLain->id))->assertForbidden();
+    $this->actingAs($user)->post(route('aset.restore', $asetSendiri->id))->assertRedirect();
+    expect(Aset::find($asetSendiri->id))->not->toBeNull();
+});
+
+test('guest tidak bisa akses sampah maupun restore aset', function () {
+    $uker = Uker::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode]);
+    $aset->delete();
+
+    $this->get(route('aset.trash'))->assertRedirect(route('login'));
+    $this->post(route('aset.restore', $aset->id))->assertRedirect(route('login'));
 });
 
 test('user tidak bisa memindahkan aset ke uker lain lewat update', function () {

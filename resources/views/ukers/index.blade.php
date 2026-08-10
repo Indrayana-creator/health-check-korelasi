@@ -3,7 +3,14 @@
         <h2 class="font-extrabold text-lg text-gray-800">Kelola Uker / Cabang</h2>
     </x-slot>
 
-    <div class="p-7 space-y-4">
+    <div class="p-7 space-y-4 max-w-[1360px]">
+
+        <x-page-tabs :tabs="[
+            ['label' => 'Kelola User', 'href' => route('users.index'), 'active' => false],
+            ['label' => 'Kelola Uker', 'href' => route('ukers.index'), 'active' => true],
+            ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
+            ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
+        ]" />
 
         @if (session('status'))
             <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>

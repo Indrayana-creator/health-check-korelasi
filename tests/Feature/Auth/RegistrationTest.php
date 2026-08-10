@@ -1,12 +1,16 @@
 <?php
 
-test('registration screen can be rendered', function () {
+// Self-register dimatikan -- akun cuma boleh dibuat admin lewat Kelola User.
+// Route GET /register sengaja tetap ada tapi cuma redirect ke login, dan
+// POST /register gak lagi terdaftar sama sekali.
+
+test('halaman register redirect ke login, gak lagi bisa diakses', function () {
     $response = $this->get('/register');
 
-    $response->assertStatus(200);
+    $response->assertRedirect(route('login'));
 });
 
-test('new users can register', function () {
+test('post ke /register gak bisa dipakai buat bikin akun baru', function () {
     $response = $this->post('/register', [
         'name' => 'Test User',
         'email' => 'test@example.com',
@@ -14,6 +18,6 @@ test('new users can register', function () {
         'password_confirmation' => 'password',
     ]);
 
-    $this->assertAuthenticated();
-    $response->assertRedirect(route('dashboard', absolute: false));
+    $response->assertMethodNotAllowed();
+    $this->assertGuest();
 });

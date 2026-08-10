@@ -22,6 +22,7 @@ trait BuildsUkerTree
         $complianceePerUker = $formPerUker->map(function ($forms) {
             $total = $forms->sum(fn ($f) => $f->items->count());
             $ok = $forms->sum(fn ($f) => $f->items->where('status', 'OK')->count());
+
             return $total > 0 ? round($ok / $total * 100, 1) : null;
         });
 
@@ -57,6 +58,7 @@ trait BuildsUkerTree
                 'rata_compliance' => count($complianceList) ? round(array_sum($complianceList) / count($complianceList), 1) : null,
                 'jumlah_unit_bawah' => $jumlahAnak,
             ];
+
             return $kumpulan[$kode];
         };
 
@@ -65,7 +67,7 @@ trait BuildsUkerTree
 
         $bangunNode = function ($kode) use (&$bangunNode, $semuaUker, $children, $kumpulan) {
             $u = $semuaUker[$kode] ?? null;
-            if (!$u) {
+            if (! $u) {
                 return null;
             }
             $anak = collect($children[$kode] ?? [])

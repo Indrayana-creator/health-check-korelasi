@@ -5,6 +5,57 @@
         </h2>
     </x-slot>
 
+    {{-- Connector garis khas org chart (kotak-kotak terhubung), CSS murni --
+         teknik display:table klasik biar gak butuh library diagram tambahan.
+         Tiap level dalam .org-tree jadi 1 baris tabel, tiap node jadi 1 cell,
+         garis penghubung digambar lewat pseudo-element ::before. --}}
+    <style>
+        .org-tree, .org-tree ul {
+            display: table;
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            position: relative;
+        }
+        .org-tree ul {
+            width: 100%;
+        }
+        .org-tree li {
+            display: table-cell;
+            padding: 1.75em .6em 0;
+            vertical-align: top;
+            position: relative;
+        }
+        .org-tree li:before {
+            outline: solid 1px #d1d5db;
+            content: "";
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+        }
+        .org-tree li:first-child:before { left: 50%; }
+        .org-tree li:last-child:before { right: 50%; }
+        .org-tree li:only-child:before { display: none; }
+        .org-tree ul:before {
+            outline: solid 1px #d1d5db;
+            content: "";
+            height: 1.75em;
+            left: 50%;
+            position: absolute;
+            top: -1.75em;
+        }
+        .org-tree > li {
+            padding-top: 0;
+        }
+        .org-tree > li:before {
+            outline: none;
+        }
+        .org-tree .org-box {
+            margin: 0 auto;
+        }
+    </style>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
     <script>
         document.addEventListener('alpine:init', () => {
@@ -52,7 +103,13 @@
         });
     </script>
 
-    <div class="p-7 space-y-5">
+    <div class="p-7 space-y-5 max-w-[1360px]">
+        <x-page-tabs :tabs="[
+            ['label' => 'Rekap Health Check', 'href' => route('rekap.cabang'), 'active' => false],
+            ['label' => 'Rekap Aset', 'href' => route('rekap.aset'), 'active' => false],
+            ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => true],
+        ]" />
+
         <x-card>
             <h3 class="font-extrabold text-sm text-gray-800 mb-1">Struktur Organisasi</h3>
             <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
@@ -61,7 +118,21 @@
             </div>
 
             @if ($tree)
-                @include('uker-tree.node', ['node' => $tree, 'level' => 0])
+                <div class="flex flex-wrap items-center gap-3 mb-3 text-[11px] text-gray-500">
+                    <span class="font-semibold text-gray-600">Legenda:</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-400"></span> Kanwil</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-blue-400"></span> Area</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-indigo-400"></span> KC</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-teal-400"></span> KCP</span>
+                    <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-gray-400"></span> Unit</span>
+                    <span class="sm:ml-auto text-gray-400">Klik "Buka" di tiap kotak buat lihat cabang di bawahnya</span>
+                </div>
+
+                <div class="org-tree-scroll overflow-x-auto pb-4">
+                    <ul class="org-tree">
+                        @include('uker-tree.node', ['node' => $tree, 'level' => 0])
+                    </ul>
+                </div>
             @else
                 <p class="text-gray-500 text-sm">Data struktur belum tersedia.</p>
             @endif

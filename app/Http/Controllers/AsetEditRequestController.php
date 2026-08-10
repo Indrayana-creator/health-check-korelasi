@@ -14,6 +14,10 @@ class AsetEditRequestController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20);
 
-        return view('edit-requests.index', compact('requests'));
+        $totalMenunggu = AsetEditRequest::where('status', 'Menunggu')->count();
+        $totalDisetujui = AsetEditRequest::where('status', 'Disetujui')->count();
+        $totalKeseluruhan = AsetEditRequest::count();
+
+        return view('edit-requests.index', compact('requests', 'totalMenunggu', 'totalDisetujui', 'totalKeseluruhan'));
     }
 }

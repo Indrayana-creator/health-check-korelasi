@@ -34,7 +34,7 @@
             <div class="flex-1 flex items-center justify-center p-10 bg-white">
                 <div class="w-full max-w-sm">
                     <h1 class="text-2xl font-extrabold text-gray-800 mb-1.5">Masuk ke akun</h1>
-                    <p class="text-sm text-gray-500 mb-7">Gunakan email dan kata sandi Anda untuk melanjutkan.</p>
+                    <p class="text-sm text-gray-500 mb-7">Gunakan PN (Personal Number) dan kata sandi Anda untuk melanjutkan.</p>
 
                     <x-auth-session-status class="mb-4" :status="session('status')" />
 
@@ -42,9 +42,9 @@
                         @csrf
 
                         <div>
-                            <x-input-label for="email" :value="__('Email')" />
-                            <x-text-input id="email" class="block mt-1.5 w-full rounded-lg" type="email" name="email" :value="old('email')" required autofocus autocomplete="username" />
-                            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+                            <x-input-label for="pn" value="PN (Personal Number)" />
+                            <x-text-input id="pn" class="block mt-1.5 w-full rounded-lg" type="text" inputmode="numeric" name="pn" :value="old('pn')" required autofocus autocomplete="username" />
+                            <x-input-error :messages="$errors->get('pn')" class="mt-2" />
                         </div>
 
                         <div class="mt-4">

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\DB;
 class SetupAreaRo12 extends Command
 {
     protected $signature = 'setup:area-ro12';
+
     protected $description = 'Bikin level Area (draft) buat data RO 12 Surabaya + isi ulang kolom jenis';
 
     // kode Area baru (mulai dari 8000 biar gak bentrok sama kode asli BRI)
@@ -47,8 +48,9 @@ class SetupAreaRo12 extends Command
         foreach ($this->areaMap as $kodeArea => $data) {
             foreach ($data['anggota'] as $kodeCabang) {
                 $cabang = DB::table('ukers')->where('kode', $kodeCabang)->first();
-                if (!$cabang) {
+                if (! $cabang) {
                     $this->error("Cabang kode {$kodeCabang} tidak ditemukan, dilewati.");
+
                     continue;
                 }
                 DB::table('ukers')->where('kode', $kodeCabang)->update([

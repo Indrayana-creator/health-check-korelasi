@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
+use App\Models\AsetEditRequest;
 use App\Models\HealthCheckForm;
+use App\Models\HealthCheckItem;
 use App\Models\Uker;
 use Illuminate\Http\Request;
 
@@ -20,7 +22,7 @@ class DashboardController extends Controller
         // ===== 1. KPI ringkas =====
         $asetQuery = Aset::query();
         $formQuery = HealthCheckForm::query()->with('items');
-        if (!$isAdmin) {
+        if (! $isAdmin) {
             $asetQuery->where('uker_kode', $ukerKode);
             $formQuery->where('uker_kode', $ukerKode);
         }
@@ -40,7 +42,7 @@ class DashboardController extends Controller
         $editRequestsMenunggu = collect();
         $editRequestsSaya = collect();
         if ($isAdmin) {
-            $editRequestsMenunggu = \App\Models\AsetEditRequest::with(['aset.uker', 'requester'])
+            $editRequestsMenunggu = AsetEditRequest::with(['aset.uker', 'requester'])
                 ->where('status', 'Menunggu')
                 ->latest()
                 ->take(5)
@@ -75,7 +77,7 @@ class DashboardController extends Controller
         } else {
             // User biasa: nampilin riwayat permintaan edit aset dia sendiri,
             // biar tau statusnya tanpa harus buka satu-satu tiap aset
-            $editRequestsSaya = \App\Models\AsetEditRequest::with('aset')
+            $editRequestsSaya = AsetEditRequest::with('aset')
                 ->where('requested_by', $request->user()->id)
                 ->latest()
                 ->take(5)
@@ -114,13 +116,20 @@ class DashboardController extends Controller
         // bukan nge-render seluruh tree lagi. bangunTreeUker() dipakai bareng lewat
         // trait BuildsUkerTree biar gak duplikat logicnya di 2 controller.
         $tree = null;
+        $totalKendalaAktif = null;
         if ($isAdmin) {
             $tree = $this->bangunTreeUker();
+
+            // Item checklist "Not OK" yang belum selesai ditindaklanjuti --
+            // ringkasan kecil doang, detailnya di halaman Monitoring Kendala.
+            $totalKendalaAktif = HealthCheckItem::where('status', 'Not OK')
+                ->where('status_tindak_lanjut', '!=', 'Selesai Diperbaiki')
+                ->count();
         }
 
         return view('dashboard', compact(
             'totalAset', 'totalFormHc', 'rataCompliance',
-            'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree'
+            'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }
 }

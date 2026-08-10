@@ -7,15 +7,19 @@ use App\Models\Aset;
 use App\Models\AsetEditRequest;
 use App\Models\KodeAset;
 use App\Models\Uker;
+use App\Models\User;
+use App\Notifications\AsetEditRequestDecided;
+use App\Notifications\AsetEditRequestSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AsetController extends Controller
 {
-    protected function rules(): array
+    protected function rules(?Aset $aset = null): array
     {
         $tahunSekarang = (int) date('Y');
 
@@ -24,7 +28,17 @@ class AsetController extends Controller
             'kode_aset_kode' => 'required|string|exists:kode_aset,kode',
             'merek' => 'required|string|max:100',
             'tipe_model' => 'required|string|max:100',
-            'sn' => 'required|string|max:100',
+            'sn' => [
+                'required',
+                'string',
+                'max:100',
+                // SN itu identitas fisik perangkat -- harus unik antar aset yang
+                // masih aktif (belum di-soft-delete), biar bulk-delete by SN
+                // (lihat bulkDelete()) gak ambigu nemuin aset yang salah.
+                Rule::unique('aset', 'sn')
+                    ->ignore($aset?->id)
+                    ->where(fn ($query) => $query->whereNull('deleted_at')),
+            ],
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
             'kondisi' => 'nullable|in:'.implode(',', Aset::DAFTAR_KONDISI),
@@ -37,6 +51,13 @@ class AsetController extends Controller
             'status_dlp' => 'nullable|string|max:50',
             'status_antivirus' => 'nullable|string|max:50',
             'keterangan' => 'nullable|string',
+        ];
+    }
+
+    protected function ruleMessages(): array
+    {
+        return [
+            'sn.unique' => 'SN ini sudah dipakai oleh aset lain.',
         ];
     }
 
@@ -69,15 +90,26 @@ class AsetController extends Controller
             $query->where('uker_kode', $request->input('uker_kode'));
         }
 
+        if ($request->filled('kondisi')) {
+            $query->where('kondisi', $request->input('kondisi'));
+        }
+
         return $query;
     }
 
     public function index(Request $request)
     {
-        $asetList = $this->filteredQuery($request)->orderByDesc('id')->paginate(20)->withQueryString();
+        $asetList = $this->filteredQuery($request)->reorder('id', 'desc')->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
-        return view('aset.index', compact('asetList', 'ukerFilterList'));
+        // Ringkasan kondisi -- dihitung dari scope user (bukan hasil filter aktif),
+        // biar stat card di atas nunjukin gambaran besar yang stabil sementara
+        // tabel di bawahnya tetap ikut filter q/uker_kode/kondisi.
+        $totalKeseluruhan = $this->scopedQuery($request)->count();
+        $totalNormal = $this->scopedQuery($request)->where('kondisi', 'NORMAL')->count();
+        $totalPerluPerhatian = $this->scopedQuery($request)->whereIn('kondisi', ['RUSAK', 'TIDAK LAYAK'])->count();
+
+        return view('aset.index', compact('asetList', 'ukerFilterList', 'totalKeseluruhan', 'totalNormal', 'totalPerluPerhatian'));
     }
 
     public function create(Request $request)
@@ -92,24 +124,21 @@ class AsetController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules(), $this->ruleMessages());
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa menambahkan aset untuk uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
         $validated['no_asset'] = Aset::generateAsetId($validated['uker_kode'], $validated['kode_aset_kode']);
 
-        Aset::create($validated);
+        $aset = Aset::create($validated);
+        ActivityLog::catat('aset', 'tambah', 1, "Aset {$aset->no_asset} ditambahkan");
 
         return redirect()->route('aset.index')->with('status', "Aset berhasil ditambahkan dengan ID {$validated['no_asset']}.");
     }
 
     public function edit(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('update', $aset);
 
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
@@ -123,22 +152,19 @@ class AsetController extends Controller
 
     public function update(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('update', $aset);
 
         if (! $aset->bisaDiedit($request->user())) {
             abort(403, 'Data ini terkunci. Ajukan permintaan edit dan tunggu disetujui admin sebelum bisa mengubah data.');
         }
 
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules($aset), $this->ruleMessages());
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa memindahkan aset ke uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
         // ASET ID gak diregenerate saat edit, biar ID-nya tetap sama sepanjang umur aset
         $aset->update($validated);
+        ActivityLog::catat('aset', 'update', 1, "Aset {$aset->no_asset} diupdate");
 
         // Kalau yang edit bukan admin, tandai izin edit yang dipakai barusan
         // biar "habis" -- gak bisa dipakai buat edit lagi tanpa ngajuin ulang
@@ -155,9 +181,7 @@ class AsetController extends Controller
 
     public function requestEdit(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
-        }
+        $this->authorize('update', $aset);
 
         $validated = $request->validate(['alasan' => 'nullable|string|max:255']);
 
@@ -168,12 +192,14 @@ class AsetController extends Controller
             ->exists();
 
         if (! $sudahAda) {
-            AsetEditRequest::create([
+            $editRequest = AsetEditRequest::create([
                 'aset_id' => $aset->id,
                 'requested_by' => $request->user()->id,
                 'alasan' => $validated['alasan'] ?? null,
                 'status' => 'Menunggu',
             ]);
+
+            User::where('role', 'admin')->get()->each->notify(new AsetEditRequestSubmitted($editRequest));
         }
 
         return redirect()->route('aset.edit', $aset)->with('status', 'Permintaan edit berhasil diajukan, menunggu approval admin.');
@@ -190,6 +216,8 @@ class AsetController extends Controller
             'handled_by' => $request->user()->id,
             'handled_at' => now(),
         ]);
+        ActivityLog::catat('aset', 'approve_edit', 1, "Permintaan edit aset {$editRequest->aset?->no_asset} disetujui");
+        $editRequest->requester?->notify(new AsetEditRequestDecided($editRequest));
 
         return back()->with('status', 'Permintaan edit disetujui.');
     }
@@ -208,19 +236,49 @@ class AsetController extends Controller
             'handled_by' => $request->user()->id,
             'handled_at' => now(),
         ]);
+        ActivityLog::catat('aset', 'reject_edit', 1, "Permintaan edit aset {$editRequest->aset?->no_asset} ditolak");
+        $editRequest->requester?->notify(new AsetEditRequestDecided($editRequest));
 
         return back()->with('status', 'Permintaan edit ditolak.');
     }
 
     public function destroy(Request $request, Aset $aset)
     {
-        if ($request->user()->role !== 'admin' && $aset->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke aset ini.');
+        $this->authorize('delete', $aset);
+
+        $noAsset = $aset->no_asset;
+        $aset->delete();
+        ActivityLog::catat('aset', 'hapus', 1, "Aset {$noAsset} dihapus");
+
+        return redirect()->route('aset.index')->with('status', 'Aset berhasil dihapus. Bisa dipulihkan lewat halaman Sampah.');
+    }
+
+    // ===================== SAMPAH (soft delete) =====================
+    // Aset yang dihapus gak langsung hilang permanen -- ditaruh di sini dulu
+    // biar bisa dipulihkan kalau kehapus gak sengaja. Gak ada opsi hapus
+    // permanen dari UI, sengaja, biar tetap ada jejaknya.
+
+    public function trash(Request $request)
+    {
+        $query = Aset::onlyTrashed()->with(['uker', 'kodeAset']);
+        if ($request->user()->role !== 'admin') {
+            $query->where('uker_kode', $request->user()->uker_kode);
         }
 
-        $aset->delete();
+        $asetList = $query->orderByDesc('deleted_at')->paginate(20)->withQueryString();
 
-        return redirect()->route('aset.index')->with('status', 'Aset berhasil dihapus.');
+        return view('aset.trash', compact('asetList'));
+    }
+
+    public function restore(Request $request, $id)
+    {
+        $aset = Aset::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $aset);
+
+        $aset->restore();
+        ActivityLog::catat('aset', 'restore', 1, "Aset {$aset->no_asset} dipulihkan dari sampah");
+
+        return back()->with('status', "Aset {$aset->no_asset} berhasil dipulihkan.");
     }
 
     // ===================== BULK UPLOAD (Excel) =====================
@@ -296,6 +354,7 @@ class AsetController extends Controller
 
         $berhasil = 0;
         $gagal = [];
+        $snDalamFile = []; // lacak SN yang udah muncul di baris sebelumnya dalam file yang sama
 
         // Kolom: A=uker_kode, B=kode_aset_kode, C=merek, D=tipe_model, E=sn,
         // F=no_asset (opsional, kalau kosong di-generate otomatis),
@@ -381,6 +440,20 @@ class AsetController extends Controller
 
                 continue;
             }
+
+            // SN harus unik -- baik terhadap aset aktif yang udah ada di
+            // database, maupun terhadap baris lain di file yang sama.
+            if (isset($snDalamFile[$sn])) {
+                $gagal[] = "Baris {$row}: SN {$sn} duplikat dengan baris {$snDalamFile[$sn]} di file ini";
+
+                continue;
+            }
+            if (Aset::where('sn', $sn)->whereNull('deleted_at')->exists()) {
+                $gagal[] = "Baris {$row}: SN {$sn} sudah dipakai oleh aset lain";
+
+                continue;
+            }
+            $snDalamFile[$sn] = $row;
 
             try {
                 if (! $noAsset) {

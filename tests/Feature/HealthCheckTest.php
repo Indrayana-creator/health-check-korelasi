@@ -25,6 +25,53 @@ test('store form health check otomatis generate 61 item checklist', function () 
     expect($form->items()->where('status', 'Belum Diperiksa')->count())->toBe(61);
 });
 
+test('gak bisa bikin form health check dobel buat uker & periode yang sama', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Triwulan I 2026']);
+
+    $response = $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertSessionHasErrors('periode');
+    expect(HealthCheckForm::where('uker_kode', $uker->kode)->count())->toBe(1);
+});
+
+test('periode yang sama tetap boleh dipakai uker lain', function () {
+    $ukerA = Uker::factory()->create();
+    $ukerB = Uker::factory()->create();
+    $userB = User::factory()->forUker($ukerB->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode, 'periode' => 'Triwulan I 2026']);
+
+    $response = $this->actingAs($userB)->post(route('healthcheck.store'), [
+        'uker_kode' => $ukerB->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertRedirect();
+    expect(HealthCheckForm::where('uker_kode', $ukerB->kode)->count())->toBe(1);
+});
+
+test('form yang sudah dihapus (soft delete) boleh dibuat ulang dengan periode sama', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $formLama = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Triwulan I 2026']);
+    $formLama->delete();
+
+    $response = $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $response->assertRedirect();
+    expect(HealthCheckForm::where('uker_kode', $uker->kode)->count())->toBe(1);
+});
+
 test('user tidak bisa membuat form health check untuk uker lain', function () {
     $ukerSendiri = Uker::factory()->create();
     $ukerLain = Uker::factory()->create();
@@ -131,7 +178,7 @@ test('update tanpa status_tindak_lanjut ditolak validasi', function () {
     $response->assertSessionHasErrors('status_tindak_lanjut');
 });
 
-test('destroy form health check ikut menghapus semua item-nya', function () {
+test('destroy form health check soft delete -- item-nya tetap tersimpan biar bisa dipulihkan utuh', function () {
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
     $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
@@ -139,6 +186,40 @@ test('destroy form health check ikut menghapus semua item-nya', function () {
 
     $this->actingAs($user)->delete(route('healthcheck.destroy', $form))->assertRedirect(route('healthcheck.index'));
 
-    expect(HealthCheckForm::find($form->id))->toBeNull();
-    expect(HealthCheckItem::where('health_check_form_id', $form->id)->count())->toBe(0);
+    expect(HealthCheckForm::find($form->id))->toBeNull(); // gak muncul di query normal
+    expect(HealthCheckForm::onlyTrashed()->find($form->id))->not->toBeNull(); // tapi masih ada di database
+    expect(HealthCheckItem::where('health_check_form_id', $form->id)->count())->toBe(3); // item-nya gak ikut hilang
+
+    $this->actingAs($user)->post(route('healthcheck.restore', $form->id))->assertRedirect();
+    expect($form->fresh()->items()->count())->toBe(3);
+});
+
+test('admin bisa lihat semua form di sampah, user cuma lihat punya uker sendiri', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerA = Uker::factory()->create();
+    $ukerB = Uker::factory()->create();
+    $userA = User::factory()->forUker($ukerA->kode)->create();
+    $formA = HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode]);
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $ukerB->kode]);
+    $formA->delete();
+    $formB->delete();
+
+    $responseAdmin = $this->actingAs($admin)->get(route('healthcheck.trash'));
+    $responseAdmin->assertOk();
+    expect($responseAdmin->viewData('formList')->total())->toBe(2);
+
+    $responseUser = $this->actingAs($userA)->get(route('healthcheck.trash'));
+    $responseUser->assertOk();
+    expect($responseUser->viewData('formList')->total())->toBe(1);
+
+    $this->actingAs($userA)->post(route('healthcheck.restore', $formB->id))->assertForbidden();
+});
+
+test('guest tidak bisa akses sampah maupun restore health check', function () {
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $form->delete();
+
+    $this->get(route('healthcheck.trash'))->assertRedirect(route('login'));
+    $this->post(route('healthcheck.restore', $form->id))->assertRedirect(route('login'));
 });

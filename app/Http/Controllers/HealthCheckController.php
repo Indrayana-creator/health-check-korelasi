@@ -6,8 +6,13 @@ use App\Models\ActivityLog;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
+use App\Models\User;
+use App\Notifications\HealthCheckApprovalDecided;
+use App\Notifications\HealthCheckItemFlaggedNotOk;
+use App\Notifications\HealthCheckSubmittedForApproval;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
@@ -36,15 +41,29 @@ class HealthCheckController extends Controller
             $query->where('uker_kode', $request->input('uker_kode'));
         }
 
+        if ($request->filled('status_approval')) {
+            $query->where('status_approval', $request->input('status_approval'));
+        }
+
         return $query;
     }
 
     public function index(Request $request)
     {
-        $formList = $this->filteredQuery($request)->withCount('items')->orderByDesc('id')->paginate(20)->withQueryString();
+        $formList = $this->filteredQuery($request)->withCount('items')->reorder('id', 'desc')->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
-        return view('healthcheck.index', compact('formList', 'ukerFilterList'));
+        // Ringkasan -- dihitung dari scope user (bukan hasil filter aktif),
+        // biar stat card di atas nunjukin gambaran besar yang stabil sementara
+        // tabel di bawahnya tetap ikut filter q/uker_kode/status_approval.
+        $formsUntukStat = $this->scopedQuery($request)->get();
+        $totalKeseluruhan = $formsUntukStat->count();
+        $totalMenunggu = $formsUntukStat->where('status_approval', 'Menunggu Approval')->count();
+        $totalItemSemua = $formsUntukStat->sum(fn ($f) => $f->items->count());
+        $totalOkSemua = $formsUntukStat->sum(fn ($f) => $f->items->where('status', 'OK')->count());
+        $avgCompliance = $totalItemSemua > 0 ? round($totalOkSemua / $totalItemSemua * 100, 1) : 0;
+
+        return view('healthcheck.index', compact('formList', 'ukerFilterList', 'totalKeseluruhan', 'totalMenunggu', 'avgCompliance'));
     }
 
     public function create(Request $request)
@@ -76,25 +95,30 @@ class HealthCheckController extends Controller
         $validated = $request->validate([
             'uker_kode' => 'required|integer|exists:ukers,kode',
             'tanggal_pemeriksaan' => 'required|date',
-            'periode' => 'required|string|max:50',
+            'periode' => [
+                'required',
+                'string',
+                'max:50',
+                Rule::unique('health_check_forms')
+                    ->where(fn ($query) => $query->where('uker_kode', $request->input('uker_kode'))->whereNull('deleted_at')),
+            ],
             'pic_pn' => 'nullable|string|max:50|exists:pekerja,pn',
+        ], [
+            'periode.unique' => 'Form health check untuk uker dan periode ini sudah ada.',
         ]);
 
-        if ($request->user()->role !== 'admin' && $validated['uker_kode'] != $request->user()->uker_kode) {
-            abort(403, 'Anda hanya bisa membuat form health check untuk uker Anda sendiri.');
-        }
+        $this->authorize('assignToUker', [HealthCheckForm::class, $validated['uker_kode']]);
 
         $form = HealthCheckForm::create($validated);
         $this->generateItemsUntukForm($form);
+        ActivityLog::catat('health_check', 'tambah', 1, "Form health check {$form->periode} dibuat untuk uker {$form->uker_kode}");
 
         return redirect()->route('healthcheck.edit', $form)->with('status', 'Form health check dibuat. Silakan isi status tiap item pemeriksaan.');
     }
 
     public function edit(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('update', $healthcheck);
 
         $itemsByKategori = $healthcheck->items()->orderBy('id')->get()->groupBy('kategori');
 
@@ -103,9 +127,7 @@ class HealthCheckController extends Controller
 
     public function update(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('update', $healthcheck);
 
         $validated = $request->validate([
             'items' => 'required|array',
@@ -121,13 +143,24 @@ class HealthCheckController extends Controller
         // item ditolak -- tapi status tindak lanjut tetap boleh diupdate,
         // karena remediasi berjalan terpisah dari proses approval datanya.
         if ($healthcheck->itemsBisaDiedit()) {
+            $jumlahBaruBermasalah = 0;
             foreach ($validated['items'] as $itemInput) {
-                HealthCheckItem::where('id', $itemInput['id'])
+                $item = HealthCheckItem::where('id', $itemInput['id'])
                     ->where('health_check_form_id', $healthcheck->id)
-                    ->update([
-                        'status' => $itemInput['status'],
-                        'catatan' => $itemInput['catatan'] ?? null,
-                    ]);
+                    ->first();
+
+                if ($item && $item->status !== 'Not OK' && $itemInput['status'] === 'Not OK') {
+                    $jumlahBaruBermasalah++;
+                }
+
+                $item?->update([
+                    'status' => $itemInput['status'],
+                    'catatan' => $itemInput['catatan'] ?? null,
+                ]);
+            }
+
+            if ($jumlahBaruBermasalah > 0) {
+                User::where('role', 'admin')->get()->each->notify(new HealthCheckItemFlaggedNotOk($healthcheck, $jumlahBaruBermasalah));
             }
         }
 
@@ -135,6 +168,7 @@ class HealthCheckController extends Controller
             'status_tindak_lanjut' => $validated['status_tindak_lanjut'],
             'catatan_tindak_lanjut' => $validated['catatan_tindak_lanjut'] ?? null,
         ]);
+        ActivityLog::catat('health_check', 'update', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) diupdate");
 
         $pesan = $healthcheck->itemsBisaDiedit()
             ? 'Hasil pemeriksaan berhasil disimpan.'
@@ -147,9 +181,7 @@ class HealthCheckController extends Controller
 
     public function submitForApproval(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
-        }
+        $this->authorize('update', $healthcheck);
 
         if (! $healthcheck->itemsBisaDiedit()) {
             $pesan = $healthcheck->sudahLewatTanggal()
@@ -162,6 +194,8 @@ class HealthCheckController extends Controller
             'status_approval' => 'Menunggu Approval',
             'catatan_approval' => null,
         ]);
+        ActivityLog::catat('health_check', 'submit', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) disubmit untuk approval");
+        User::where('role', 'admin')->get()->each->notify(new HealthCheckSubmittedForApproval($healthcheck));
 
         return redirect()->route('healthcheck.index')->with('status', 'Form berhasil disubmit, menunggu approval admin.');
     }
@@ -181,6 +215,8 @@ class HealthCheckController extends Controller
             'approved_by_pn' => $request->user()->pn,
             'approved_at' => now(),
         ]);
+        ActivityLog::catat('health_check', 'approve', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) disetujui");
+        User::where('uker_kode', $healthcheck->uker_kode)->get()->each->notify(new HealthCheckApprovalDecided($healthcheck));
 
         return redirect()->route('healthcheck.index')->with('status', 'Form health check disetujui.');
     }
@@ -205,19 +241,47 @@ class HealthCheckController extends Controller
             'approved_by_pn' => $request->user()->pn,
             'approved_at' => now(),
         ]);
+        ActivityLog::catat('health_check', 'reject', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) ditolak");
+        User::where('uker_kode', $healthcheck->uker_kode)->get()->each->notify(new HealthCheckApprovalDecided($healthcheck));
 
         return redirect()->route('healthcheck.index')->with('status', 'Form health check ditolak, perlu direvisi.');
     }
 
     public function destroy(Request $request, HealthCheckForm $healthcheck)
     {
-        if ($request->user()->role !== 'admin' && $healthcheck->uker_kode != $request->user()->uker_kode) {
-            abort(403, 'Anda tidak punya akses ke form ini.');
+        $this->authorize('delete', $healthcheck);
+
+        $periode = $healthcheck->periode;
+        $ukerNama = $healthcheck->uker?->nama;
+        $healthcheck->delete();
+        ActivityLog::catat('health_check', 'hapus', 1, "Form health check {$periode} ({$ukerNama}) dihapus");
+
+        return redirect()->route('healthcheck.index')->with('status', 'Form health check dihapus. Bisa dipulihkan lewat halaman Sampah.');
+    }
+
+    // ===================== SAMPAH (soft delete) =====================
+
+    public function trash(Request $request)
+    {
+        $query = HealthCheckForm::onlyTrashed()->with('uker');
+        if ($request->user()->role !== 'admin') {
+            $query->where('uker_kode', $request->user()->uker_kode);
         }
 
-        $healthcheck->delete();
+        $formList = $query->orderByDesc('deleted_at')->paginate(20)->withQueryString();
 
-        return redirect()->route('healthcheck.index')->with('status', 'Form health check dihapus.');
+        return view('healthcheck.trash', compact('formList'));
+    }
+
+    public function restore(Request $request, $id)
+    {
+        $healthcheck = HealthCheckForm::onlyTrashed()->findOrFail($id);
+        $this->authorize('restore', $healthcheck);
+
+        $healthcheck->restore();
+        ActivityLog::catat('health_check', 'restore', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) dipulihkan dari sampah");
+
+        return back()->with('status', 'Form health check berhasil dipulihkan.');
     }
 
     // ===================== BULK UPLOAD (Excel) =====================
