@@ -6,6 +6,8 @@
         <p class="text-xs text-gray-500 mt-0.5">{{ now()->locale('id')->translatedFormat('l, j F Y') }}</p>
     </x-slot>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+
     <div class="p-7 space-y-4 max-w-[1360px]">
 
         {{-- 0. Notifikasi permintaan edit yang menunggu (paling atas, khusus admin) --}}
@@ -51,6 +53,96 @@
                 <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $rataCompliance }}%</p>
             </x-card>
         </div>
+
+        {{-- 1b. Kesehatan Checklist per Kategori -- dari form TERBARU tiap uker
+             dalam cakupan RBAC (admin: semua, user: sendiri + turunan), bukan
+             dari seluruh histori. Kategori A-D pakai ComplianceScale yang sama
+             kayak tempat lain; Kategori E (Dokumentasi Visual) terpisah, gak
+             ikut compliance manapun. --}}
+        <x-card>
+            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori</h3>
+            <p class="text-xs text-gray-400 mb-4">Dari form Health Check terbaru tiap uker (bukan seluruh histori), sesuai cakupan akses Anda.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+                @foreach ($kesehatanPerKategori as $k)
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <p class="text-xs font-bold text-gray-700 mb-2 leading-snug">{{ $k['kategori'] }}</p>
+                        @if (array_sum($k['breakdown']) > 0)
+                            <div class="h-32 mb-2">
+                                <canvas
+                                    x-data="{
+                                        init() {
+                                            new Chart(this.$el, {
+                                                type: 'doughnut',
+                                                data: {
+                                                    labels: @js(array_keys($k['breakdown'])),
+                                                    datasets: [{
+                                                        data: @js(array_values($k['breakdown'])),
+                                                        backgroundColor: ['#22C55E', '#EF4444', '#F59E0B', '#94A3B8'],
+                                                        borderWidth: 0,
+                                                    }],
+                                                },
+                                                options: {
+                                                    maintainAspectRatio: false,
+                                                    plugins: { legend: { display: false } },
+                                                },
+                                            });
+                                        }
+                                    }"
+                                ></canvas>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <x-badge :color="$k['warna']">{{ $k['label'] }}</x-badge>
+                                <span class="text-sm font-extrabold text-gray-800">{{ $k['persen'] }}%</span>
+                            </div>
+                        @else
+                            <p class="text-xs text-gray-400 h-32 flex items-center justify-center text-center">Belum ada data.</p>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+
+            {{-- Kategori E -- bentuk beda sengaja, cuma link foto (bukan
+                 checklist OK/Not OK), jadi TIDAK masuk compliance manapun. --}}
+            <div class="border-t border-gray-100 pt-4">
+                <div class="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                        <p class="text-xs font-bold text-gray-700 mb-1">E - Dokumentasi Visual</p>
+                        <p class="text-xs text-gray-400">Link foto bukti pemeriksaan -- bukan checklist, gak ikut hitungan compliance.</p>
+                    </div>
+                    @if ($totalFormTerbaru > 0)
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 flex-none">
+                                <canvas
+                                    x-data="{
+                                        init() {
+                                            new Chart(this.$el, {
+                                                type: 'doughnut',
+                                                data: {
+                                                    labels: ['Lengkap 3/3', 'Belum Lengkap'],
+                                                    datasets: [{
+                                                        data: @js([$formLengkapDokumentasi, $totalFormTerbaru - $formLengkapDokumentasi]),
+                                                        backgroundColor: ['#22C55E', '#E5E7EB'],
+                                                        borderWidth: 0,
+                                                    }],
+                                                },
+                                                options: {
+                                                    maintainAspectRatio: false,
+                                                    plugins: { legend: { display: false } },
+                                                },
+                                            });
+                                        }
+                                    }"
+                                ></canvas>
+                            </div>
+                            <p class="text-sm font-extrabold text-gray-800 whitespace-nowrap">{{ $formLengkapDokumentasi }} dari {{ $totalFormTerbaru }} form sudah lengkap 3/3 foto</p>
+                        </div>
+                    @else
+                        <p class="text-xs text-gray-400">Belum ada data.</p>
+                    @endif
+                </div>
+            </div>
+        </x-card>
 
         {{-- Notifikasi status permintaan edit aset milik sendiri (khusus user, bukan admin) --}}
         @if (!$isAdmin && $editRequestsSaya->isNotEmpty())
@@ -101,7 +193,7 @@
                                                 <p class="font-semibold text-gray-700">{{ $r['uker'] }} <span class="font-normal text-gray-400 text-xs">({{ $r['kode'] }})</span></p>
                                                 <p class="text-gray-400 text-xs">{{ $r['periode'] }} &middot; {{ $r['status_tindak_lanjut'] }}</p>
                                             </div>
-                                            <x-badge :color="$r['persen'] >= 95 ? 'green' : ($r['persen'] >= 80 ? 'yellow' : 'red')">
+                                            <x-badge :color="\App\Support\ComplianceScale::badgeColor($r['persen'])">
                                                 {{ $r['persen'] }}%
                                             </x-badge>
                                         </div>

@@ -8,6 +8,7 @@ use App\Models\AsetEditRequest;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
+use App\Support\ComplianceScale;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -20,11 +21,15 @@ class DashboardController extends Controller
         $ukerKode = $request->user()->uker_kode;
 
         // ===== 1. KPI ringkas =====
+        // Non-admin di-scope ke uker sendiri + SEMUA turunannya (bukan cuma
+        // uker sendiri) -- mirip cara bangunTreeUker() ngumpulin akumulasi
+        // buat admin, tapi root-nya uker_kode milik user, bukan Kanwil.
         $asetQuery = Aset::query();
         $formQuery = HealthCheckForm::query()->with('items');
         if (! $isAdmin) {
-            $asetQuery->where('uker_kode', $ukerKode);
-            $formQuery->where('uker_kode', $ukerKode);
+            $ukerBolehDiakses = Uker::descendantKodes($ukerKode);
+            $asetQuery->whereIn('uker_kode', $ukerBolehDiakses);
+            $formQuery->whereIn('uker_kode', $ukerBolehDiakses);
         }
 
         $totalAset = $asetQuery->count();
@@ -34,6 +39,40 @@ class DashboardController extends Controller
         $totalItem = $formList->sum(fn ($f) => $f->items->count());
         $totalOk = $formList->sum(fn ($f) => $f->items->where('status', 'OK')->count());
         $rataCompliance = $totalItem > 0 ? round($totalOk / $totalItem * 100, 1) : 0;
+
+        // ===== 1b. Kesehatan Checklist per Kategori (A-D + E) =====
+        // Ambil form TERBARU per uker (bukan seluruh histori) dari $formList
+        // yang sama (udah di-scope RBAC di atas) -- biar uker yang rajin isi
+        // tiap minggu gak "menang banyak" dibanding uker yang baru isi sekali.
+        $formTerbaruPerUker = $formList->groupBy('uker_kode')
+            ->map(fn ($forms) => $forms->sortByDesc('tanggal_pemeriksaan')->first());
+
+        $semuaItemTerbaru = $formTerbaruPerUker->flatMap(fn ($f) => $f->items);
+
+        $kesehatanPerKategori = collect(config('health_check_checklist'))->keys()->map(function ($kategori) use ($semuaItemTerbaru) {
+            $items = $semuaItemTerbaru->where('kategori', $kategori);
+            $total = $items->count();
+            $ok = $items->where('status', 'OK')->count();
+            $persen = $total > 0 ? round($ok / $total * 100, 1) : 0;
+
+            return [
+                'kategori' => $kategori,
+                'persen' => $persen,
+                'label' => ComplianceScale::label($persen),
+                'warna' => ComplianceScale::badgeColor($persen),
+                'breakdown' => [
+                    'OK' => $items->where('status', 'OK')->count(),
+                    'Not OK' => $items->where('status', 'Not OK')->count(),
+                    'N/A' => $items->where('status', 'N/A')->count(),
+                    'Belum Diperiksa' => $items->where('status', 'Belum Diperiksa')->count(),
+                ],
+            ];
+        })->values();
+
+        // Kategori E "Dokumentasi Visual" -- TERPISAH, cuma link foto (bukan
+        // checklist OK/Not OK), gak pernah ikut dihitung ke compliance manapun.
+        $totalFormTerbaru = $formTerbaruPerUker->count();
+        $formLengkapDokumentasi = $formTerbaruPerUker->filter(fn ($f) => $f->jumlahFotoDokumentasiTerisi() === 3)->count();
 
         // ===== 2. Ranking cabang paling butuh perhatian (khusus admin) =====
         $rankingCabang = collect();
@@ -128,7 +167,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'totalAset', 'totalFormHc', 'rataCompliance',
+            'totalAset', 'totalFormHc', 'rataCompliance', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
             'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }
