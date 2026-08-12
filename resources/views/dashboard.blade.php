@@ -61,7 +61,18 @@
              ikut compliance manapun. --}}
         <x-card>
             <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori</h3>
-            <p class="text-xs text-gray-400 mb-4">Dari form Health Check terbaru tiap uker (bukan seluruh histori), sesuai cakupan akses Anda.</p>
+            <p class="text-xs text-gray-400 mb-3">Dari form Health Check terbaru tiap uker (bukan seluruh histori), sesuai cakupan akses Anda.</p>
+
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <x-compliance-legend />
+                <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                    <span class="font-semibold text-gray-500">Status item:</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#22C55E"></span> OK</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#EF4444"></span> Not OK</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#F59E0B"></span> N/A</span>
+                    <span class="inline-flex items-center gap-1.5"><span class="w-2 h-2 rounded-full" style="background:#94A3B8"></span> Belum Diperiksa</span>
+                </div>
+            </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
                 @foreach ($kesehatanPerKategori as $k)

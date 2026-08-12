@@ -135,6 +135,8 @@
                     <span class="sm:ml-auto text-gray-400">Klik "Buka" di tiap kotak buat lihat cabang di bawahnya</span>
                 </div>
 
+                <x-compliance-legend class="mb-3" />
+
                 <div class="org-tree-scroll overflow-x-auto pb-4">
                     <ul class="org-tree">
                         @include('uker-tree.node', ['node' => $tree, 'level' => 0])
