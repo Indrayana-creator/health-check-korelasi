@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\HealthCheckApprovalDecided;
 use App\Notifications\HealthCheckItemFlaggedNotOk;
 use App\Notifications\HealthCheckSubmittedForApproval;
+use App\Support\PeriodeMingguan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -23,7 +24,7 @@ class HealthCheckController extends Controller
     {
         $query = HealthCheckForm::with(['uker', 'items']);
         if ($request->user()->role !== 'admin') {
-            $query->where('uker_kode', $request->user()->uker_kode);
+            $query->whereIn('uker_kode', Uker::descendantKodes($request->user()->uker_kode));
         }
 
         return $query->orderBy('uker_kode');
@@ -70,9 +71,14 @@ class HealthCheckController extends Controller
     {
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
-            : Uker::where('kode', $request->user()->uker_kode)->get();
+            : Uker::whereIn('kode', Uker::descendantKodes($request->user()->uker_kode))->orderBy('nama')->get();
 
-        return view('healthcheck.create', compact('ukerList'));
+        // Saran periode minggu kerja berjalan (Senin-Jumat) -- masih boleh
+        // diubah manual, cuma nyaranin format yang gak ambigu biar gak perlu
+        // hitung sendiri rentang tanggalnya.
+        $periodeSaran = PeriodeMingguan::label(now());
+
+        return view('healthcheck.create', compact('ukerList', 'periodeSaran'));
     }
 
     protected function generateItemsUntukForm(HealthCheckForm $form): void
@@ -136,12 +142,22 @@ class HealthCheckController extends Controller
             'items.*.catatan' => 'nullable|string',
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',
+            'foto_ruang_server_url' => 'nullable|string|max:2048',
+            'foto_storage_cctv_url' => 'nullable|string|max:2048',
+            'foto_panel_ups_url' => 'nullable|string|max:2048',
         ]);
 
-        // Item checklist cuma boleh diubah kalau form masih Draft/Ditolak.
-        // Kalau statusnya "Menunggu Approval" atau "Disetujui", perubahan
-        // item ditolak -- tapi status tindak lanjut tetap boleh diupdate,
-        // karena remediasi berjalan terpisah dari proses approval datanya.
+        $dataUpdate = [
+            'status_tindak_lanjut' => $validated['status_tindak_lanjut'],
+            'catatan_tindak_lanjut' => $validated['catatan_tindak_lanjut'] ?? null,
+        ];
+
+        // Item checklist (A-D) & dokumentasi visual (E) cuma boleh diubah
+        // kalau form masih Draft/Ditolak -- dikunci bareng karena sama-sama
+        // bagian dari bukti pemeriksaan. Kalau statusnya "Menunggu Approval"
+        // atau "Disetujui", keduanya ditolak -- tapi status tindak lanjut
+        // tetap boleh diupdate, karena remediasi berjalan terpisah dari
+        // proses approval datanya.
         if ($healthcheck->itemsBisaDiedit()) {
             $jumlahBaruBermasalah = 0;
             foreach ($validated['items'] as $itemInput) {
@@ -162,12 +178,13 @@ class HealthCheckController extends Controller
             if ($jumlahBaruBermasalah > 0) {
                 User::where('role', 'admin')->get()->each->notify(new HealthCheckItemFlaggedNotOk($healthcheck, $jumlahBaruBermasalah));
             }
+
+            $dataUpdate['foto_ruang_server_url'] = $validated['foto_ruang_server_url'] ?? null;
+            $dataUpdate['foto_storage_cctv_url'] = $validated['foto_storage_cctv_url'] ?? null;
+            $dataUpdate['foto_panel_ups_url'] = $validated['foto_panel_ups_url'] ?? null;
         }
 
-        $healthcheck->update([
-            'status_tindak_lanjut' => $validated['status_tindak_lanjut'],
-            'catatan_tindak_lanjut' => $validated['catatan_tindak_lanjut'] ?? null,
-        ]);
+        $healthcheck->update($dataUpdate);
         ActivityLog::catat('health_check', 'update', 1, "Form health check {$healthcheck->periode} ({$healthcheck->uker?->nama}) diupdate");
 
         $pesan = $healthcheck->itemsBisaDiedit()
@@ -265,7 +282,7 @@ class HealthCheckController extends Controller
     {
         $query = HealthCheckForm::onlyTrashed()->with('uker');
         if ($request->user()->role !== 'admin') {
-            $query->where('uker_kode', $request->user()->uker_kode);
+            $query->whereIn('uker_kode', Uker::descendantKodes($request->user()->uker_kode));
         }
 
         $formList = $query->orderByDesc('deleted_at')->paginate(20)->withQueryString();
@@ -340,6 +357,7 @@ class HealthCheckController extends Controller
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;
+        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
 
         $berhasil = 0;
         $gagal = [];
@@ -354,8 +372,8 @@ class HealthCheckController extends Controller
                 continue;
             }
 
-            if (! $isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
-                $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan milik Anda";
+            if (! $isAdmin && ! in_array((int) $ukerKode, $ukerBolehDiakses)) {
+                $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan uker Anda atau cabang di bawahnya";
 
                 continue;
             }
@@ -406,6 +424,7 @@ class HealthCheckController extends Controller
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;
+        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
 
         $terhapus = 0;
         $tidakKetemu = [];
@@ -419,14 +438,15 @@ class HealthCheckController extends Controller
                 continue;
             }
 
-            $query = HealthCheckForm::where('uker_kode', $ukerKode)->where('periode', $periode);
-            if (! $isAdmin) {
-                $query->where('uker_kode', $ukerSendiri);
+            if (! $isAdmin && ! in_array((int) $ukerKode, $ukerBolehDiakses)) {
+                $tidakKetemu[] = "Baris {$row}: uker {$ukerKode} periode {$periode} tidak ditemukan (atau bukan uker Anda/cabang di bawahnya)";
+
+                continue;
             }
 
-            $form = $query->first();
+            $form = HealthCheckForm::where('uker_kode', $ukerKode)->where('periode', $periode)->first();
             if (! $form) {
-                $tidakKetemu[] = "Baris {$row}: uker {$ukerKode} periode {$periode} tidak ditemukan (atau bukan milik Anda)";
+                $tidakKetemu[] = "Baris {$row}: uker {$ukerKode} periode {$periode} tidak ditemukan (atau bukan uker Anda/cabang di bawahnya)";
 
                 continue;
             }

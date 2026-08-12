@@ -24,7 +24,11 @@ class UserController extends Controller
 
     public function create()
     {
-        $ukerList = Uker::orderBy('nama')->get();
+        // Dropdown pilihan uker di form ini dibatasi level KC ke atas --
+        // yang punya akun login cuma kantor cabang, jadi assign user ke
+        // level KCP/Unit gak relevan di sini (beda sama form Aset/Health
+        // Check yang tetap harus bisa pilih semua level).
+        $ukerList = Uker::levelKcKeAtas()->orderBy('nama')->get();
 
         return view('users.create', compact('ukerList'));
     }
@@ -60,7 +64,16 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
-        $ukerList = Uker::orderBy('nama')->get();
+        // Sama kayak create() -- dibatasi level KC ke atas, TAPI kalau user
+        // ini kebetulan sudah ter-assign ke uker di bawah KC (data lama),
+        // tetap disertakan di daftar biar gak ke-ganti diam-diam pas form
+        // disimpan tanpa disentuh.
+        $ukerList = Uker::where(function ($q) use ($user) {
+            $q->levelKcKeAtas();
+            if ($user->uker_kode) {
+                $q->orWhere('kode', $user->uker_kode);
+            }
+        })->orderBy('nama')->get();
 
         return view('users.edit', compact('user', 'ukerList'));
     }

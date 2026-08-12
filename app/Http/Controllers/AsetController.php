@@ -65,7 +65,7 @@ class AsetController extends Controller
     {
         $query = Aset::with(['uker', 'kodeAset']);
         if ($request->user()->role !== 'admin') {
-            $query->where('uker_kode', $request->user()->uker_kode);
+            $query->whereIn('uker_kode', Uker::descendantKodes($request->user()->uker_kode));
         }
 
         return $query->orderBy('uker_kode');
@@ -116,7 +116,7 @@ class AsetController extends Controller
     {
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
-            : Uker::where('kode', $request->user()->uker_kode)->get();
+            : Uker::whereIn('kode', Uker::descendantKodes($request->user()->uker_kode))->orderBy('nama')->get();
         $kodeAsetList = KodeAset::orderBy('kategori')->orderBy('kode')->get();
 
         return view('aset.create', compact('ukerList', 'kodeAsetList'));
@@ -142,7 +142,7 @@ class AsetController extends Controller
 
         $ukerList = $request->user()->role === 'admin'
             ? Uker::orderBy('nama')->get()
-            : Uker::where('kode', $request->user()->uker_kode)->get();
+            : Uker::whereIn('kode', Uker::descendantKodes($request->user()->uker_kode))->orderBy('nama')->get();
         $kodeAsetList = KodeAset::orderBy('kategori')->orderBy('kode')->get();
         $bisaDiedit = $aset->bisaDiedit($request->user());
         $permintaanMenunggu = $aset->permintaanEditMenunggu();
@@ -262,7 +262,7 @@ class AsetController extends Controller
     {
         $query = Aset::onlyTrashed()->with(['uker', 'kodeAset']);
         if ($request->user()->role !== 'admin') {
-            $query->where('uker_kode', $request->user()->uker_kode);
+            $query->whereIn('uker_kode', Uker::descendantKodes($request->user()->uker_kode));
         }
 
         $asetList = $query->orderByDesc('deleted_at')->paginate(20)->withQueryString();
@@ -351,6 +351,7 @@ class AsetController extends Controller
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;
+        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
 
         $berhasil = 0;
         $gagal = [];
@@ -369,8 +370,8 @@ class AsetController extends Controller
                 continue; // baris benar-benar kosong, dilewati diam-diam
             }
 
-            if (! $isAdmin && (int) $ukerKode !== (int) $ukerSendiri) {
-                $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan milik Anda";
+            if (! $isAdmin && ! in_array((int) $ukerKode, $ukerBolehDiakses)) {
+                $gagal[] = "Baris {$row}: uker_kode {$ukerKode} bukan uker Anda atau cabang di bawahnya";
 
                 continue;
             }
@@ -512,6 +513,7 @@ class AsetController extends Controller
 
         $isAdmin = $request->user()->role === 'admin';
         $ukerSendiri = $request->user()->uker_kode;
+        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
 
         $terhapus = 0;
         $tidakKetemu = [];
@@ -524,7 +526,7 @@ class AsetController extends Controller
 
             $query = Aset::where('sn', $sn);
             if (! $isAdmin) {
-                $query->where('uker_kode', $ukerSendiri);
+                $query->whereIn('uker_kode', $ukerBolehDiakses);
             }
 
             $aset = $query->first();

@@ -64,6 +64,7 @@
                                 <option value="{{ $uker->kode }}" @selected(old('uker_kode', $user->uker_kode) == $uker->kode)>{{ $uker->nama }}</option>
                             @endforeach
                         </x-select>
+                        <p class="text-xs text-gray-400 mt-1.5">Cuma level KC (Kantor Cabang) ke atas -- yang punya akun login cuma kantor cabang.</p>
                         <x-input-error :messages="$errors->get('uker_kode')" class="mt-1.5" />
                     </div>
 

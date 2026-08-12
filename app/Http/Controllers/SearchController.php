@@ -4,12 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
+use App\Models\Uker;
 use Illuminate\Http\Request;
 
 // Pencarian global di topbar -- cari cepat lintas Aset & Health Check dari
 // halaman manapun. Scoping RBAC-nya ngikutin pola yang sama persis kayak
-// AsetController/HealthCheckController: admin lihat semua, user cuma lihat
-// punya uker sendiri.
+// AsetController/HealthCheckController: admin lihat semua, user lihat punya
+// uker sendiri + SEMUA turunannya (bukan cuma uker sendiri).
 class SearchController extends Controller
 {
     const BATAS_HASIL = 5;
@@ -22,7 +23,7 @@ class SearchController extends Controller
         }
 
         $isAdmin = $request->user()->role === 'admin';
-        $ukerKode = $request->user()->uker_kode;
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($request->user()->uker_kode);
 
         $asetQuery = Aset::with(['uker', 'kodeAset'])
             ->where(function ($sub) use ($q) {
@@ -33,7 +34,7 @@ class SearchController extends Controller
                     ->orWhere('pemegang_nama', 'like', "%{$q}%");
             });
         if (! $isAdmin) {
-            $asetQuery->where('uker_kode', $ukerKode);
+            $asetQuery->whereIn('uker_kode', $ukerBolehDiakses);
         }
         $asetHasil = $asetQuery->latest()->take(self::BATAS_HASIL)->get()->map(fn ($a) => [
             'id' => $a->id,
@@ -48,7 +49,7 @@ class SearchController extends Controller
                     ->orWhereHas('uker', fn ($u) => $u->where('nama', 'like', "%{$q}%"));
             });
         if (! $isAdmin) {
-            $hcQuery->where('uker_kode', $ukerKode);
+            $hcQuery->whereIn('uker_kode', $ukerBolehDiakses);
         }
         $hcHasil = $hcQuery->latest()->take(self::BATAS_HASIL)->get()->map(fn ($f) => [
             'id' => $f->id,

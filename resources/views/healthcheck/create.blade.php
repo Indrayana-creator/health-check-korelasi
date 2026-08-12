@@ -17,17 +17,17 @@
                     Setelah disimpan, 61 item pemeriksaan resmi (kategori A-D) akan otomatis dibuat dengan status awal "Belum Diperiksa", dan Anda akan diarahkan ke halaman pengisian.
                 </p>
 
-                <form action="{{ route('healthcheck.store') }}" method="POST" class="space-y-4">
+                <form action="{{ route('healthcheck.store') }}" method="POST" class="space-y-4" x-data="{ ukerKodeTerpilih: '{{ old('uker_kode') }}' }">
                     @csrf
 
                     <div>
-                        <x-input-label value="Uker" required />
-                        <x-select name="uker_kode" class="mt-1.5 block w-full" required>
-                            <option value="">-- Pilih Uker --</option>
-                            @foreach ($ukerList as $uker)
-                                <option value="{{ $uker->kode }}" @selected(old('uker_kode') == $uker->kode)>{{ $uker->nama }}</option>
-                            @endforeach
-                        </x-select>
+                        <x-uker-combobox
+                            name="uker_kode"
+                            label="Uker"
+                            :daftar-uker="$ukerList->map(fn($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                            model-value="ukerKodeTerpilih"
+                            placeholder="Ketik nama atau kode uker..."
+                        />
                         <x-input-error :messages="$errors->get('uker_kode')" class="mt-1.5" />
                     </div>
 
@@ -39,7 +39,8 @@
 
                     <div>
                         <x-input-label value="Periode" required />
-                        <x-text-input type="text" name="periode" value="{{ old('periode') }}" placeholder="contoh: Juli 2026" class="mt-1.5 block w-full" required />
+                        <x-text-input type="text" name="periode" value="{{ old('periode', $periodeSaran) }}" placeholder="contoh: 10-14 Agustus 2026" class="mt-1.5 block w-full" required />
+                        <p class="text-xs text-gray-400 mt-1.5">Siklus Health Check mingguan (Senin-Jumat) -- rentang tanggal minggu berjalan sudah disarankan otomatis, tapi tetap bisa diubah manual kalau perlu.</p>
                         <x-input-error :messages="$errors->get('periode')" class="mt-1.5" />
                     </div>
 

@@ -78,6 +78,38 @@ test('pn wajib diisi dan harus terdaftar di data pekerja saat menambah user', fu
     expect(User::where('email', 'pnngasal@example.com')->exists())->toBeFalse();
 });
 
+test('dropdown uker di form Tambah/Edit User cuma nampilin level KC ke atas, gak ada KCP/Unit', function () {
+    $admin = User::factory()->admin()->create();
+    $kanwil = Uker::factory()->create(['jenis' => 'KANWIL']);
+    $kc = Uker::factory()->create(['jenis' => 'KC']);
+    $kcp = Uker::factory()->create(['jenis' => 'KCP']);
+    $unit = Uker::factory()->create(['jenis' => 'UNIT']);
+
+    $create = $this->actingAs($admin)->get(route('users.create'));
+    $create->assertOk();
+    $kodeDiCreate = $create->viewData('ukerList')->pluck('kode');
+    expect($kodeDiCreate)->toContain($kanwil->kode, $kc->kode);
+    expect($kodeDiCreate)->not->toContain($kcp->kode, $unit->kode);
+
+    $userDicek = User::factory()->forUker($kc->kode)->create();
+    $edit = $this->actingAs($admin)->get(route('users.edit', $userDicek));
+    $edit->assertOk();
+    $kodeDiEdit = $edit->viewData('ukerList')->pluck('kode');
+    expect($kodeDiEdit)->toContain($kanwil->kode, $kc->kode);
+    expect($kodeDiEdit)->not->toContain($kcp->kode, $unit->kode);
+});
+
+test('edit user yang sudah ter-assign ke uker level KCP/Unit (data lama) tetap nampilin uker itu, gak ilang dari dropdown', function () {
+    $admin = User::factory()->admin()->create();
+    $kcp = Uker::factory()->create(['jenis' => 'KCP']);
+    $userLama = User::factory()->forUker($kcp->kode)->create();
+
+    $edit = $this->actingAs($admin)->get(route('users.edit', $userLama));
+
+    $edit->assertOk();
+    expect($edit->viewData('ukerList')->pluck('kode'))->toContain($kcp->kode);
+});
+
 test('admin bisa menghapus user lain tapi tidak bisa menghapus akun sendiri', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
