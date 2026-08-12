@@ -9,16 +9,17 @@ test('guest tidak bisa akses monitoring kendala', function () {
     $this->get(route('monitoring.index'))->assertRedirect(route('login'));
 });
 
-test('user biasa tidak bisa akses monitoring kendala maupun update tindak lanjut', function () {
+test('user biasa BISA akses monitoring kendala & export, di-scope ke uker sendiri + turunan', function () {
     $uker = Uker::factory()->create();
+    $anak = Uker::factory()->create(['kode_spv' => $uker->kode]);
     $user = User::factory()->forUker($uker->kode)->create();
-    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $anak->kode]);
     $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
 
-    $this->actingAs($user)->get(route('monitoring.index'))->assertForbidden();
-    $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $item), ['status_tindak_lanjut' => 'Sedang Diproses'])->assertForbidden();
-    $this->actingAs($user)->get(route('monitoring.export.excel'))->assertForbidden();
-    $this->actingAs($user)->get(route('monitoring.export.pdf'))->assertForbidden();
+    $this->actingAs($user)->get(route('monitoring.index'))->assertOk();
+    $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $item), ['status_tindak_lanjut' => 'Sedang Diproses'])->assertRedirect();
+    $this->actingAs($user)->get(route('monitoring.export.excel'))->assertOk();
+    $this->actingAs($user)->get(route('monitoring.export.pdf'))->assertOk();
 });
 
 test('monitoring cuma menampilkan item yang statusnya Not OK', function () {
@@ -200,4 +201,83 @@ test('export monitoring kendala tetap ikut filter uker yang aktif', function () 
     $response = $this->actingAs($admin)->get(route('monitoring.export.excel', ['uker_kode' => $ukerA->kode]));
 
     $response->assertOk();
+});
+
+// ===================== Batasan akses role "user" (subtree sendiri) =====================
+
+test('user Cabang A cuma lihat kendala dari uker sendiri + turunannya, gak lihat Cabang B', function () {
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create();
+    $user = User::factory()->forUker($cabangA->kode)->create();
+
+    $formA = HealthCheckForm::factory()->create(['uker_kode' => $cabangA->kode]);
+    $formAnak = HealthCheckForm::factory()->create(['uker_kode' => $kcpA1->kode]);
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $cabangB->kode]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $formA->id, 'status' => 'Not OK']);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $formAnak->id, 'status' => 'Not OK']);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $formB->id, 'status' => 'Not OK']);
+
+    $response = $this->actingAs($user)->get(route('monitoring.index'));
+
+    $response->assertOk();
+    expect($response->viewData('items'))->toHaveCount(2);
+    $response->assertViewHas('totalBermasalah', 2);
+});
+
+test('user Cabang A TIDAK BISA update tindak lanjut item milik Cabang B, walau tahu ID item-nya lewat request langsung', function () {
+    $cabangA = Uker::factory()->create();
+    $cabangB = Uker::factory()->create();
+    $user = User::factory()->forUker($cabangA->kode)->create();
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $cabangB->kode]);
+    $itemB = HealthCheckItem::factory()->create(['health_check_form_id' => $formB->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti']);
+
+    $response = $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $itemB), [
+        'status_tindak_lanjut' => 'Selesai Diperbaiki',
+    ]);
+
+    $response->assertForbidden();
+    expect($itemB->fresh()->status_tindak_lanjut)->toBe('Belum Ditindaklanjuti');
+});
+
+test('user Cabang A bisa update tindak lanjut item milik turunannya sendiri (KCP)', function () {
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $user = User::factory()->forUker($cabangA->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $kcpA1->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti']);
+
+    $response = $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Selesai Diperbaiki',
+    ]);
+
+    $response->assertRedirect();
+    expect($item->fresh()->status_tindak_lanjut)->toBe('Selesai Diperbaiki');
+});
+
+test('export monitoring milik user biasa cuma berisi item dari subtree-nya sendiri', function () {
+    $cabangA = Uker::factory()->create();
+    $cabangB = Uker::factory()->create();
+    $user = User::factory()->forUker($cabangA->kode)->create();
+    $formA = HealthCheckForm::factory()->create(['uker_kode' => $cabangA->kode]);
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $cabangB->kode]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $formA->id, 'status' => 'Not OK']);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $formB->id, 'status' => 'Not OK']);
+
+    $response = $this->actingAs($user)->get(route('monitoring.export.excel'));
+
+    $response->assertOk();
+});
+
+test('dropdown filter uker buat user biasa cuma berisi uker sendiri + turunan, bukan semua uker', function () {
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create();
+    $user = User::factory()->forUker($cabangA->kode)->create();
+
+    $response = $this->actingAs($user)->get(route('monitoring.index'));
+
+    $kodeList = $response->viewData('ukerFilterList')->pluck('kode');
+    expect($kodeList)->toContain($cabangA->kode, $kcpA1->kode);
+    expect($kodeList)->not->toContain($cabangB->kode);
 });

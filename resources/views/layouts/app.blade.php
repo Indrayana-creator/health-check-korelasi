@@ -75,6 +75,7 @@
                             ]
                             : [
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
+                                ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
                             ];
                     @endphp
                     @foreach ($navLaporan as $item)

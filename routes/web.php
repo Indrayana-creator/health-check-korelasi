@@ -88,16 +88,19 @@ Route::middleware('auth')->group(function () {
     Route::get('/uker-tree/{kode}/detail', [UkerTreeController::class, 'detail'])->name('uker-tree.detail');
     Route::get('/uker-tree/{kode}/compliance-detail', [UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
 
+    // Monitoring Kendala -- semua role, di-scope subtree (admin: semua,
+    // user: uker sendiri + turunan) sama kayak Struktur Organisasi di atas.
+    Route::get('/monitoring-kendala', [MonitoringController::class, 'index'])->name('monitoring.index');
+    Route::get('/monitoring-kendala/export/excel', [MonitoringController::class, 'exportExcel'])->name('monitoring.export.excel');
+    Route::get('/monitoring-kendala/export/pdf', [MonitoringController::class, 'exportPdf'])->name('monitoring.export.pdf');
+    Route::post('/monitoring-kendala/{item}/tindak-lanjut', [MonitoringController::class, 'updateTindakLanjut'])->name('monitoring.updateTindakLanjut');
+
     // Kelola User, Rekap per Cabang, Log History, Permintaan Edit Aset, & Kelola Uker -- khusus admin
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggleActive');
         Route::get('/rekap-cabang', [RekapController::class, 'index'])->name('rekap.cabang');
         Route::get('/rekap-aset', [RekapController::class, 'aset'])->name('rekap.aset');
-        Route::get('/monitoring-kendala', [MonitoringController::class, 'index'])->name('monitoring.index');
-        Route::get('/monitoring-kendala/export/excel', [MonitoringController::class, 'exportExcel'])->name('monitoring.export.excel');
-        Route::get('/monitoring-kendala/export/pdf', [MonitoringController::class, 'exportPdf'])->name('monitoring.export.pdf');
-        Route::post('/monitoring-kendala/{item}/tindak-lanjut', [MonitoringController::class, 'updateTindakLanjut'])->name('monitoring.updateTindakLanjut');
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');
         Route::get('/log-history/export/excel', [LogHistoryController::class, 'exportExcel'])->name('log-history.export.excel');
         Route::get('/log-history/export/pdf', [LogHistoryController::class, 'exportPdf'])->name('log-history.export.pdf');

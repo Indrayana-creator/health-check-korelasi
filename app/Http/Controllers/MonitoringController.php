@@ -16,9 +16,24 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 // yang lagi ada masalah dan kenapa (bukan cuma lihat compliance % agregat).
 class MonitoringController extends Controller
 {
-    protected function filteredQuery(Request $request)
+    // Non-admin cuma lihat kendala dari uker sendiri + seluruh turunannya
+    // (subtree) -- reuse Uker::descendantKodes() yang sama dipakai di
+    // Aset/Health Check/Struktur Organisasi, bukan scoping baru.
+    protected function scopedQuery(Request $request)
     {
         $query = HealthCheckItem::with(['form.uker'])->where('status', 'Not OK');
+
+        if ($request->user()->role !== 'admin') {
+            $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);
+            $query->whereHas('form', fn ($q) => $q->whereIn('uker_kode', $ukerBolehDiakses));
+        }
+
+        return $query;
+    }
+
+    protected function filteredQuery(Request $request)
+    {
+        $query = $this->scopedQuery($request);
 
         if ($request->filled('uker_kode')) {
             $query->whereHas('form', fn ($q) => $q->where('uker_kode', $request->input('uker_kode')));
@@ -33,6 +48,22 @@ class MonitoringController extends Controller
         }
 
         return $query;
+    }
+
+    // User cuma boleh update tindak lanjut item yang form-nya ada di
+    // subtree-nya sendiri -- kalau nyoba lewat request langsung ke item di
+    // luar itu (misal ketebak ID-nya), ditolak 403, bukan cuma disembunyikan
+    // di UI (item itu emang gak pernah dirender ke non-admin di tabel).
+    protected function authorizeAksesItem(Request $request, HealthCheckItem $item): void
+    {
+        if ($request->user()->role === 'admin') {
+            return;
+        }
+
+        $ukerKode = $item->form?->uker_kode;
+        if (! $ukerKode || ! in_array($ukerKode, Uker::descendantKodes($request->user()->uker_kode))) {
+            abort(403, 'Anda tidak punya akses ke item ini.');
+        }
     }
 
     // Ambang batas (hari) sebelum item yang belum ditindaklanjuti dianggap
@@ -78,27 +109,34 @@ class MonitoringController extends Controller
     public function index(Request $request)
     {
         $items = $this->sortedItems($request);
+        $isAdmin = $request->user()->role === 'admin';
 
-        $totalBermasalah = HealthCheckItem::where('status', 'Not OK')->count();
-        $totalBelum = HealthCheckItem::where('status', 'Not OK')->where('status_tindak_lanjut', 'Belum Ditindaklanjuti')->count();
-        $totalSelesai = HealthCheckItem::where('status', 'Not OK')->where('status_tindak_lanjut', 'Selesai Diperbaiki')->count();
-        $totalMendesak = HealthCheckItem::where('status', 'Not OK')
+        // Stat card dihitung dari scope user (bukan hasil filter aktif),
+        // pola yang sama kayak Aset/Health Check index() -- biar stat di
+        // atas stabil sementara tabel di bawahnya ikut filter.
+        $itemsUntukStat = $this->scopedQuery($request)->with('form')->get();
+        $totalBermasalah = $itemsUntukStat->count();
+        $totalBelum = $itemsUntukStat->where('status_tindak_lanjut', 'Belum Ditindaklanjuti')->count();
+        $totalSelesai = $itemsUntukStat->where('status_tindak_lanjut', 'Selesai Diperbaiki')->count();
+        $totalMendesak = $itemsUntukStat
             ->where('status_tindak_lanjut', '!=', 'Selesai Diperbaiki')
-            ->with('form')
-            ->get()
             ->filter(fn ($item) => self::itemMendesak($item))
             ->count();
 
-        $ukerFilterList = Uker::orderBy('nama')->get();
+        $ukerFilterList = $isAdmin
+            ? Uker::orderBy('nama')->get()
+            : Uker::whereIn('kode', Uker::descendantKodes($request->user()->uker_kode))->orderBy('nama')->get();
         $kategoriList = array_keys(config('health_check_checklist'));
 
         return view('monitoring.index', compact(
-            'items', 'totalBermasalah', 'totalBelum', 'totalSelesai', 'totalMendesak', 'ukerFilterList', 'kategoriList'
+            'items', 'totalBermasalah', 'totalBelum', 'totalSelesai', 'totalMendesak', 'ukerFilterList', 'kategoriList', 'isAdmin'
         ));
     }
 
     public function updateTindakLanjut(Request $request, HealthCheckItem $item)
     {
+        $this->authorizeAksesItem($request, $item);
+
         $validated = $request->validate([
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',

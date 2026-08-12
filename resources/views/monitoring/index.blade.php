@@ -12,8 +12,13 @@
 
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 max-w-3xl">
-                Daftar semua item checklist Health Check yang berstatus "Not OK" dari seluruh uker, biar bisa dipantau
-                uker mana yang lagi ada kendala dan kenapa -- tanpa harus buka form satu-satu.
+                @if ($isAdmin)
+                    Daftar semua item checklist Health Check yang berstatus "Not OK" dari seluruh uker, biar bisa dipantau
+                    uker mana yang lagi ada kendala dan kenapa -- tanpa harus buka form satu-satu.
+                @else
+                    Daftar item checklist Health Check yang berstatus "Not OK" dari uker Anda dan seluruh cabang di
+                    bawahnya, biar bisa dipantau dan ditindaklanjuti tanpa harus buka form satu-satu.
+                @endif
             </p>
             <div class="flex gap-2 flex-none">
                 <x-button variant="secondary" :href="route('monitoring.export.excel', request()->query())">Export Excel</x-button>
