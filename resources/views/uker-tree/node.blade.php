@@ -37,9 +37,18 @@
                 {{ $node['total_aset'] }} aset
             </button>
             @if ($node['rata_compliance'] !== null)
+                @php
+                    // Class Tailwind ditulis literal di sini (bukan interpolasi
+                    // string) biar tetap kedeteksi JIT purge -- ambang batasnya
+                    // sendiri satu sumber kebenaran dari ComplianceScale.
+                    $warnaCompliance = match (\App\Support\ComplianceScale::badgeColor($node['rata_compliance'])) {
+                        'green' => 'bg-green-100 text-green-700',
+                        'yellow' => 'bg-yellow-100 text-yellow-700',
+                        default => 'bg-red-100 text-red-700',
+                    };
+                @endphp
                 <button type="button" @click.stop="$store.complianceDetail.buka({{ $node['kode'] }})"
-                    class="px-1.5 py-0.5 rounded-full font-semibold hover:opacity-75
-                    {{ $node['rata_compliance'] >= 95 ? 'bg-green-100 text-green-700' : ($node['rata_compliance'] >= 80 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700') }}">
+                    class="px-1.5 py-0.5 rounded-full font-semibold hover:opacity-75 {{ $warnaCompliance }}">
                     {{ $node['rata_compliance'] }}%
                 </button>
             @else

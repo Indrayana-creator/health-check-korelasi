@@ -14,6 +14,7 @@ class HealthCheckForm extends Model
         'uker_kode', 'pic_pn', 'tanggal_pemeriksaan', 'periode',
         'status_tindak_lanjut', 'catatan_tindak_lanjut',
         'status_approval', 'catatan_approval', 'approved_by_pn', 'approved_at',
+        'foto_ruang_server_url', 'foto_storage_cctv_url', 'foto_panel_ups_url',
     ];
 
     public const DAFTAR_STATUS_TINDAK_LANJUT = [
@@ -22,6 +23,28 @@ class HealthCheckForm extends Model
 
     public const DAFTAR_STATUS_APPROVAL = [
         'Draft', 'Menunggu Approval', 'Disetujui', 'Ditolak',
+    ];
+
+    // Kategori E "Dokumentasi Visual" (form resmi ESO Group BRI) -- bukan
+    // checklist OK/Not OK/N/A, cuma link foto bukti, jadi TIDAK ikut
+    // persenCompliance() di bawah. Metadata (instruksi & kondisi ideal)
+    // disimpan di satu tempat ini biar dipakai bareng sama view.
+    public const FIELD_DOKUMENTASI_VISUAL = [
+        'foto_ruang_server_url' => [
+            'label' => 'Foto Ruang Server/Jaringan',
+            'instruksi' => 'Ambil foto area ruang server/jaringan secara keseluruhan dari depan pintu masuk',
+            'kondisi_ideal' => 'ruangan, AC, rak, dan kondisi kerapian terlihat jelas',
+        ],
+        'foto_storage_cctv_url' => [
+            'label' => 'Foto Status Storage & Channel CCTV',
+            'instruksi' => 'Screenshot atau foto layar NVR yang menampilkan status storage dan seluruh channel',
+            'kondisi_ideal' => 'seluruh channel aktif dan informasi kapasitas storage terbaca jelas',
+        ],
+        'foto_panel_ups_url' => [
+            'label' => 'Foto Panel LCD UPS',
+            'instruksi' => 'Ambil foto panel LCD UPS yang menampilkan informasi beban, baterai, dan tegangan',
+            'kondisi_ideal' => 'nilai Load, status baterai, dan tegangan terbaca dengan jelas',
+        ],
     ];
 
     protected $casts = [
@@ -59,7 +82,9 @@ class HealthCheckForm extends Model
         return $this->hasMany(HealthCheckItem::class);
     }
 
-    // Persentase compliance keseluruhan (OK / total langkah)
+    // Persentase compliance keseluruhan (OK / total langkah) -- murni dari
+    // checklist Kategori A-D, Kategori E (dokumentasi visual) gak pernah
+    // ikut dihitung di sini.
     public function persenCompliance(): float
     {
         $total = $this->items()->count();
@@ -69,5 +94,13 @@ class HealthCheckForm extends Model
         $ok = $this->items()->where('status', 'OK')->count();
 
         return round($ok / $total * 100, 1);
+    }
+
+    // Jumlah foto dokumentasi visual (Kategori E) yang sudah diisi, dari 0-3.
+    public function jumlahFotoDokumentasiTerisi(): int
+    {
+        return collect(array_keys(self::FIELD_DOKUMENTASI_VISUAL))
+            ->filter(fn ($field) => filled($this->{$field}))
+            ->count();
     }
 }

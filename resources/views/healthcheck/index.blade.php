@@ -122,7 +122,7 @@
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->periode }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan }}</td>
                             <td class="px-4 py-3">
-                                <x-badge :color="$persen >= 95 ? 'green' : ($persen >= 80 ? 'yellow' : 'red')">
+                                <x-badge :color="\App\Support\ComplianceScale::badgeColor($persen)">
                                     {{ $persen }}%
                                 </x-badge>
                             </td>

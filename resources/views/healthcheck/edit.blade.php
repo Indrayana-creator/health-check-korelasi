@@ -92,9 +92,9 @@
                 @if (!$healthcheck->itemsBisaDiedit())
                     <div class="bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm p-4 rounded-xl">
                         @if ($healthcheck->sudahLewatTanggal())
-                            Item checklist di bawah ini terkunci (read-only) karena sudah melewati tanggal pemeriksaan ({{ $healthcheck->tanggal_pemeriksaan->format('d M Y') }}). Pengisian harus dilakukan di hari yang sama, tidak bisa mengisi mundur.
+                            Item checklist & dokumentasi visual di bawah ini terkunci (read-only) karena sudah melewati tanggal pemeriksaan ({{ $healthcheck->tanggal_pemeriksaan->format('d M Y') }}). Pengisian harus dilakukan di hari yang sama, tidak bisa mengisi mundur.
                         @else
-                            Item checklist di bawah ini terkunci (read-only) karena form sudah {{ strtolower($healthcheck->status_approval) }}.
+                            Item checklist & dokumentasi visual di bawah ini terkunci (read-only) karena form sudah {{ strtolower($healthcheck->status_approval) }}.
                         @endif
                         Cuma Status Tindak Lanjut di atas yang masih bisa diubah.
                     </div>
@@ -121,6 +121,13 @@
                     $overallTotal = array_sum(array_column($kategoriProgress, 'total'));
                     $overallSelesai = array_sum(array_column($kategoriProgress, 'selesai'));
                     $overallPct = $overallTotal > 0 ? round($overallSelesai / $overallTotal * 100) : 0;
+
+                    // Tab E "Dokumentasi Visual" -- bukan checklist OK/Not OK/N/A,
+                    // gak ikut $kategoriProgress/$overallPct (compliance % tetap
+                    // murni dari A-D). Progress-nya dihitung terpisah (0-3 foto).
+                    $tabDokumentasiVisual = count($kategoriProgress);
+                    $fotoTerisi = $healthcheck->jumlahFotoDokumentasiTerisi();
+                    $fotoTotal = count(\App\Models\HealthCheckForm::FIELD_DOKUMENTASI_VISUAL);
 
                     $statusActiveClass = [
                         'Belum Diperiksa' => 'bg-gray-500 text-white border-gray-500',
@@ -157,6 +164,21 @@
                                     </div>
                                 </button>
                             @endforeach
+
+                            <button
+                                type="button"
+                                @click="tab = {{ $tabDokumentasiVisual }}"
+                                :class="tab === {{ $tabDokumentasiVisual }} ? 'bg-cakrawala/10' : 'hover:bg-gray-50'"
+                                class="flex-1 min-w-[160px] flex flex-col gap-1.5 p-3 rounded-lg text-left transition"
+                            >
+                                <span :class="tab === {{ $tabDokumentasiVisual }} ? 'text-cakrawala' : 'text-gray-600'" class="text-xs font-bold">E - Dokumentasi Visual</span>
+                                <div class="flex items-center gap-2">
+                                    <div class="flex-1 h-[5px] rounded-full bg-gray-200">
+                                        <div class="h-[5px] rounded-full {{ $fotoTerisi === $fotoTotal ? 'bg-green-500' : 'bg-cakrawala' }}" style="width: {{ $fotoTotal > 0 ? round($fotoTerisi / $fotoTotal * 100) : 0 }}%"></div>
+                                    </div>
+                                    <span :class="tab === {{ $tabDokumentasiVisual }} ? 'text-cakrawala' : 'text-gray-500'" class="text-[10.5px] font-bold whitespace-nowrap">{{ $fotoTerisi }}/{{ $fotoTotal }}</span>
+                                </div>
+                            </button>
                         </div>
                     </x-card>
 
@@ -213,12 +235,48 @@
                                 <x-button
                                     type="button"
                                     variant="secondary"
-                                    x-show="tab < {{ count($kategoriProgress) - 1 }}"
+                                    x-show="tab < {{ $tabDokumentasiVisual }}"
                                     @click="tab = tab + 1"
                                 >Kategori Berikutnya &rarr;</x-button>
                             </div>
                         </div>
                     @endforeach
+
+                    <div x-show="tab === {{ $tabDokumentasiVisual }}" x-cloak>
+                        <x-card padding="p-6">
+                            <h3 class="font-extrabold text-sm text-gray-800 mb-1">E - Dokumentasi Visual</h3>
+                            <p class="text-xs text-gray-400 mb-4">
+                                Link/URL foto bukti pemeriksaan, opsional -- tidak ikut hitungan compliance % (compliance tetap murni dari Kategori A-D).
+                            </p>
+
+                            <div class="flex flex-col gap-5">
+                                @foreach (\App\Models\HealthCheckForm::FIELD_DOKUMENTASI_VISUAL as $field => $meta)
+                                    <div class="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
+                                        <p class="text-sm font-semibold text-gray-700 mb-1">{{ $loop->iteration }}. {{ $meta['label'] }}</p>
+                                        <p class="text-xs text-gray-400 mb-1">{{ $meta['instruksi'] }}</p>
+                                        <p class="text-xs text-gray-400 mb-2.5">Kondisi ideal: {{ $meta['kondisi_ideal'] }}</p>
+                                        <x-text-input
+                                            type="text"
+                                            name="{{ $field }}"
+                                            value="{{ $healthcheck->{$field} }}"
+                                            placeholder="https://... (link foto/screenshot)"
+                                            class="block w-full"
+                                            :readonly="!$editable"
+                                        />
+                                    </div>
+                                @endforeach
+                            </div>
+                        </x-card>
+
+                        <div class="flex items-center justify-between mt-3">
+                            <x-button
+                                type="button"
+                                variant="secondary"
+                                @click="tab = tab - 1"
+                            >&larr; Kategori Sebelumnya</x-button>
+                            <span></span>
+                        </div>
+                    </div>
                 </div>
 
                 {{-- Simpan selalu keliatan di step manapun -- submit nyimpen SEMUA

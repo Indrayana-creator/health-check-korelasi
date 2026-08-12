@@ -163,6 +163,94 @@ test('item checklist terkunci kalau tanggal pemeriksaan sudah lewat, tapi status
     expect($form->fresh()->status_tindak_lanjut)->toBe('Sedang Diproses');
 });
 
+test('dokumentasi visual (kategori E) bisa disimpan dan tampil ulang', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $response = $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $item->id, 'status' => 'OK'],
+        ],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => 'https://contoh.com/foto-ruang-server.jpg',
+        'foto_storage_cctv_url' => 'https://contoh.com/foto-storage-cctv.jpg',
+        'foto_panel_ups_url' => 'https://contoh.com/foto-panel-ups.jpg',
+    ]);
+
+    $response->assertRedirect(route('healthcheck.index'));
+    $form->refresh();
+    expect($form->foto_ruang_server_url)->toBe('https://contoh.com/foto-ruang-server.jpg');
+    expect($form->foto_storage_cctv_url)->toBe('https://contoh.com/foto-storage-cctv.jpg');
+    expect($form->foto_panel_ups_url)->toBe('https://contoh.com/foto-panel-ups.jpg');
+    expect($form->jumlahFotoDokumentasiTerisi())->toBe(3);
+
+    $this->actingAs($user)->get(route('healthcheck.edit', $form))
+        ->assertOk()
+        ->assertSee('https://contoh.com/foto-ruang-server.jpg', false);
+});
+
+test('compliance persen tidak berubah baik dokumentasi visual diisi maupun tidak', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $itemOk = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Belum Diperiksa']);
+    $itemNotOk = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Belum Diperiksa']);
+
+    // Update pertama: item diisi, dokumentasi visual TIDAK diisi sama sekali.
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $itemOk->id, 'status' => 'OK'],
+            ['id' => $itemNotOk->id, 'status' => 'Not OK', 'catatan' => 'AC mati'],
+        ],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+    expect($form->fresh()->persenCompliance())->toBe(50.0);
+
+    // Update kedua: item statusnya sama, tapi sekarang dokumentasi visual diisi.
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $itemOk->id, 'status' => 'OK'],
+            ['id' => $itemNotOk->id, 'status' => 'Not OK', 'catatan' => 'AC mati'],
+        ],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => 'https://contoh.com/a.jpg',
+        'foto_storage_cctv_url' => 'https://contoh.com/b.jpg',
+        'foto_panel_ups_url' => 'https://contoh.com/c.jpg',
+    ]);
+
+    // Compliance % harus tetap 50%, gak kepengaruh sama sekali oleh field dokumentasi visual.
+    expect($form->fresh()->persenCompliance())->toBe(50.0);
+});
+
+test('dokumentasi visual ikut terkunci kalau tanggal pemeriksaan sudah lewat', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->subDay()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $response = $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $item->id, 'status' => 'OK'],
+        ],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => 'https://contoh.com/tidak-boleh-tersimpan.jpg',
+    ]);
+
+    $response->assertRedirect(route('healthcheck.index'));
+    expect($form->fresh()->foto_ruang_server_url)->toBeNull();
+});
+
 test('update tanpa status_tindak_lanjut ditolak validasi', function () {
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();

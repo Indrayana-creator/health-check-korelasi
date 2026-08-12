@@ -3,20 +3,16 @@
 namespace App\Notifications;
 
 use App\Models\Uker;
+use App\Support\PeriodeMingguan;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 
 // Dikirim ke user sebuah uker kalau mereka belum bikin form Health Check
-// buat bulan kalender berjalan, dikirim mulai H-3 sebelum akhir bulan.
+// buat minggu kerja berjalan (Senin-Jumat), dikirim tiap hari Kamis (H-1
+// sebelum deadline hari Jumat) -- lihat KirimReminderPengisianHealthCheck.
 class ReminderPengisianHealthCheck extends Notification
 {
     use Queueable;
-
-    protected const NAMA_BULAN = [
-        1 => 'Januari', 2 => 'Februari', 3 => 'Maret', 4 => 'April',
-        5 => 'Mei', 6 => 'Juni', 7 => 'Juli', 8 => 'Agustus',
-        9 => 'September', 10 => 'Oktober', 11 => 'November', 12 => 'Desember',
-    ];
 
     public function __construct(protected Uker $uker) {}
 
@@ -28,11 +24,11 @@ class ReminderPengisianHealthCheck extends Notification
     public function toArray(object $notifiable): array
     {
         $now = now();
-        $namaBulan = self::NAMA_BULAN[(int) $now->month];
-        $sisaHari = $now->daysInMonth - $now->day;
+        [, $jumat] = PeriodeMingguan::rentang($now);
+        $labelMinggu = PeriodeMingguan::label($now);
 
         return [
-            'message' => "Pengingat: checklist Health Check {$this->uker->nama} bulan {$namaBulan} {$now->year} belum diisi -- {$sisaHari} hari lagi sebelum akhir bulan.",
+            'message' => "Pengingat: checklist Health Check {$this->uker->nama} minggu ini ({$labelMinggu}) belum diisi -- deadline Jumat, {$jumat->locale('id')->translatedFormat('d F Y')}.",
             'url' => route('healthcheck.create'),
         ];
     }

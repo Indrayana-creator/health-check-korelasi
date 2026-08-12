@@ -6,12 +6,13 @@ use App\Models\HealthCheckForm;
 use App\Models\Uker;
 use App\Models\User;
 use App\Notifications\ReminderPengisianHealthCheck;
+use App\Support\PeriodeMingguan;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
-#[Signature('healthcheck:reminder-pengisian {--paksa : Lewati pengecekan window H-3, kirim kapan aja (buat testing/demo)}')]
-#[Description('Kirim reminder ke uker yang belum bikin form Health Check bulan ini, mulai H-3 sebelum akhir bulan')]
+#[Signature('healthcheck:reminder-pengisian {--paksa : Lewati pengecekan hari Kamis, kirim kapan aja (buat testing/demo)}')]
+#[Description('Kirim reminder ke uker yang belum bikin form Health Check minggu ini, tiap hari Kamis (H-1 sebelum Jumat)')]
 class KirimReminderPengisianHealthCheck extends Command
 {
     /**
@@ -20,22 +21,20 @@ class KirimReminderPengisianHealthCheck extends Command
     public function handle(): int
     {
         $now = now();
-        $sisaHari = $now->daysInMonth - $now->day;
 
-        if (! $this->option('paksa') && $sisaHari > 3) {
-            $this->info("Masih {$sisaHari} hari lagi sebelum akhir bulan, belum masuk window H-3. Skip.");
+        if (! $this->option('paksa') && ! $now->isThursday()) {
+            $this->info("Sekarang hari {$now->locale('id')->dayName}, bukan Kamis (H-1 sebelum Jumat). Skip.");
 
             return self::SUCCESS;
         }
 
-        $awalBulan = $now->copy()->startOfMonth();
-        $akhirBulan = $now->copy()->endOfMonth();
+        [$senin, $jumat] = PeriodeMingguan::rentang($now);
 
-        $kodeUkerSudahIsiBulanIni = HealthCheckForm::whereBetween('tanggal_pemeriksaan', [$awalBulan, $akhirBulan])
+        $kodeUkerSudahIsiMingguIni = HealthCheckForm::whereBetween('tanggal_pemeriksaan', [$senin, $jumat])
             ->pluck('uker_kode')
             ->unique();
 
-        $ukerBelumIsi = Uker::whereNotIn('kode', $kodeUkerSudahIsiBulanIni)->get();
+        $ukerBelumIsi = Uker::whereNotIn('kode', $kodeUkerSudahIsiMingguIni)->get();
 
         $totalDiingatkan = 0;
         foreach ($ukerBelumIsi as $uker) {
@@ -46,11 +45,11 @@ class KirimReminderPengisianHealthCheck extends Command
                 continue;
             }
 
-            // Dedup: kalau user pertama di uker ini udah dapet reminder bulan
+            // Dedup: kalau user pertama di uker ini udah dapet reminder minggu
             // ini, anggap semua user di uker itu udah diingatkan juga.
             $sudahDireminder = $users->first()->notifications()
                 ->where('type', ReminderPengisianHealthCheck::class)
-                ->where('created_at', '>=', $awalBulan)
+                ->where('created_at', '>=', $senin)
                 ->exists();
             if ($sudahDireminder) {
                 continue;
@@ -60,7 +59,7 @@ class KirimReminderPengisianHealthCheck extends Command
             $totalDiingatkan++;
         }
 
-        $this->info("Reminder terkirim ke {$totalDiingatkan} uker yang belum mengisi Health Check bulan ini.");
+        $this->info("Reminder terkirim ke {$totalDiingatkan} uker yang belum mengisi Health Check minggu ini.");
 
         return self::SUCCESS;
     }

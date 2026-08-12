@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
+use App\Support\ComplianceScale;
 use Illuminate\Http\Request;
 
 class RekapController extends Controller
@@ -36,7 +37,7 @@ class RekapController extends Controller
                     'na' => $totalNa,
                     'belum' => $totalBelum,
                     'persen' => $persen,
-                    'status' => $persen >= 95 ? 'SANGAT BAIK' : ($persen >= 80 ? 'BAIK' : 'PERLU PERHATIAN'),
+                    'status' => ComplianceScale::label($persen),
                 ];
             })
             ->sortBy('persen')
