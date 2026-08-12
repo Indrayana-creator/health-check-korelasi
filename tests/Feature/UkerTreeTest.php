@@ -7,9 +7,9 @@ use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
 
-// bangunTreeUker() (dipakai di /uker-tree & dashboard) selalu mulai dari
-// Kanwil kode 146 sebagai root -- jadi tiap test yang butuh tree beneran
-// harus bikin Uker dengan kode itu persis.
+// bangunTreeUker() (dipakai di /uker-tree & dashboard) buat ADMIN selalu
+// mulai dari Kanwil kode 146 sebagai root -- jadi tiap test yang butuh tree
+// admin beneran harus bikin Uker dengan kode itu persis.
 function buatStrukturUkerUjiCoba(): array
 {
     $kanwil = Uker::factory()->create(['kode' => 146, 'nama' => 'Kanwil Uji', 'jenis' => 'KANWIL', 'kode_spv' => 146]);
@@ -19,17 +19,36 @@ function buatStrukturUkerUjiCoba(): array
     return [$kanwil, $area, $kc];
 }
 
+// Struktur 2 cabang terpisah (gak nyambung ke Kanwil 146 di atas) buat nguji
+// batasan akses role "user": Cabang A + turunannya (KCP A1) vs Cabang B +
+// turunannya (KCP B1), keduanya sama sekali gak terhubung satu sama lain.
+function buatStrukturCabangUjiCoba(): array
+{
+    $cabangA = Uker::factory()->create(['nama' => 'Cabang A', 'jenis' => 'KC']);
+    $kcpA1 = Uker::factory()->create(['nama' => 'KCP A1', 'jenis' => 'KCP', 'kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create(['nama' => 'Cabang B', 'jenis' => 'KC']);
+    $kcpB1 = Uker::factory()->create(['nama' => 'KCP B1', 'jenis' => 'KCP', 'kode_spv' => $cabangB->kode]);
+
+    return compact('cabangA', 'kcpA1', 'cabangB', 'kcpB1');
+}
+
 test('guest tidak bisa akses struktur organisasi', function () {
     $this->get(route('uker-tree.index'))->assertRedirect(route('login'));
 });
 
-test('user biasa tidak bisa akses struktur organisasi maupun endpoint detailnya', function () {
-    $uker = Uker::factory()->create();
-    $user = User::factory()->forUker($uker->kode)->create();
+test('user biasa BISA akses halaman struktur organisasi, root tree-nya uker sendiri (bukan Kanwil)', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
 
-    $this->actingAs($user)->get(route('uker-tree.index'))->assertForbidden();
-    $this->actingAs($user)->get(route('uker-tree.detail', $uker->kode))->assertForbidden();
-    $this->actingAs($user)->get(route('uker-tree.complianceDetail', $uker->kode))->assertForbidden();
+    $response = $this->actingAs($user)->get(route('uker-tree.index'));
+
+    $response->assertOk();
+    $tree = $response->viewData('tree');
+    expect($tree['kode'])->toBe($s['cabangA']->kode);
+    expect($tree['nama'])->toBe('Cabang A');
+    $anak = $tree['anak']->pluck('kode');
+    expect($anak)->toContain($s['kcpA1']->kode);
+    expect($anak)->not->toContain($s['cabangB']->kode, $s['kcpB1']->kode);
 });
 
 test('halaman struktur organisasi tetap tampil kalau data uker kanwil (146) belum ada', function () {
@@ -119,4 +138,48 @@ test('endpoint compliance detail memecah compliance per kategori checklist', fun
     $response->assertJsonFragment(['label' => 'A - Ruang Server/Jaringan', 'total' => 4, 'ok' => 3, 'persen' => 75.0]);
     $response->assertJsonFragment(['label' => 'Draft', 'jumlah' => 1]);
     $response->assertJsonFragment(['label' => 'Belum Ditindaklanjuti', 'jumlah' => 1]);
+});
+
+// ===================== Batasan akses role "user" (subtree sendiri) =====================
+
+test('user Cabang A bisa akses detail() untuk dirinya sendiri dan turunannya (KCP A1)', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $this->actingAs($user)->getJson(route('uker-tree.detail', $s['cabangA']->kode))->assertOk();
+    $this->actingAs($user)->getJson(route('uker-tree.detail', $s['kcpA1']->kode))->assertOk();
+});
+
+test('user Cabang A DITOLAK (403) akses detail() milik Cabang B, walau tahu uker_kode-nya lewat request langsung', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $this->actingAs($user)->getJson(route('uker-tree.detail', $s['cabangB']->kode))->assertForbidden();
+});
+
+test('user Cabang A DITOLAK (403) akses detail() milik turunan Cabang B (KCP B1)', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $this->actingAs($user)->getJson(route('uker-tree.detail', $s['kcpB1']->kode))->assertForbidden();
+});
+
+test('user Cabang A bisa akses complianceDetail() untuk dirinya sendiri dan turunannya, tapi DITOLAK buat Cabang B', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $this->actingAs($user)->getJson(route('uker-tree.complianceDetail', $s['cabangA']->kode))->assertOk();
+    $this->actingAs($user)->getJson(route('uker-tree.complianceDetail', $s['kcpA1']->kode))->assertOk();
+    $this->actingAs($user)->getJson(route('uker-tree.complianceDetail', $s['cabangB']->kode))->assertForbidden();
+    $this->actingAs($user)->getJson(route('uker-tree.complianceDetail', $s['kcpB1']->kode))->assertForbidden();
+});
+
+test('admin tetap bisa akses detail()/complianceDetail() uker manapun, gak berubah', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->getJson(route('uker-tree.detail', $s['cabangA']->kode))->assertOk();
+    $this->actingAs($admin)->getJson(route('uker-tree.detail', $s['cabangB']->kode))->assertOk();
+    $this->actingAs($admin)->getJson(route('uker-tree.complianceDetail', $s['kcpA1']->kode))->assertOk();
+    $this->actingAs($admin)->getJson(route('uker-tree.complianceDetail', $s['kcpB1']->kode))->assertOk();
 });

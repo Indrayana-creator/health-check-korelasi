@@ -12,12 +12,36 @@ class UkerTreeController extends Controller
 {
     use BuildsUkerTree;
 
+    // Root tree beda per role: admin dari Kanwil (146, lihat semua -- gak
+    // berubah), user dari uker_kode dia sendiri (cuma subtree-nya). Cara
+    // HITUNG tree-nya (bangunTreeUker) sama persis buat keduanya, cuma
+    // titik awalnya yang beda.
+    private function rootKodeUntuk(Request $request): int
+    {
+        return $request->user()->role === 'admin' ? 146 : $request->user()->uker_kode;
+    }
+
+    // User cuma boleh lihat detail node yang merupakan dirinya sendiri atau
+    // turunannya (subtree-nya sendiri) -- kalau nyoba akses uker_kode di
+    // luar itu (misal ketik manual di URL), ditolak 403, bukan cuma
+    // disembunyikan di UI. Admin selalu boleh akses node manapun.
+    private function authorizeAksesUker(Request $request, int $kode): void
+    {
+        if ($request->user()->role === 'admin') {
+            return;
+        }
+
+        if (! in_array($kode, Uker::descendantKodes($request->user()->uker_kode))) {
+            abort(403, 'Anda tidak punya akses ke uker ini.');
+        }
+    }
+
     // Halaman tree lengkap, berdiri sendiri (sebelumnya sempat digabung ke
     // dashboard, tapi di-revert karena bikin dashboard kepanjangan). Dashboard
     // sekarang cuma nampilin ringkasan kecil yang link ke sini.
     public function index(Request $request)
     {
-        $tree = $this->bangunTreeUker();
+        $tree = $this->bangunTreeUker($this->rootKodeUntuk($request));
 
         return view('uker-tree.index', compact('tree'));
     }
@@ -27,29 +51,16 @@ class UkerTreeController extends Controller
     // halaman tree pertama kali, biar tetap ringan)
     public function detail(Request $request, int $kode)
     {
+        $this->authorizeAksesUker($request, $kode);
+
         $semuaUker = Uker::all()->keyBy('kode');
         $node = $semuaUker->get($kode);
         if (! $node) {
             abort(404);
         }
 
-        $childrenMap = [];
-        foreach ($semuaUker as $u) {
-            if ($u->kode_spv && $u->kode_spv != $u->kode) {
-                $childrenMap[$u->kode_spv][] = $u->kode;
-            }
-        }
-
         // Kumpulkan kode dirinya sendiri + semua keturunannya
-        $kumpulanKode = [];
-        $stack = [$kode];
-        while ($stack) {
-            $k = array_pop($stack);
-            $kumpulanKode[] = $k;
-            foreach ($childrenMap[$k] ?? [] as $anak) {
-                $stack[] = $anak;
-            }
-        }
+        $kumpulanKode = Uker::descendantKodes($kode);
 
         $distribusiPerangkat = Aset::whereIn('uker_kode', $kumpulanKode)
             ->join('kode_aset', 'aset.kode_aset_kode', '=', 'kode_aset.kode')
@@ -89,28 +100,15 @@ class UkerTreeController extends Controller
     // diklik. Beda dari detail() di atas yang fokusnya ke Data Aset.
     public function complianceDetail(Request $request, int $kode)
     {
+        $this->authorizeAksesUker($request, $kode);
+
         $semuaUker = Uker::all()->keyBy('kode');
         $node = $semuaUker->get($kode);
         if (! $node) {
             abort(404);
         }
 
-        $childrenMap = [];
-        foreach ($semuaUker as $u) {
-            if ($u->kode_spv && $u->kode_spv != $u->kode) {
-                $childrenMap[$u->kode_spv][] = $u->kode;
-            }
-        }
-
-        $kumpulanKode = [];
-        $stack = [$kode];
-        while ($stack) {
-            $k = array_pop($stack);
-            $kumpulanKode[] = $k;
-            foreach ($childrenMap[$k] ?? [] as $anak) {
-                $stack[] = $anak;
-            }
-        }
+        $kumpulanKode = Uker::descendantKodes($kode);
 
         $forms = HealthCheckForm::with('items')->whereIn('uker_kode', $kumpulanKode)->get();
 

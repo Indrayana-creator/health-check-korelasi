@@ -11,7 +11,11 @@ use App\Models\Uker;
 // gak duplikat di 2 tempat.
 trait BuildsUkerTree
 {
-    private function bangunTreeUker(): ?array
+    // $rootKode: 146 (Kanwil) default buat admin lihat semua. UkerTreeController
+    // manggil dengan uker_kode milik user sendiri buat role "user", biar tree-nya
+    // cuma nunjukin cabang sendiri + turunannya -- cara HITUNG-nya sama persis,
+    // cuma titik mulainya (root) yang beda.
+    private function bangunTreeUker(int $rootKode = 146): ?array
     {
         $semuaUker = Uker::all()->keyBy('kode');
 
@@ -26,12 +30,7 @@ trait BuildsUkerTree
             return $total > 0 ? round($ok / $total * 100, 1) : null;
         });
 
-        $children = [];
-        foreach ($semuaUker as $u) {
-            if ($u->kode_spv && $u->kode_spv != $u->kode) {
-                $children[$u->kode_spv][] = $u->kode;
-            }
-        }
+        $children = Uker::childrenMap();
 
         $kumpulan = [];
         $hitung = function ($kode) use (&$hitung, &$kumpulan, $children, $jumlahAsetPerUker, $complianceePerUker) {
@@ -62,8 +61,7 @@ trait BuildsUkerTree
             return $kumpulan[$kode];
         };
 
-        // Mulai dari Kanwil (146) sebagai root
-        $hitung(146);
+        $hitung($rootKode);
 
         $bangunNode = function ($kode) use (&$bangunNode, $semuaUker, $children, $kumpulan) {
             $u = $semuaUker[$kode] ?? null;
@@ -87,6 +85,6 @@ trait BuildsUkerTree
             ];
         };
 
-        return $bangunNode(146);
+        return $bangunNode($rootKode);
     }
 }

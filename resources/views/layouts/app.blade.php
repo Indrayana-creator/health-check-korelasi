@@ -61,24 +61,31 @@
                     @endforeach
                 </nav>
 
-                @if (auth()->user()->role === 'admin')
-                    <div class="flex flex-col gap-1">
-                        <p class="px-3 mb-1 text-[10.5px] font-bold uppercase tracking-wider text-white/50">Laporan</p>
-                        @php
-                            $navLaporan = [
+                {{-- Struktur Organisasi -- semua role bisa akses (admin lihat semua
+                     dari Kanwil, user cuma lihat cabang sendiri + turunannya), jadi
+                     grup "Laporan" ini gak lagi digabung ke dalam blok admin-only. --}}
+                <div class="flex flex-col gap-1">
+                    <p class="px-3 mb-1 text-[10.5px] font-bold uppercase tracking-wider text-white/50">Laporan</p>
+                    @php
+                        $navLaporan = auth()->user()->role === 'admin'
+                            ? [
                                 ['route' => 'rekap.cabang', 'pattern' => 'rekap.*', 'label' => 'Rekap Cabang', 'icon' => 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
                                 ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
+                            ]
+                            : [
+                                ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
                             ];
-                        @endphp
-                        @foreach ($navLaporan as $item)
-                            <a href="{{ route($item['route']) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold {{ request()->routeIs($item['pattern']) ? 'bg-white/20' : 'hover:bg-white/10' }}">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px] flex-none opacity-95"><path d="{{ $item['icon'] }}"></path></svg>
-                                {{ $item['label'] }}
-                            </a>
-                        @endforeach
-                    </div>
+                    @endphp
+                    @foreach ($navLaporan as $item)
+                        <a href="{{ route($item['route']) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold {{ request()->routeIs($item['pattern']) ? 'bg-white/20' : 'hover:bg-white/10' }}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px] flex-none opacity-95"><path d="{{ $item['icon'] }}"></path></svg>
+                            {{ $item['label'] }}
+                        </a>
+                    @endforeach
+                </div>
 
+                @if (auth()->user()->role === 'admin')
                     <div class="flex flex-col gap-1">
                         <p class="px-3 mb-1 text-[10.5px] font-bold uppercase tracking-wider text-white/50">Administrasi</p>
                         @php

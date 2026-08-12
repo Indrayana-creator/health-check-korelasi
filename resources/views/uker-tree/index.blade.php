@@ -104,18 +104,25 @@
     </script>
 
     <div class="p-7 space-y-5 max-w-[1360px]">
-        <x-page-tabs :tabs="[
-            ['label' => 'Rekap Health Check', 'href' => route('rekap.cabang'), 'active' => false],
-            ['label' => 'Rekap Aset', 'href' => route('rekap.aset'), 'active' => false],
-            ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => true],
-        ]" />
+        {{-- Tab Rekap Health Check/Aset masih admin-only, jadi non-admin cuma
+             lihat tab Struktur Organisasi sendiri -- gak ditawarin link ke
+             halaman yang bakal ditolak (403) kalau diklik. --}}
+        @if (auth()->user()->role === 'admin')
+            <x-page-tabs :tabs="[
+                ['label' => 'Rekap Health Check', 'href' => route('rekap.cabang'), 'active' => false],
+                ['label' => 'Rekap Aset', 'href' => route('rekap.aset'), 'active' => false],
+                ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => true],
+            ]" />
+        @endif
 
         <x-card>
             <h3 class="font-extrabold text-sm text-gray-800 mb-1">Struktur Organisasi</h3>
-            <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
-                Pembagian <strong>Area</strong> di bawah ini masih bersifat draft (dikelompokkan berdasarkan perkiraan
-                geografis), belum dikonfirmasi resmi dari Kanwil. Bisa disesuaikan lagi lewat menu Kelola Uker.
-            </div>
+            @if (auth()->user()->role === 'admin')
+                <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
+                    Pembagian <strong>Area</strong> di bawah ini masih bersifat draft (dikelompokkan berdasarkan perkiraan
+                    geografis), belum dikonfirmasi resmi dari Kanwil. Bisa disesuaikan lagi lewat menu Kelola Uker.
+                </div>
+            @endif
 
             @if ($tree)
                 <div class="flex flex-wrap items-center gap-3 mb-3 text-[11px] text-gray-500">
