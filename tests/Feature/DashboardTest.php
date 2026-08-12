@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Aset;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
+use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
 
@@ -119,4 +121,70 @@ test('dokumentasi visual (kategori E) dihitung terpisah dan gak masuk compliance
     // Kategori A tetap 100% OK -- gak kepengaruh sama sekali oleh field dokumentasi visual.
     $kategoriA = $response->viewData('kesehatanPerKategori')->firstWhere('kategori', 'A - Ruang Server/Jaringan');
     expect($kategoriA['persen'])->toBe(100.0);
+});
+
+// ===================== "Belum Isi HC" & "Belum Ada Aset" =====================
+
+test('admin melihat "Belum Isi HC" dan "Belum Ada Aset" dari SEMUA uker, gak di-scope', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerSudahIsi = Uker::factory()->create(['nama' => 'Sudah Isi HC']);
+    $ukerBelumIsi = Uker::factory()->create(['nama' => 'Belum Isi HC']);
+    HealthCheckForm::factory()->create(['uker_kode' => $ukerSudahIsi->kode]);
+
+    $kodeAset = KodeAset::factory()->create();
+    $ukerAdaAset = Uker::factory()->create(['nama' => 'Ada Aset']);
+    $ukerBelumAdaAset = Uker::factory()->create(['nama' => 'Belum Ada Aset']);
+    Aset::factory()->create(['uker_kode' => $ukerAdaAset->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    expect($response->viewData('ukerBelumMengisi')->pluck('kode'))->toContain($ukerBelumIsi->kode);
+    expect($response->viewData('ukerBelumMengisi')->pluck('kode'))->not->toContain($ukerSudahIsi->kode);
+    expect($response->viewData('ukerBelumAdaAset')->pluck('kode'))->toContain($ukerBelumAdaAset->kode);
+    expect($response->viewData('ukerBelumAdaAset')->pluck('kode'))->not->toContain($ukerAdaAset->kode);
+});
+
+test('user Cabang A melihat "Belum Isi HC" & "Belum Ada Aset" cuma dari subtree sendiri, bukan seluruh sistem', function () {
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['nama' => 'KCP A1 Belum Isi', 'kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create(['nama' => 'Cabang B Belum Isi']); // di luar subtree Cabang A
+    $user = User::factory()->forUker($cabangA->kode)->create();
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $response->assertOk();
+    $kodeBelumIsi = $response->viewData('ukerBelumMengisi')->pluck('kode');
+    expect($kodeBelumIsi)->toContain($cabangA->kode, $kcpA1->kode);
+    expect($kodeBelumIsi)->not->toContain($cabangB->kode);
+
+    $kodeBelumAset = $response->viewData('ukerBelumAdaAset')->pluck('kode');
+    expect($kodeBelumAset)->toContain($cabangA->kode, $kcpA1->kode);
+    expect($kodeBelumAset)->not->toContain($cabangB->kode);
+});
+
+test('user Cabang A gak lagi masuk "Belum Isi HC" kalau salah satu turunannya (KCP) sudah isi form', function () {
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $user = User::factory()->forUker($cabangA->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $kcpA1->kode]);
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $kodeBelumIsi = $response->viewData('ukerBelumMengisi')->pluck('kode');
+    expect($kodeBelumIsi)->not->toContain($kcpA1->kode);
+    expect($kodeBelumIsi)->toContain($cabangA->kode); // Cabang A sendiri masih belum isi form-nya sendiri
+});
+
+test('tab Ranking Terendah TIDAK muncul buat non-admin, panel Belum Isi HC/Belum Ada Aset tetap muncul', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $response->assertOk();
+    expect($response->viewData('rankingCabang'))->toBeEmpty();
+    $response->assertSee('Belum Isi HC');
+    $response->assertSee('Belum Ada Aset');
+    $response->assertDontSee('Ranking Terendah');
 });

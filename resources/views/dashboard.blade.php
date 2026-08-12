@@ -182,36 +182,40 @@
         <div class="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4 items-start">
 
             {{-- 2. Panel "butuh perhatian" bertab (admin) / Distribusi Aset (non-admin) --}}
-            @if ($isAdmin)
-                <x-card padding="p-0" x-data="{ tab: 'ranking' }">
+            <x-card padding="p-0" x-data="{ tab: '{{ $isAdmin ? 'ranking' : 'belum-isi' }}' }">
                     <div class="flex items-center gap-1.5 px-5 pt-4">
                         <div class="flex gap-1 bg-gray-100 p-1 rounded-[10px]">
-                            <button type="button" @click="tab = 'ranking'" :class="tab === 'ranking' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Ranking Terendah</button>
+                            @if ($isAdmin)
+                                <button type="button" @click="tab = 'ranking'" :class="tab === 'ranking' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Ranking Terendah</button>
+                            @endif
                             <button type="button" @click="tab = 'belum-isi'" :class="tab === 'belum-isi' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Belum Isi HC</button>
                             <button type="button" @click="tab = 'belum-aset'" :class="tab === 'belum-aset' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Belum Ada Aset</button>
                         </div>
                     </div>
 
                     <div class="p-5">
-                        <div x-show="tab === 'ranking'">
-                            @if ($rankingCabang->isEmpty())
-                                <p class="text-sm text-gray-400">Belum ada data health check.</p>
-                            @else
-                                <div class="flex flex-col">
-                                    @foreach ($rankingCabang as $r)
-                                        <div class="flex items-center justify-between text-sm border-b border-gray-100 py-2.5">
-                                            <div>
-                                                <p class="font-semibold text-gray-700">{{ $r['uker'] }} <span class="font-normal text-gray-400 text-xs">({{ $r['kode'] }})</span></p>
-                                                <p class="text-gray-400 text-xs">{{ $r['periode'] }} &middot; {{ $r['status_tindak_lanjut'] }}</p>
+                        @if ($isAdmin)
+                            <div x-show="tab === 'ranking'">
+                                @if ($rankingCabang->isEmpty())
+                                    <p class="text-sm text-gray-400">Belum ada data health check.</p>
+                                @else
+                                    <x-compliance-legend class="mb-3" />
+                                    <div class="flex flex-col">
+                                        @foreach ($rankingCabang as $r)
+                                            <div class="flex items-center justify-between text-sm border-b border-gray-100 py-2.5">
+                                                <div>
+                                                    <p class="font-semibold text-gray-700">{{ $r['uker'] }} <span class="font-normal text-gray-400 text-xs">({{ $r['kode'] }})</span></p>
+                                                    <p class="text-gray-400 text-xs">{{ $r['periode'] }} &middot; {{ $r['status_tindak_lanjut'] }}</p>
+                                                </div>
+                                                <x-badge :color="\App\Support\ComplianceScale::badgeColor($r['persen'])">
+                                                    {{ $r['persen'] }}%
+                                                </x-badge>
                                             </div>
-                                            <x-badge :color="\App\Support\ComplianceScale::badgeColor($r['persen'])">
-                                                {{ $r['persen'] }}%
-                                            </x-badge>
-                                        </div>
-                                    @endforeach
-                                </div>
-                            @endif
-                        </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        @endif
 
                         <div x-show="tab === 'belum-isi'" x-cloak>
                             <p class="text-xs text-gray-500 mb-3">Belum pernah membuat form health check sama sekali (bukan sekadar compliance rendah).</p>
@@ -261,9 +265,8 @@
                         </div>
                     </div>
                 </x-card>
-            @endif
 
-            <div class="flex flex-col gap-4 {{ $isAdmin ? '' : 'lg:col-span-2' }}">
+            <div class="flex flex-col gap-4">
                 {{-- 3. Distribusi aset per tipe perangkat --}}
                 <x-card>
                     <h3 class="font-extrabold text-sm text-gray-800 mb-4">Distribusi Aset per Tipe</h3>

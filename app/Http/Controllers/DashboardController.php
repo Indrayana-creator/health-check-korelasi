@@ -76,8 +76,6 @@ class DashboardController extends Controller
 
         // ===== 2. Ranking cabang paling butuh perhatian (khusus admin) =====
         $rankingCabang = collect();
-        $ukerBelumMengisi = collect();
-        $ukerBelumAdaAset = collect();
         $editRequestsMenunggu = collect();
         $editRequestsSaya = collect();
         if ($isAdmin) {
@@ -101,18 +99,6 @@ class DashboardController extends Controller
                 ->sortBy('persen')
                 ->take(5)
                 ->values();
-
-            // Uker yang belum pernah mengisi form Health Check sama sekali
-            $kodeUkerSudahIsi = HealthCheckForm::pluck('uker_kode')->unique();
-            $ukerBelumMengisi = Uker::whereNotIn('kode', $kodeUkerSudahIsi)
-                ->orderBy('nama')
-                ->get();
-
-            // Uker yang sama sekali belum ada data asetnya
-            $kodeUkerAdaAset = Aset::pluck('uker_kode')->unique();
-            $ukerBelumAdaAset = Uker::whereNotIn('kode', $kodeUkerAdaAset)
-                ->orderBy('nama')
-                ->get();
         } else {
             // User biasa: nampilin riwayat permintaan edit aset dia sendiri,
             // biar tau statusnya tanpa harus buka satu-satu tiap aset
@@ -122,6 +108,24 @@ class DashboardController extends Controller
                 ->take(5)
                 ->get();
         }
+
+        // "Belum Isi HC" & "Belum Ada Aset" -- berlaku buat SEMUA role, cuma
+        // cakupan uker-nya beda: admin dari semua uker, non-admin cuma dari
+        // subtree sendiri (Uker::descendantKodes(), reuse yang sama dipakai
+        // di tempat lain, bukan scoping baru).
+        $ukerCekKelengkapan = $isAdmin ? Uker::query() : Uker::whereIn('kode', Uker::descendantKodes($ukerKode));
+
+        // Uker (dalam cakupan) yang belum pernah mengisi form Health Check sama sekali
+        $kodeUkerSudahIsi = $formList->pluck('uker_kode')->unique();
+        $ukerBelumMengisi = (clone $ukerCekKelengkapan)->whereNotIn('kode', $kodeUkerSudahIsi)
+            ->orderBy('nama')
+            ->get();
+
+        // Uker (dalam cakupan) yang sama sekali belum ada data asetnya
+        $kodeUkerAdaAset = (clone $asetQuery)->pluck('uker_kode')->unique();
+        $ukerBelumAdaAset = (clone $ukerCekKelengkapan)->whereNotIn('kode', $kodeUkerAdaAset)
+            ->orderBy('nama')
+            ->get();
 
         // ===== 3. Distribusi aset per kategori (Personal Computer, Notebook, UPS, dst) =====
         $distribusiPerangkat = (clone $asetQuery)
