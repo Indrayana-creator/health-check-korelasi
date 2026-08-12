@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
 use App\Support\ComplianceScale;
+use App\Support\PeriodeMingguan;
 use Illuminate\Http\Request;
 
 class RekapController extends Controller
@@ -14,11 +15,46 @@ class RekapController extends Controller
     // dijumlahkan dulu sebelum dihitung ulang persentasenya. Ini sama persis
     // logikanya dengan prototype Python rekap_health_check.py yang pertama
     // kali kita rancang di awal project.
+    //
+    // Siklus HC sekarang mingguan, jadi rekap ini ditampilkan 2 versi:
+    // "Minggu Ini" (Senin-Jumat berjalan, otomatis kosong lagi begitu ganti
+    // minggu -- bukan akumulasi selamanya) dan "Bulan Ini" (gabungan semua
+    // minggu dalam bulan berjalan, buat gambaran lebih luas). Chart tren tetap
+    // pakai SELURUH histori karena fungsinya emang liat naik-turun dari waktu
+    // ke waktu, bukan snapshot periode tertentu.
     public function index(Request $request)
     {
         $formList = HealthCheckForm::with(['uker', 'items'])->get();
 
-        $rekap = $formList
+        [$awalMinggu, $akhirMinggu] = PeriodeMingguan::rentang(now());
+        $awalBulan = now()->copy()->startOfMonth();
+        $akhirBulan = now()->copy()->endOfMonth();
+
+        $formMingguIni = $formList->filter(fn ($f) => $f->tanggal_pemeriksaan?->between($awalMinggu, $akhirMinggu));
+        $formBulanIni = $formList->filter(fn ($f) => $f->tanggal_pemeriksaan?->between($awalBulan, $akhirBulan));
+
+        $rekapMingguan = $this->rekapPerCabang($formMingguIni);
+        $rekapBulanan = $this->rekapPerCabang($formBulanIni);
+
+        $statMingguan = $this->ringkasStat($rekapMingguan);
+        $statBulanan = $this->ringkasStat($rekapBulanan);
+
+        $trenCompliance = $this->hitungTrenCompliance($formList);
+
+        $labelMinggu = PeriodeMingguan::label(now());
+        $labelBulan = now()->locale('id')->translatedFormat('F Y');
+
+        return view('rekap.index', compact(
+            'rekapMingguan', 'rekapBulanan', 'statMingguan', 'statBulanan',
+            'trenCompliance', 'labelMinggu', 'labelBulan'
+        ));
+    }
+
+    // Roll-up per cabang (uker_spv) dari sekumpulan form -- dipakai bareng
+    // buat versi mingguan maupun bulanan, cuma beda input $formList-nya.
+    protected function rekapPerCabang($formList)
+    {
+        return $formList
             ->groupBy(fn ($form) => $form->uker?->uker_spv ?? 'Tidak diketahui')
             ->map(function ($formsDalamCabang, $namaCabang) {
                 $totalItem = $formsDalamCabang->sum(fn ($f) => $f->items->count());
@@ -42,14 +78,17 @@ class RekapController extends Controller
             })
             ->sortBy('persen')
             ->values();
+    }
 
+    protected function ringkasStat($rekap): array
+    {
         $totalCabang = $rekap->count();
-        $avgCompliance = $totalCabang > 0 ? round($rekap->avg('persen'), 1) : 0;
-        $totalPerluPerhatian = $rekap->where('status', 'PERLU PERHATIAN')->count();
 
-        $trenCompliance = $this->hitungTrenCompliance($formList);
-
-        return view('rekap.index', compact('rekap', 'totalCabang', 'avgCompliance', 'totalPerluPerhatian', 'trenCompliance'));
+        return [
+            'total_cabang' => $totalCabang,
+            'avg_compliance' => $totalCabang > 0 ? round($rekap->avg('persen'), 1) : 0,
+            'total_perlu_perhatian' => $rekap->where('status', 'PERLU PERHATIAN')->count(),
+        ];
     }
 
     // Tren compliance keseluruhan (semua cabang digabung) per PERIODE, buat

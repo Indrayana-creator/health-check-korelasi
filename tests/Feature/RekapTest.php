@@ -6,6 +6,7 @@ use App\Models\HealthCheckItem;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 
 test('user biasa tidak bisa akses rekap cabang', function () {
     $uker = Uker::factory()->create();
@@ -14,23 +15,23 @@ test('user biasa tidak bisa akses rekap cabang', function () {
     $this->actingAs($user)->get(route('rekap.cabang'))->assertForbidden();
 });
 
-test('rekap menjumlahkan compliance semua uker dalam satu cabang (uker_spv)', function () {
+test('rekap minggu ini menjumlahkan compliance semua uker dalam satu cabang (uker_spv)', function () {
     $admin = User::factory()->admin()->create();
 
     $ukerA = Uker::factory()->create(['uker_spv' => 'Cabang Surabaya']);
     $ukerB = Uker::factory()->create(['uker_spv' => 'Cabang Surabaya']);
 
-    $formA = HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode]);
+    $formA = HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode, 'tanggal_pemeriksaan' => now()->startOfWeek(Carbon::MONDAY)]);
     HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formA->id, 'status' => 'OK']);
     HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formA->id, 'status' => 'Not OK']);
 
-    $formB = HealthCheckForm::factory()->create(['uker_kode' => $ukerB->kode]);
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $ukerB->kode, 'tanggal_pemeriksaan' => now()->startOfWeek(Carbon::MONDAY)]);
     HealthCheckItem::factory()->count(4)->create(['health_check_form_id' => $formB->id, 'status' => 'OK']);
 
     $response = $this->actingAs($admin)->get(route('rekap.cabang'));
 
     $response->assertOk();
-    $rekap = $response->viewData('rekap')->firstWhere('cabang', 'Cabang Surabaya');
+    $rekap = $response->viewData('rekapMingguan')->firstWhere('cabang', 'Cabang Surabaya');
 
     expect($rekap)->not->toBeNull();
     expect($rekap['jumlah_uker_lapor'])->toBe(2);
@@ -39,6 +40,47 @@ test('rekap menjumlahkan compliance semua uker dalam satu cabang (uker_spv)', fu
     // 6 OK dari 8 total = 75%, di bawah ambang 80% jadi "PERLU PERHATIAN"
     expect($rekap['persen'])->toBe(75.0);
     expect($rekap['status'])->toBe('PERLU PERHATIAN');
+});
+
+test('rekap minggu ini TIDAK ikut menghitung form dari minggu lalu, otomatis refresh begitu ganti minggu', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['uker_spv' => 'Cabang Surabaya']);
+
+    $formMingguLalu = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->subWeeks(1)]);
+    HealthCheckItem::factory()->count(4)->create(['health_check_form_id' => $formMingguLalu->id, 'status' => 'Not OK']);
+
+    $response = $this->actingAs($admin)->get(route('rekap.cabang'));
+
+    $response->assertOk();
+    expect($response->viewData('rekapMingguan')->firstWhere('cabang', 'Cabang Surabaya'))->toBeNull();
+});
+
+test('rekap bulan ini menggabungkan form dari minggu lalu SELAMA masih di bulan yang sama', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['uker_spv' => 'Cabang Surabaya']);
+
+    // Minggu ini
+    $formMingguIni = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formMingguIni->id, 'status' => 'OK']);
+
+    // Awal bulan yang sama, tapi minggu berbeda -- tetap ikut rekap bulanan
+    $awalBulan = now()->copy()->startOfMonth();
+    $formAwalBulan = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => $awalBulan]);
+    HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formAwalBulan->id, 'status' => 'OK']);
+
+    // Bulan lalu -- TIDAK boleh ikut kehitung
+    $formBulanLalu = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->copy()->subMonthNoOverflow()]);
+    HealthCheckItem::factory()->count(4)->create(['health_check_form_id' => $formBulanLalu->id, 'status' => 'Not OK']);
+
+    $response = $this->actingAs($admin)->get(route('rekap.cabang'));
+
+    $response->assertOk();
+    $rekapBulanan = $response->viewData('rekapBulanan')->firstWhere('cabang', 'Cabang Surabaya');
+
+    expect($rekapBulanan)->not->toBeNull();
+    expect($rekapBulanan['total_item'])->toBe(4);
+    expect($rekapBulanan['ok'])->toBe(4);
+    expect($rekapBulanan['persen'])->toBe(100.0);
 });
 
 test('tren compliance diurutkan kronologis berdasarkan tanggal pemeriksaan paling awal, bukan alfabetis periode', function () {
