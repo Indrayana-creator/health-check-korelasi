@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
+use App\Models\PermintaanPerangkat;
 use App\Support\ComplianceScale;
 use App\Support\PeriodeMingguan;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class RekapController extends Controller
 {
@@ -162,5 +164,37 @@ class RekapController extends Controller
         ];
 
         return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'totalPerluPerhatian', 'distribusiKondisi'));
+    }
+
+    // Rekap Permintaan Perangkat per MINGGU (Senin-Jumat), bisa navigasi
+    // maju/mundur antar minggu lewat query string ?minggu=YYYY-MM-DD (tanggal
+    // apa aja dalam minggu yang dituju) -- pola rentang minggunya reuse
+    // PeriodeMingguan yang sama dipakai di siklus Health Check mingguan.
+    public function permintaanPerangkat(Request $request)
+    {
+        $request->validate(['minggu' => 'nullable|date']);
+
+        $tanggalAcuan = $request->filled('minggu')
+            ? Carbon::parse($request->input('minggu'))
+            : now();
+
+        [$awalMinggu, $akhirMinggu] = PeriodeMingguan::rentang($tanggalAcuan);
+
+        $permintaanList = PermintaanPerangkat::with('uker')
+            ->whereBetween('tanggal_request', [$awalMinggu->toDateString(), $akhirMinggu->toDateString()])
+            ->orderBy('tanggal_request')
+            ->get();
+
+        $totalMinggu = $permintaanList->count();
+        $breakdownStatus = collect(PermintaanPerangkat::DAFTAR_STATUS)
+            ->mapWithKeys(fn ($status) => [$status => $permintaanList->where('status', $status)->count()]);
+
+        $labelMinggu = PeriodeMingguan::label($tanggalAcuan);
+        $mingguSebelumnya = $awalMinggu->copy()->subWeek()->toDateString();
+        $mingguSesudahnya = $awalMinggu->copy()->addWeek()->toDateString();
+
+        return view('rekap.permintaan-perangkat', compact(
+            'permintaanList', 'totalMinggu', 'breakdownStatus', 'labelMinggu', 'mingguSebelumnya', 'mingguSesudahnya'
+        ));
     }
 }

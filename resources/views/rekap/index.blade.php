@@ -12,6 +12,7 @@
         <x-page-tabs :tabs="[
             ['label' => 'Rekap Health Check', 'href' => route('rekap.cabang'), 'active' => true],
             ['label' => 'Rekap Aset', 'href' => route('rekap.aset'), 'active' => false],
+            ['label' => 'Rekap Permintaan Perangkat', 'href' => route('rekap.permintaanPerangkat'), 'active' => false],
             ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => false],
         ]" />
 

@@ -51,6 +51,7 @@
                             ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
                             ['route' => 'aset.index', 'pattern' => 'aset.*', 'label' => 'Data Aset', 'icon' => 'M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8'],
                             ['route' => 'healthcheck.index', 'pattern' => 'healthcheck.*', 'label' => 'Health Check', 'icon' => 'M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z'],
+                            ['route' => 'permintaan-perangkat.index', 'pattern' => 'permintaan-perangkat.*', 'label' => 'Permintaan Perangkat', 'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4'],
                         ];
                     @endphp
                     @foreach ($navMain as $item)
@@ -72,6 +73,7 @@
                                 ['route' => 'rekap.cabang', 'pattern' => 'rekap.*', 'label' => 'Rekap Cabang', 'icon' => 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
                                 ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
+                                ['route' => 'rekap.permintaanPerangkat', 'pattern' => 'rekap.permintaanPerangkat', 'label' => 'Rekap Permintaan Perangkat', 'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4'],
                             ]
                             : [
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],

@@ -11,6 +11,7 @@ use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PekerjaController;
 use App\Http\Controllers\PekerjaLookupController;
+use App\Http\Controllers\PermintaanPerangkatController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekapController;
 use App\Http\Controllers\SearchController;
@@ -95,12 +96,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/monitoring-kendala/export/pdf', [MonitoringController::class, 'exportPdf'])->name('monitoring.export.pdf');
     Route::post('/monitoring-kendala/{item}/tindak-lanjut', [MonitoringController::class, 'updateTindakLanjut'])->name('monitoring.updateTindakLanjut');
 
+    // Permintaan Perangkat -- semua role, tapi di-scope EXACT MATCH uker_kode
+    // sendiri buat non-admin (BUKAN subtree/turunan kayak Aset/HealthCheck,
+    // karena yang ngajuin cuma level KC/Cabang). Cuma role user yang bisa
+    // ajukan baru (store), update status khusus admin (di grup role:admin
+    // di bawah).
+    Route::get('/permintaan-perangkat', [PermintaanPerangkatController::class, 'index'])->name('permintaan-perangkat.index');
+    Route::post('/permintaan-perangkat', [PermintaanPerangkatController::class, 'store'])->name('permintaan-perangkat.store');
+
     // Kelola User, Rekap per Cabang, Log History, Permintaan Edit Aset, & Kelola Uker -- khusus admin
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggleActive');
         Route::get('/rekap-cabang', [RekapController::class, 'index'])->name('rekap.cabang');
         Route::get('/rekap-aset', [RekapController::class, 'aset'])->name('rekap.aset');
+        Route::get('/rekap-permintaan-perangkat', [RekapController::class, 'permintaanPerangkat'])->name('rekap.permintaanPerangkat');
+        Route::post('/permintaan-perangkat/{permintaanPerangkat}/status', [PermintaanPerangkatController::class, 'updateStatus'])->name('permintaan-perangkat.updateStatus');
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');
         Route::get('/log-history/export/excel', [LogHistoryController::class, 'exportExcel'])->name('log-history.export.excel');
         Route::get('/log-history/export/pdf', [LogHistoryController::class, 'exportPdf'])->name('log-history.export.pdf');
