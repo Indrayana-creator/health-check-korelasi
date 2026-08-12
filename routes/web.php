@@ -9,6 +9,7 @@ use App\Http\Controllers\KodeAsetController;
 use App\Http\Controllers\LogHistoryController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PekerjaController;
 use App\Http\Controllers\PekerjaLookupController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RekapController;
@@ -79,6 +80,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.readAll');
     Route::get('/notifications/poll', [NotificationController::class, 'poll'])->name('notifications.poll');
 
+    // Struktur Organisasi -- semua role, tapi root tree-nya beda: admin dari
+    // Kanwil (lihat semua), user dari uker_kode sendiri (cuma subtree-nya).
+    // Scoping detailnya di-cek di dalam controller, bukan lewat middleware
+    // role, karena admin & user SAMA-SAMA boleh akses route ini.
+    Route::get('/uker-tree', [UkerTreeController::class, 'index'])->name('uker-tree.index');
+    Route::get('/uker-tree/{kode}/detail', [UkerTreeController::class, 'detail'])->name('uker-tree.detail');
+    Route::get('/uker-tree/{kode}/compliance-detail', [UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
+
     // Kelola User, Rekap per Cabang, Log History, Permintaan Edit Aset, & Kelola Uker -- khusus admin
     Route::middleware('role:admin')->group(function () {
         Route::resource('users', UserController::class)->except(['show']);
@@ -97,9 +106,7 @@ Route::middleware('auth')->group(function () {
         Route::post('/aset-edit-requests/{editRequest}/reject', [AsetController::class, 'rejectEdit'])->name('aset.editRequests.reject');
         Route::resource('ukers', UkerController::class)->except(['show']);
         Route::resource('kode-aset', KodeAsetController::class)->except(['show'])->parameters(['kode-aset' => 'kodeAset']);
-        Route::get('/uker-tree', [UkerTreeController::class, 'index'])->name('uker-tree.index');
-        Route::get('/uker-tree/{kode}/detail', [UkerTreeController::class, 'detail'])->name('uker-tree.detail');
-        Route::get('/uker-tree/{kode}/compliance-detail', [UkerTreeController::class, 'complianceDetail'])->name('uker-tree.complianceDetail');
+        Route::resource('pekerja', PekerjaController::class)->except(['show']);
     });
 });
 
