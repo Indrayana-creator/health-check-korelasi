@@ -21,7 +21,7 @@ class MonitoringController extends Controller
     // Aset/Health Check/Struktur Organisasi, bukan scoping baru.
     protected function scopedQuery(Request $request)
     {
-        $query = HealthCheckItem::with(['form.uker'])->where('status', 'Not OK');
+        $query = HealthCheckItem::with(['form.uker', 'statusLogs.changedBy'])->where('status', 'Not OK');
 
         if ($request->user()->role !== 'admin') {
             $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);
@@ -70,6 +70,11 @@ class MonitoringController extends Controller
     // "mendesak" -- dipakai buat badge di tabel & stat card.
     const AMBANG_HARI_MENDESAK = 3;
 
+    // Ambang batas (hari) SLA khusus item yang statusnya SUDAH "Sedang
+    // Diproses" -- dihitung dari mulai_diproses_at (kapan status itu pertama
+    // kali tercatat), BUKAN dari tanggal_pemeriksaan seperti Mendesak.
+    const AMBANG_HARI_SLA_DIPROSES = 7;
+
     // Urutkan yang belum ditindaklanjuti duluan (paling butuh perhatian), baru
     // sedang diproses, baru yang udah selesai; dalam tier yang sama, yang
     // paling lama didiamkan (tanggal pemeriksaan paling tua) duluan --
@@ -104,6 +109,29 @@ class MonitoringController extends Controller
         $tanggal = $item->form?->tanggal_pemeriksaan;
 
         return $tanggal && floor($tanggal->diffInDays(now())) > self::AMBANG_HARI_MENDESAK;
+    }
+
+    // Badge "Mendesak" MENGGANTI jadi SLA khusus begitu status_tindak_lanjut
+    // = "Sedang Diproses" -- dihitung dari mulai_diproses_at, bukan
+    // tanggal_pemeriksaan. Item yang belum pernah "Sedang Diproses" (kolom
+    // masih null) belum kena SLA ini sama sekali.
+    public static function itemMelewatiSlaDiproses(HealthCheckItem $item): bool
+    {
+        if ($item->status_tindak_lanjut !== 'Sedang Diproses' || ! $item->mulai_diproses_at) {
+            return false;
+        }
+
+        return floor($item->mulai_diproses_at->diffInDays(now())) > self::AMBANG_HARI_SLA_DIPROSES;
+    }
+
+    // Jumlah hari YANG SUDAH LEWAT DARI BATAS (bukan total hari sejak mulai
+    // diproses) -- dipakai buat keterangan badge, misal "Melewati batas 3
+    // hari" buat item yang udah 10 hari diproses (10 - 7 = 3).
+    public static function hariLewatSlaDiproses(HealthCheckItem $item): int
+    {
+        $hariBerjalan = (int) floor($item->mulai_diproses_at->diffInDays(now()));
+
+        return max(0, $hariBerjalan - self::AMBANG_HARI_SLA_DIPROSES);
     }
 
     public function index(Request $request)
@@ -142,7 +170,27 @@ class MonitoringController extends Controller
             'catatan_tindak_lanjut' => 'nullable|string',
         ]);
 
+        // Catat mulai_diproses_at OTOMATIS & SEKALI SAJA -- syaratnya harus
+        // dicek SEBELUM update() jalan (biar gak kejebak nilai baru yang
+        // baru aja di-set), dan kolomnya masih null (kalau statusnya
+        // bolak-balik ke "Sedang Diproses" lagi, nilai pertama TETAP dipakai).
+        $sedangDiprosesPertamaKali = $validated['status_tindak_lanjut'] === 'Sedang Diproses' && ! $item->mulai_diproses_at;
+
         $item->update($validated);
+
+        if ($sedangDiprosesPertamaKali) {
+            $item->update(['mulai_diproses_at' => now()]);
+        }
+
+        // Riwayat perubahan -- SELALU insert baris baru (bukan overwrite),
+        // independen dari mulai_diproses_at/SLA di atas, dipakai buat modal
+        // "Lihat Riwayat".
+        $item->statusLogs()->create([
+            'status' => $validated['status_tindak_lanjut'],
+            'catatan' => $validated['catatan_tindak_lanjut'] ?? null,
+            'changed_by' => $request->user()->id,
+        ]);
+
         ActivityLog::catat(
             'health_check',
             'update_tindak_lanjut_item',

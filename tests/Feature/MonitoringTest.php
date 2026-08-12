@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Controllers\MonitoringController;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
+use App\Models\Pekerja;
 use App\Models\Uker;
 use App\Models\User;
 
@@ -280,4 +282,206 @@ test('dropdown filter uker buat user biasa cuma berisi uker sendiri + turunan, b
     $kodeList = $response->viewData('ukerFilterList')->pluck('kode');
     expect($kodeList)->toContain($cabangA->kode, $kcpA1->kode);
     expect($kodeList)->not->toContain($cabangB->kode);
+});
+
+// ===================== SLA khusus "Sedang Diproses" =====================
+
+test('mulai_diproses_at diisi otomatis begitu status pertama kali jadi Sedang Diproses', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    expect($item->mulai_diproses_at)->toBeNull();
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses',
+    ]);
+
+    $item->refresh();
+    expect($item->mulai_diproses_at)->not->toBeNull();
+    expect($item->mulai_diproses_at->diffInSeconds(now()))->toBeLessThan(5);
+});
+
+test('mulai_diproses_at TIDAK di-reset kalau status bolak-balik ke Sedang Diproses lagi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $waktuAwal = now()->subDays(10);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => $waktuAwal,
+    ]);
+
+    // Balik ke Belum Ditindaklanjuti, lalu Sedang Diproses lagi.
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), ['status_tindak_lanjut' => 'Belum Ditindaklanjuti']);
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), ['status_tindak_lanjut' => 'Sedang Diproses']);
+
+    $item->refresh();
+    expect($item->mulai_diproses_at->toDateTimeString())->toBe($waktuAwal->toDateTimeString());
+});
+
+test('itemMelewatiSlaDiproses true kalau Sedang Diproses sudah lebih dari 7 hari sejak mulai_diproses_at', function () {
+    $form = HealthCheckForm::factory()->create(['uker_kode' => Uker::factory()->create()->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(10),
+    ]);
+
+    expect(MonitoringController::itemMelewatiSlaDiproses($item))->toBeTrue();
+    expect(MonitoringController::hariLewatSlaDiproses($item))->toBe(3);
+});
+
+test('itemMelewatiSlaDiproses false kalau Sedang Diproses belum lewat 7 hari', function () {
+    $form = HealthCheckForm::factory()->create(['uker_kode' => Uker::factory()->create()->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(2),
+    ]);
+
+    expect(MonitoringController::itemMelewatiSlaDiproses($item))->toBeFalse();
+});
+
+test('itemMelewatiSlaDiproses false buat item Belum Ditindaklanjuti walau tanggal_pemeriksaan udah lama', function () {
+    $form = HealthCheckForm::factory()->create(['uker_kode' => Uker::factory()->create()->kode, 'tanggal_pemeriksaan' => now()->subDays(30)]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    expect(MonitoringController::itemMelewatiSlaDiproses($item))->toBeFalse();
+});
+
+test('badge di tabel: Sedang Diproses yang lewat SLA nampilin "Melewati SLA", bukan "Mendesak"', function () {
+    $admin = User::factory()->admin()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => Uker::factory()->create()->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'item_pemeriksaan' => 'UPS ruang server',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(10),
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index'));
+
+    $response->assertSee('Melewati SLA');
+    $response->assertSee('Melewati batas 3 hari');
+    // Stat card "Mendesak (&gt;3 hari)" di atas tetap tampil (label statis,
+    // gak dihapus) -- yang penting badge PER-ITEM ini gak nyebut "Mendesak".
+    $response->assertDontSee('Mendesak &middot;', false);
+});
+
+// ===================== Riwayat perubahan status tindak lanjut =====================
+
+test('update status lewat modal Update Tindak Lanjut menghasilkan 1 baris log riwayat baru', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses',
+        'catatan_tindak_lanjut' => 'Sudah diajukan ke vendor',
+    ]);
+
+    $item->refresh();
+    expect($item->statusLogs)->toHaveCount(1);
+    $log = $item->statusLogs->first();
+    expect($log->status)->toBe('Sedang Diproses');
+    expect($log->catatan)->toBe('Sudah diajukan ke vendor');
+    expect($log->changed_by)->toBe($admin->id);
+
+    // mulai_diproses_at & SLA yang sudah ada TETAP jalan seperti biasa,
+    // gak kepengaruh sama sekali oleh penambahan fitur riwayat ini.
+    expect($item->mulai_diproses_at)->not->toBeNull();
+});
+
+test('3 kali update status berturut-turut menghasilkan 3 baris log terpisah (bukan overwrite), urut terbaru duluan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses', 'catatan_tindak_lanjut' => 'Update pertama',
+    ]);
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Selesai Diperbaiki', 'catatan_tindak_lanjut' => 'Update kedua',
+    ]);
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses', 'catatan_tindak_lanjut' => 'Update ketiga',
+    ]);
+
+    $item->refresh();
+    expect($item->statusLogs)->toHaveCount(3);
+    expect($item->statusLogs->pluck('catatan')->all())->toBe(['Update ketiga', 'Update kedua', 'Update pertama']);
+    expect($item->statusLogs->pluck('status')->all())->toBe(['Sedang Diproses', 'Selesai Diperbaiki', 'Sedang Diproses']);
+});
+
+test('modal riwayat nampilin badge status, waktu, user (PN+nama), catatan, dan uker dengan benar', function () {
+    Pekerja::factory()->create(['pn' => '88888899']);
+    $admin = User::factory()->admin()->create(['pn' => '88888899', 'name' => 'Budi Admin']);
+    $uker = Uker::factory()->create(['nama' => 'KC Test Riwayat']);
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'item_pemeriksaan' => 'AC ruang server mati',
+    ]);
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses', 'catatan_tindak_lanjut' => 'Sudah dicek teknisi',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index'));
+
+    $response->assertSee('Riwayat Tindak Lanjut');
+    $response->assertSee('88888899');
+    $response->assertSee('Budi Admin');
+    $response->assertSee('Sudah dicek teknisi');
+    $response->assertSee('KC Test Riwayat');
+});
+
+test('item yang belum pernah diupdate status-nya nampilin pesan "Belum ada riwayat perubahan"', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index'));
+
+    $response->assertSee('Belum ada riwayat perubahan');
+});
+
+test('user cabang tetap bisa lihat riwayat item yang ada di uker sendiri/turunannya (konsisten sama akses halaman)', function () {
+    $cabangA = Uker::factory()->create();
+    Pekerja::factory()->create(['pn' => '77770001', 'uker_kode' => $cabangA->kode]);
+    $user = User::factory()->forUker($cabangA->kode)->create(['pn' => '77770001', 'name' => 'Rina Cabang']);
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $cabangA->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses', 'catatan_tindak_lanjut' => 'Ditangani cabang sendiri',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('monitoring.index'));
+
+    $response->assertSee('Ditangani cabang sendiri');
+    $response->assertSee('Rina Cabang');
+});
+
+test('user cabang TIDAK melihat riwayat item cabang lain (di luar subtree-nya) karena item itu gak pernah muncul di tabelnya', function () {
+    $cabangA = Uker::factory()->create();
+    $cabangB = Uker::factory()->create();
+    $userA = User::factory()->forUker($cabangA->kode)->create();
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $cabangB->kode]);
+    $itemB = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formB->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'catatan_tindak_lanjut' => 'Rahasia cabang B',
+    ]);
+
+    $response = $this->actingAs($userA)->get(route('monitoring.index'));
+
+    $response->assertDontSee('Rahasia cabang B');
 });

@@ -101,8 +101,11 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($items as $item)
-                        @php $mendesak = \App\Http\Controllers\MonitoringController::itemMendesak($item); @endphp
-                        <tr class="hover:bg-gray-50 {{ $mendesak ? 'border-l-2 border-l-red-400' : '' }}" x-data="{ open: false }">
+                        @php
+                            $mendesak = $item->status_tindak_lanjut === 'Belum Ditindaklanjuti' && \App\Http\Controllers\MonitoringController::itemMendesak($item);
+                            $melewatiSla = $item->status_tindak_lanjut === 'Sedang Diproses' && \App\Http\Controllers\MonitoringController::itemMelewatiSlaDiproses($item);
+                        @endphp
+                        <tr class="hover:bg-gray-50 {{ ($mendesak || $melewatiSla) ? 'border-l-2 border-l-red-400' : '' }}" x-data="{ open: false, riwayatOpen: false }">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $item->form?->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $item->kategori }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700 max-w-xs">
@@ -110,6 +113,10 @@
                                 @if ($mendesak)
                                     <span class="inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wide align-middle">
                                         Mendesak &middot; {{ (int) floor($item->form->tanggal_pemeriksaan->diffInDays(now())) }} hari
+                                    </span>
+                                @elseif ($melewatiSla)
+                                    <span class="inline-flex items-center gap-1 ml-1.5 px-1.5 py-0.5 rounded-md bg-red-50 text-red-600 text-[10px] font-bold uppercase tracking-wide align-middle">
+                                        Melewati SLA &middot; Melewati batas {{ \App\Http\Controllers\MonitoringController::hariLewatSlaDiproses($item) }} hari
                                     </span>
                                 @endif
                             </td>
@@ -124,9 +131,14 @@
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
-                                <x-icon-button type="button" variant="edit" label="Update Tindak Lanjut" @click="open = true">
-                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
-                                </x-icon-button>
+                                <div class="inline-flex gap-1.5">
+                                    <x-icon-button type="button" variant="neutral" label="Lihat Riwayat" @click="riwayatOpen = true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                                    </x-icon-button>
+                                    <x-icon-button type="button" variant="edit" label="Update Tindak Lanjut" @click="open = true">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                                    </x-icon-button>
+                                </div>
 
                                 <div x-show="open" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="open = false">
                                     <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
@@ -151,6 +163,50 @@
                                                 <x-button type="button" variant="secondary" @click="open = false">Batal</x-button>
                                             </div>
                                         </form>
+                                    </div>
+                                </div>
+
+                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="riwayatOpen = false">
+                                    <div class="bg-white p-6 rounded-2xl max-w-2xl w-full text-left">
+                                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Tindak Lanjut &mdash; {{ $item->item_pemeriksaan }}</h3>
+                                        <p class="text-xs text-gray-400 mb-3.5">{{ $item->form?->uker?->nama }}</p>
+
+                                        @if ($item->statusLogs->isEmpty())
+                                            <p class="text-sm text-gray-400 py-6 text-center">Belum ada riwayat perubahan.</p>
+                                        @else
+                                            <div class="overflow-x-auto max-h-96 overflow-y-auto">
+                                                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                                                    <thead class="bg-gray-50 sticky top-0">
+                                                        <tr>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Waktu</th>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">User</th>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Catatan</th>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody class="divide-y divide-gray-100">
+                                                        @foreach ($item->statusLogs as $log)
+                                                            <tr>
+                                                                <td class="px-3 py-2.5">
+                                                                    <x-badge :color="match($log->status) { 'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'gray' }">
+                                                                        {{ $log->status }}
+                                                                    </x-badge>
+                                                                </td>
+                                                                <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">{{ $log->created_at->translatedFormat('d M Y, H:i') }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-600">{{ $log->changedBy?->pn }} &middot; {{ $log->changedBy?->name ?? 'Pengguna terhapus' }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-500 max-w-[200px]">{{ $log->catatan ?: '-' }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-600">{{ $item->form?->uker?->nama }}</td>
+                                                            </tr>
+                                                        @endforeach
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        @endif
+
+                                        <div class="pt-4">
+                                            <x-button type="button" variant="secondary" @click="riwayatOpen = false">Tutup</x-button>
+                                        </div>
                                     </div>
                                 </div>
                             </td>
