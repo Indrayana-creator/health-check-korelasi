@@ -59,12 +59,13 @@
 
         <x-card padding="p-3.5">
             <form method="GET" action="{{ route('monitoring.index') }}" class="flex flex-wrap gap-3 items-center">
-                <x-select name="uker_kode" class="min-w-[190px]">
-                    <option value="">Semua Uker</option>
-                    @foreach ($ukerFilterList as $u)
-                        <option value="{{ $u->kode }}" @selected(request('uker_kode') == $u->kode)>{{ $u->nama }}</option>
-                    @endforeach
-                </x-select>
+                <x-uker-filter-combobox
+                    name="uker_kode"
+                    :daftar-uker="$ukerFilterList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                    :selected="request('uker_kode')"
+                    :initial-label="$ukerFilterList->firstWhere('kode', request('uker_kode'))?->nama"
+                    class="min-w-[190px]"
+                />
                 <x-select name="kategori" class="min-w-[220px]">
                     <option value="">Semua Kategori</option>
                     @foreach ($kategoriList as $k)
@@ -166,23 +167,22 @@
                                     </div>
                                 </div>
 
-                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="riwayatOpen = false">
-                                    <div class="bg-white p-6 rounded-2xl max-w-2xl w-full text-left">
+                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 whitespace-normal" @click.self="riwayatOpen = false">
+                                    <div class="bg-white p-6 rounded-2xl max-w-4xl w-full text-left">
                                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Tindak Lanjut &mdash; {{ $item->item_pemeriksaan }}</h3>
                                         <p class="text-xs text-gray-400 mb-3.5">{{ $item->form?->uker?->nama }}</p>
 
                                         @if ($item->statusLogs->isEmpty())
                                             <p class="text-sm text-gray-400 py-6 text-center">Belum ada riwayat perubahan.</p>
                                         @else
-                                            <div class="overflow-x-auto max-h-96 overflow-y-auto">
-                                                <table class="min-w-full divide-y divide-gray-100 text-sm">
+                                            <div class="max-h-96 overflow-y-auto">
+                                                <table class="w-full table-fixed divide-y divide-gray-100 text-sm">
                                                     <thead class="bg-gray-50 sticky top-0">
                                                         <tr>
-                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
-                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Waktu</th>
-                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">User</th>
+                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
+                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Waktu</th>
+                                                            <th class="w-48 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">User</th>
                                                             <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Catatan</th>
-                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100">
@@ -193,10 +193,9 @@
                                                                         {{ $log->status }}
                                                                     </x-badge>
                                                                 </td>
-                                                                <td class="px-3 py-2.5 text-gray-600 whitespace-nowrap">{{ $log->created_at->translatedFormat('d M Y, H:i') }}</td>
-                                                                <td class="px-3 py-2.5 text-gray-600">{{ $log->changedBy?->pn }} &middot; {{ $log->changedBy?->name ?? 'Pengguna terhapus' }}</td>
-                                                                <td class="px-3 py-2.5 text-gray-500 max-w-[200px]">{{ $log->catatan ?: '-' }}</td>
-                                                                <td class="px-3 py-2.5 text-gray-600">{{ $item->form?->uker?->nama }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-600">{{ $log->created_at->translatedFormat('d M Y, H:i') }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-600 break-words">{{ $log->changedBy?->pn }} &middot; {{ $log->changedBy?->name ?? 'Pengguna terhapus' }}</td>
+                                                                <td class="px-3 py-2.5 text-gray-500 break-words">{{ $log->catatan ?: '-' }}</td>
                                                             </tr>
                                                         @endforeach
                                                     </tbody>

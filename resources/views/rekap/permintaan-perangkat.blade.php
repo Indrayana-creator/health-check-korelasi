@@ -23,6 +23,10 @@
                 <span class="text-sm font-bold text-gray-700 whitespace-nowrap">{{ $labelMinggu }}</span>
                 <x-button variant="secondary" :href="route('rekap.permintaanPerangkat', ['minggu' => $mingguSesudahnya])">Minggu Berikutnya &rarr;</x-button>
             </div>
+            <div class="flex gap-2">
+                <x-button variant="secondary" :href="route('rekap.permintaanPerangkat.export.excel', request()->query())">Export Excel</x-button>
+                <x-button variant="secondary" :href="route('rekap.permintaanPerangkat.export.pdf', request()->query())">Export PDF</x-button>
+            </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

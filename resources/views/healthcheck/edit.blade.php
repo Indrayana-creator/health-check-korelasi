@@ -138,7 +138,7 @@
                 @endphp
 
                 <div x-data="{ tab: {{ $tabAwal }} }">
-                    {{-- Tab kategori A/B/C/D -- bebas diklik urutan apa aja, progress
+                    {{-- Tab per kategori checklist (dinamis dari config) -- bebas diklik urutan apa aja, progress
                          per kategori kesimpen tiap kali "Simpan" ditekan (item yang
                          belum disentuh di kategori lain gak ikut berubah/ilang). --}}
                     <x-card padding="p-1.5" class="mb-4">
@@ -246,7 +246,7 @@
                         <x-card padding="p-6">
                             <h3 class="font-extrabold text-sm text-gray-800 mb-1">E - Dokumentasi Visual</h3>
                             <p class="text-xs text-gray-400 mb-4">
-                                Link/URL foto bukti pemeriksaan, opsional -- tidak ikut hitungan compliance % (compliance tetap murni dari Kategori A-D).
+                                Link/URL foto bukti pemeriksaan, opsional -- tidak ikut hitungan compliance % (compliance tetap murni dari kategori checklist item, bukan dari sini).
                             </p>
 
                             <div class="flex flex-col gap-5">

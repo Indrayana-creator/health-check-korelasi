@@ -18,6 +18,11 @@
             <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
         @endif
 
+        <div class="flex justify-end gap-2">
+            <x-button variant="secondary" :href="route('aset.editRequests.export.excel')">Export Excel</x-button>
+            <x-button variant="secondary" :href="route('aset.editRequests.export.pdf')">Export PDF</x-button>
+        </div>
+
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-orange-100 text-orange-600 flex items-center justify-center mb-3">

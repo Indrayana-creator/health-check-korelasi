@@ -16,22 +16,47 @@
     <body class="font-sans antialiased">
         <div class="flex min-h-screen w-full">
             <div class="hidden lg:flex flex-1 flex-col justify-between bg-gradient-to-br from-nusantara to-cakrawala text-white p-14 relative overflow-hidden">
-                <div class="relative flex items-center gap-3">
-                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center">
+                <img
+                    src="{{ asset('images/DESAIN-infografis-TW-3-2022-layer_0022_Gedung-BRI-2022-IMG_9962-copy-3.png') }}"
+                    alt="Gedung BRI"
+                    class="absolute inset-0 w-full h-full object-cover object-bottom opacity-55 pointer-events-none select-none"
+                >
+                {{-- Scrim tipis & rata dari atas ke bawah -- cuma buat jaga
+                     kontras minimum, BUKAN nutupin foto (sebelumnya 95% di
+                     atas bikin foto ketutup total dekat logo, itu penyebab
+                     "gap kosong" yang dilaporkan). Kontras teks utamanya
+                     diamanin lewat text-shadow di tiap elemen teks, bukan
+                     scrim tebal di seluruh panel. --}}
+                <div class="absolute inset-0 bg-gradient-to-b from-nusantara/50 via-nusantara/20 to-cakrawala/55"></div>
+
+                <div class="relative flex items-center gap-3 [text-shadow:0_2px_8px_rgb(0_0_0_/_45%)]">
+                    <div class="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center backdrop-blur-sm">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5">
                             <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"></path>
                         </svg>
                     </div>
                     <span class="text-xl font-extrabold tracking-tight">AsetSehat</span>
                 </div>
-                <div class="relative max-w-md">
+                <div class="relative max-w-md [text-shadow:0_2px_10px_rgb(0_0_0_/_50%)]">
                     <p class="text-4xl leading-tight font-bold mb-4">Kelola aset &amp; health check cabang, dalam satu tempat.</p>
-                    <p class="text-[15px] leading-relaxed text-white/80">Pantau kondisi aset, kepatuhan pemeliharaan, dan status persetujuan seluruh unit kerja secara real-time.</p>
+                    <p class="text-[15px] leading-relaxed text-white/90">Pantau kondisi aset, kepatuhan pemeliharaan, dan status persetujuan seluruh unit kerja secara real-time.</p>
                 </div>
-                <p class="relative text-xs text-white/55">&copy; {{ date('Y') }} AsetSehat &middot; Internal Operations Tool</p>
+                {{-- flex ROW (bukan kolom) sengaja -- <img> jadi flex item
+                     yang main axis-nya horizontal, jadi gak kena masalah
+                     align-items:stretch gepeng-in lebar kayak yang kejadian
+                     di sidebar. Ukuran logo (h-4, object-contain) sama
+                     persis kayak badge di sidebar biar konsisten. --}}
+                <div class="relative flex items-center gap-2.5 [text-shadow:0_1px_6px_rgb(0_0_0_/_45%)]">
+                    <p class="text-xs text-white/70">&copy; {{ date('Y') }} AsetSehat &middot; Internal Operations Tool</p>
+                    <img
+                        src="{{ asset('images/bri-logo-putih.png') }}"
+                        alt="Bank Rakyat Indonesia"
+                        class="h-4 w-auto object-contain opacity-70 select-none"
+                    >
+                </div>
             </div>
 
-            <div class="flex-1 flex items-center justify-center p-10 bg-white">
+            <div class="flex-1 flex items-center justify-center min-h-screen p-10 bg-white">
                 <div class="w-full max-w-sm">
                     <h1 class="text-2xl font-extrabold text-gray-800 mb-1.5">Masuk ke akun</h1>
                     <p class="text-sm text-gray-500 mb-7">Gunakan PN (Personal Number) dan kata sandi Anda untuk melanjutkan.</p>

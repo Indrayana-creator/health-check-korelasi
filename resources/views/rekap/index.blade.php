@@ -23,13 +23,19 @@
 
         <div x-data="{ periode: 'minggu' }">
 
-            <div class="flex items-center gap-1.5">
-                <div class="flex gap-1 bg-gray-100 p-1 rounded-[10px]">
-                    <button type="button" @click="periode = 'minggu'" :class="periode === 'minggu' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Minggu Ini</button>
-                    <button type="button" @click="periode = 'bulan'" :class="periode === 'bulan' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Bulan Ini</button>
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-1.5">
+                    <div class="flex gap-1 bg-gray-100 p-1 rounded-[10px]">
+                        <button type="button" @click="periode = 'minggu'" :class="periode === 'minggu' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Minggu Ini</button>
+                        <button type="button" @click="periode = 'bulan'" :class="periode === 'bulan' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Bulan Ini</button>
+                    </div>
+                    <p class="text-xs text-gray-400" x-show="periode === 'minggu'">{{ $labelMinggu }}</p>
+                    <p class="text-xs text-gray-400" x-show="periode === 'bulan'" x-cloak>{{ $labelBulan }}</p>
                 </div>
-                <p class="text-xs text-gray-400" x-show="periode === 'minggu'">{{ $labelMinggu }}</p>
-                <p class="text-xs text-gray-400" x-show="periode === 'bulan'" x-cloak>{{ $labelBulan }}</p>
+                <div class="flex gap-2">
+                    <x-button variant="secondary" href="#" x-bind:href="'{{ route('rekap.cabang.export.excel') }}?periode=' + periode">Export Excel</x-button>
+                    <x-button variant="secondary" href="#" x-bind:href="'{{ route('rekap.cabang.export.pdf') }}?periode=' + periode">Export PDF</x-button>
+                </div>
             </div>
 
             <div x-show="periode === 'minggu'" class="space-y-4 mt-4">

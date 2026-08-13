@@ -42,7 +42,9 @@
             </x-card>
         </div>
 
-        <div class="flex justify-end">
+        <div class="flex justify-end gap-2">
+            <x-button variant="secondary" :href="route('users.export.excel')">Export Excel</x-button>
+            <x-button variant="secondary" :href="route('users.export.pdf')">Export PDF</x-button>
             <x-button :href="route('users.create')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 5v14M5 12h14"></path></svg>
                 Tambah User
@@ -54,7 +56,6 @@
                 <thead class="bg-gray-50">
                     <tr>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Email</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">PN</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Role</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
@@ -73,7 +74,6 @@
                                     <span class="text-sm font-semibold text-gray-800">{{ $user->name }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-sm text-gray-600">{{ $user->email }}</td>
                             <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ $user->pn ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <x-badge :color="$user->role === 'admin' ? 'nusantara' : 'gray'">{{ $user->role }}</x-badge>

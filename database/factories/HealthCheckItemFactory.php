@@ -21,6 +21,7 @@ class HealthCheckItemFactory extends Factory
                 'C - Jaringan',
                 'D - Power System (UPS)',
                 'E - Dokumentasi Visual',
+                'F - Genset',
             ]),
             'item_pemeriksaan' => fake()->sentence(),
             'status' => 'Belum Diperiksa',

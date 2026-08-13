@@ -7,6 +7,7 @@ use App\Models\Aset;
 use App\Models\AsetEditRequest;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
+use App\Models\PermintaanPerangkat;
 use App\Models\Uker;
 use App\Support\ComplianceScale;
 use Illuminate\Http\Request;
@@ -135,22 +136,52 @@ class DashboardController extends Controller
             ->orderByDesc('jumlah')
             ->get();
 
-        // ===== 4. Aktivitas terbaru (gabungan aset + health check, 8 terbaru) =====
-        $aktivitasAset = (clone $asetQuery)->with(['uker', 'kodeAset'])->latest()->take(5)->get()->map(function ($a) {
-            return [
-                'jenis' => 'Aset',
-                'teks' => "{$a->kodeAset?->nama} ({$a->merek} {$a->tipe_model}) ditambahkan ke {$a->uker?->nama}",
-                'waktu' => $a->created_at,
-            ];
-        });
-        $aktivitasHc = (clone $formQuery)->with('uker')->latest()->take(5)->get()->map(function ($f) {
-            return [
+        // ===== 4. Aktivitas terbaru -- dipersempit ke event yang BUTUH
+        // PERHATIAN/TINDAKAN admin (submit approval HC, item baru Not OK,
+        // ajuan Permintaan Perangkat, ajuan Edit Aset), BUKAN aktivitas
+        // rutin (aset ditambahkan, form HC kosong baru dibuat) yang
+        // volumenya tinggi tapi gak actionable buat dipantau tiap hari.
+        $aktivitasSubmitHc = (clone $formQuery)->where('status_approval', 'Menunggu Approval')
+            ->with('uker')->orderByDesc('updated_at')->take(5)->get()->map(fn ($f) => [
                 'jenis' => 'Health Check',
-                'teks' => "Form health check {$f->periode} dibuat untuk {$f->uker?->nama}",
-                'waktu' => $f->created_at,
-            ];
-        });
-        $aktivitasTerbaru = $aktivitasAset->concat($aktivitasHc)->sortByDesc('waktu')->take(8)->values();
+                'teks' => "Form health check {$f->periode} ({$f->uker?->nama}) disubmit untuk approval",
+                'waktu' => $f->updated_at,
+            ]);
+
+        // Reuse $formList yang udah di-scope RBAC di atas (bukan query baru)
+        // -- gak ada kolom terpisah yang nyatet KAPAN status berubah jadi
+        // Not OK (item di-update in-place), jadi updated_at item dipakai
+        // sebagai proxy praktis "baru ketemu masalah".
+        $aktivitasNotOk = $formList
+            ->flatMap(fn ($f) => $f->items->where('status', 'Not OK')->map(fn ($i) => ['item' => $i, 'form' => $f]))
+            ->sortByDesc(fn ($p) => $p['item']->updated_at)
+            ->take(5)
+            ->map(fn ($p) => [
+                'jenis' => 'Kendala',
+                'teks' => "Item '{$p['item']->item_pemeriksaan}' di {$p['form']->uker?->nama} berstatus Not OK",
+                'waktu' => $p['item']->updated_at,
+            ]);
+
+        // Permintaan Perangkat -- scoping exact-match uker sendiri buat
+        // non-admin, sama persis kayak PermintaanPerangkatController (bukan
+        // subtree, karena yang ngajuin cuma level KC/Cabang).
+        $aktivitasPermintaan = ($isAdmin ? PermintaanPerangkat::query() : PermintaanPerangkat::where('uker_kode', $ukerKode))
+            ->with('uker')->latest()->take(5)->get()->map(fn ($p) => [
+                'jenis' => 'Permintaan Perangkat',
+                'teks' => "Permintaan perangkat {$p->no_nota_dinas} diajukan oleh {$p->uker?->nama}",
+                'waktu' => $p->created_at,
+            ]);
+
+        // Reuse $editRequestsMenunggu/$editRequestsSaya yang udah dihitung
+        // di section 2 di atas -- gak query ulang.
+        $aktivitasEditAset = ($isAdmin ? $editRequestsMenunggu : $editRequestsSaya)->map(fn ($r) => [
+            'jenis' => 'Edit Aset',
+            'teks' => "Permintaan edit aset {$r->aset?->no_asset} diajukan",
+            'waktu' => $r->created_at,
+        ]);
+
+        $aktivitasTerbaru = $aktivitasSubmitHc->concat($aktivitasNotOk)->concat($aktivitasPermintaan)->concat($aktivitasEditAset)
+            ->sortByDesc('waktu')->take(8)->values();
 
         // ===== 5. Struktur Organisasi -- khusus admin =====
         // Halaman tree lengkap sekarang balik jadi halaman sendiri (/uker-tree,

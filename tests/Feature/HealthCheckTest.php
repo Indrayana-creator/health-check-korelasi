@@ -4,14 +4,32 @@ use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
+
+// Pola sama kayak buatFileXlsx() di AsetTest.php -- xlsx SUNGGUHAN di disk,
+// bukan UploadedFile::fake() yang isinya random bytes, karena
+// bulkUpload()/bulkDelete() beneran parse isinya pakai PhpSpreadsheet.
+function buatFileXlsxHc(array $rows, string $namaFile = 'upload.xlsx'): UploadedFile
+{
+    $spreadsheet = new Spreadsheet;
+    $spreadsheet->getActiveSheet()->fromArray($rows, null, 'A1');
+
+    $path = tempnam(sys_get_temp_dir(), 'test').'.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, $namaFile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+}
 
 test('guest tidak bisa akses daftar health check', function () {
     $this->get(route('healthcheck.index'))->assertRedirect(route('login'));
 });
 
-test('store form health check otomatis generate 61 item checklist', function () {
+test('store form health check otomatis generate item checklist sesuai config', function () {
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
+    $totalItemSeharusnya = collect(config('health_check_checklist'))->flatten()->count();
 
     $response = $this->actingAs($user)->post(route('healthcheck.store'), [
         'uker_kode' => $uker->kode,
@@ -21,8 +39,25 @@ test('store form health check otomatis generate 61 item checklist', function () 
 
     $form = HealthCheckForm::first();
     $response->assertRedirect(route('healthcheck.edit', $form));
-    expect($form->items()->count())->toBe(61);
-    expect($form->items()->where('status', 'Belum Diperiksa')->count())->toBe(61);
+    expect($form->items()->count())->toBe($totalItemSeharusnya);
+    expect($form->items()->where('status', 'Belum Diperiksa')->count())->toBe($totalItemSeharusnya);
+});
+
+test('form health check baru otomatis ikut generate item checklist kategori F - Genset', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Triwulan I 2026',
+    ]);
+
+    $form = HealthCheckForm::first();
+    $itemGenset = $form->items()->where('kategori', 'F - Genset')->get();
+
+    expect($itemGenset->count())->toBe(count(config('health_check_checklist')['F - Genset']));
+    expect($itemGenset->pluck('status')->unique()->all())->toBe(['Belum Diperiksa']);
 });
 
 test('gak bisa bikin form health check dobel buat uker & periode yang sama', function () {
@@ -310,4 +345,148 @@ test('guest tidak bisa akses sampah maupun restore health check', function () {
 
     $this->get(route('healthcheck.trash'))->assertRedirect(route('login'));
     $this->post(route('healthcheck.restore', $form->id))->assertRedirect(route('login'));
+});
+
+// ===================== Reject approval =====================
+
+test('admin bisa menolak form yang menunggu approval, wajib isi catatan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'status_approval' => 'Menunggu Approval']);
+
+    $gagalTanpaCatatan = $this->actingAs($admin)->post(route('healthcheck.reject', $form), []);
+    $gagalTanpaCatatan->assertSessionHasErrors('catatan_approval');
+
+    $response = $this->actingAs($admin)->post(route('healthcheck.reject', $form), [
+        'catatan_approval' => 'Data belum lengkap, tolong cek ulang kategori C',
+    ]);
+
+    $response->assertRedirect(route('healthcheck.index'));
+    $form->refresh();
+    expect($form->status_approval)->toBe('Ditolak');
+    expect($form->catatan_approval)->toBe('Data belum lengkap, tolong cek ulang kategori C');
+    expect($form->approved_by_pn)->toBe($admin->pn);
+});
+
+test('user biasa tidak bisa menolak form health check', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'status_approval' => 'Menunggu Approval']);
+
+    $response = $this->actingAs($user)->post(route('healthcheck.reject', $form), ['catatan_approval' => 'Alasan']);
+
+    $response->assertForbidden();
+    expect($form->fresh()->status_approval)->toBe('Menunggu Approval');
+});
+
+test('form yang belum berstatus Menunggu Approval tidak bisa ditolak', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'status_approval' => 'Draft']);
+
+    $response = $this->actingAs($admin)->post(route('healthcheck.reject', $form), ['catatan_approval' => 'Alasan']);
+
+    $response->assertForbidden();
+});
+
+// ===================== Export =====================
+
+test('guest tidak bisa akses export health check', function () {
+    $this->get(route('healthcheck.export.excel'))->assertRedirect(route('login'));
+    $this->get(route('healthcheck.export.pdf'))->assertRedirect(route('login'));
+});
+
+test('user bisa export health check Excel & PDF', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Agustus 2026']);
+
+    $this->actingAs($user)->get(route('healthcheck.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($user)->get(route('healthcheck.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+// ===================== Bulk upload/delete & template =====================
+
+test('guest tidak bisa akses fitur bulk upload/delete/template health check', function () {
+    $this->get(route('healthcheck.bulkUploadForm'))->assertRedirect(route('login'));
+    $this->get(route('healthcheck.downloadTemplate'))->assertRedirect(route('login'));
+    $this->get(route('healthcheck.bulkDeleteForm'))->assertRedirect(route('login'));
+});
+
+test('admin bisa lihat form bulk upload & bulk delete health check', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->get(route('healthcheck.bulkUploadForm'))->assertOk();
+    $this->actingAs($admin)->get(route('healthcheck.bulkDeleteForm'))->assertOk();
+});
+
+test('download template health check menghasilkan file xlsx', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.downloadTemplate'));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+});
+
+test('bulk upload health check berhasil membuat form beserta seluruh item checklist-nya', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $totalItemSeharusnya = collect(config('health_check_checklist'))->flatten()->count();
+
+    $file = buatFileXlsxHc([
+        ['uker_kode', 'tanggal_pemeriksaan', 'periode', 'pic_pn'],
+        [$uker->kode, '2026-08-10', 'Agustus 2026 - Bulk', ''],
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('healthcheck.bulkUpload'), ['file' => $file]);
+
+    $response->assertRedirect();
+    $form = HealthCheckForm::where('periode', 'Agustus 2026 - Bulk')->first();
+    expect($form)->not->toBeNull();
+    expect($form->items()->count())->toBe($totalItemSeharusnya);
+});
+
+test('bulk upload health check ditolak kalau header file gak sesuai template', function () {
+    $admin = User::factory()->admin()->create();
+    $file = buatFileXlsxHc([['kolom_salah', 'lainnya']]);
+
+    $response = $this->actingAs($admin)->post(route('healthcheck.bulkUpload'), ['file' => $file]);
+
+    $response->assertSessionHas('formatSalah', true);
+});
+
+test('bulk upload health check: user biasa gak bisa upload ke uker di luar subtree-nya', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+
+    $file = buatFileXlsxHc([
+        ['uker_kode', 'tanggal_pemeriksaan', 'periode', 'pic_pn'],
+        [$ukerLain->kode, '2026-08-10', 'Agustus 2026 - Ditolak', ''],
+    ]);
+
+    $response = $this->actingAs($user)->post(route('healthcheck.bulkUpload'), ['file' => $file]);
+
+    $response->assertSessionHas('gagal');
+    expect(HealthCheckForm::where('periode', 'Agustus 2026 - Ditolak')->exists())->toBeFalse();
+});
+
+test('bulk delete health check menghapus form berdasarkan uker+periode', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Agustus 2026 - Hapus']);
+
+    $file = buatFileXlsxHc([['uker_kode', 'periode'], [$uker->kode, 'Agustus 2026 - Hapus']]);
+
+    $response = $this->actingAs($admin)->post(route('healthcheck.bulkDelete'), ['file' => $file]);
+
+    $response->assertRedirect();
+    expect(HealthCheckForm::where('id', $form->id)->exists())->toBeFalse();
+    expect(HealthCheckForm::onlyTrashed()->where('id', $form->id)->exists())->toBeTrue();
 });

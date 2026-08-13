@@ -32,6 +32,10 @@
                 <x-text-input type="text" name="q" value="{{ request('q') }}" placeholder="Cari nama atau PN..." />
                 <x-button type="submit">Cari</x-button>
             </form>
+            <div class="flex gap-2 ml-auto">
+                <x-button variant="secondary" :href="route('pekerja.export.excel')">Export Excel</x-button>
+                <x-button variant="secondary" :href="route('pekerja.export.pdf')">Export PDF</x-button>
+            </div>
         </div>
 
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">

@@ -13,7 +13,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('pekerja.update', $pekerja) }}" method="POST" class="space-y-4">
+                <form action="{{ route('pekerja.update', $pekerja) }}" method="POST" class="space-y-4" x-data="{ ukerKodeTerpilih: '{{ old('uker_kode', $pekerja->uker_kode) }}' }">
                     @csrf
                     @method('PUT')
 
@@ -37,13 +37,14 @@
                     </div>
 
                     <div>
-                        <x-input-label value="Uker" required />
-                        <x-select name="uker_kode" class="mt-1.5 block w-full" required>
-                            <option value="">-- Pilih Uker --</option>
-                            @foreach ($ukerList as $u)
-                                <option value="{{ $u->kode }}" @selected(old('uker_kode', $pekerja->uker_kode) == $u->kode)>{{ $u->nama }}</option>
-                            @endforeach
-                        </x-select>
+                        <x-uker-combobox
+                            name="uker_kode"
+                            label="Uker"
+                            :daftar-uker="$ukerList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                            model-value="ukerKodeTerpilih"
+                            :initial-label="$ukerList->firstWhere('kode', old('uker_kode', $pekerja->uker_kode))?->nama"
+                            placeholder="Ketik nama atau kode uker..."
+                        />
                         <p class="text-xs text-gray-400 mt-1.5">Cuma level KC (Kantor Cabang) ke atas -- yang punya akun login cuma kantor cabang.</p>
                         <x-input-error :messages="$errors->get('uker_kode')" class="mt-1.5" />
                     </div>

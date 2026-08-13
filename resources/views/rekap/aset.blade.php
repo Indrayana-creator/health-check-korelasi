@@ -16,11 +16,17 @@
             ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => false],
         ]" />
 
-        <p class="text-sm text-gray-500 max-w-3xl">
-            Data digabungkan (roll-up) dari seluruh uker/unit yang berada di bawah cabang yang sama,
-            diurutkan dari persentase aset "sehat" (kondisi Normal) paling rendah agar cabang yang paling
-            butuh perhatian terlihat lebih dulu.
-        </p>
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <p class="text-sm text-gray-500 max-w-3xl">
+                Data digabungkan (roll-up) dari seluruh uker/unit yang berada di bawah cabang yang sama,
+                diurutkan dari persentase aset "sehat" (kondisi Normal) paling rendah agar cabang yang paling
+                butuh perhatian terlihat lebih dulu.
+            </p>
+            <div class="flex gap-2 flex-none">
+                <x-button variant="secondary" :href="route('rekap.aset.export.excel')">Export Excel</x-button>
+                <x-button variant="secondary" :href="route('rekap.aset.export.pdf')">Export PDF</x-button>
+            </div>
+        </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <x-card padding="p-5">

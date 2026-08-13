@@ -116,7 +116,13 @@
         @endif
 
         <x-card>
-            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Struktur Organisasi</h3>
+            <div class="flex items-center justify-between gap-3 flex-wrap mb-1">
+                <h3 class="font-extrabold text-sm text-gray-800">Struktur Organisasi</h3>
+                <div class="flex gap-2">
+                    <x-button variant="secondary" size="sm" :href="route('uker-tree.export.excel')">Export Excel</x-button>
+                    <x-button variant="secondary" size="sm" :href="route('uker-tree.export.pdf')">Export PDF</x-button>
+                </div>
+            </div>
             @if (auth()->user()->role === 'admin')
                 <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-sm text-yellow-800">
                     Pembagian <strong>Area</strong> di bawah ini masih bersifat draft (dikelompokkan berdasarkan perkiraan

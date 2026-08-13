@@ -56,9 +56,10 @@
 
         {{-- 1b. Kesehatan Checklist per Kategori -- dari form TERBARU tiap uker
              dalam cakupan RBAC (admin: semua, user: sendiri + turunan), bukan
-             dari seluruh histori. Kategori A-D pakai ComplianceScale yang sama
-             kayak tempat lain; Kategori E (Dokumentasi Visual) terpisah, gak
-             ikut compliance manapun. --}}
+             dari seluruh histori. Kategori checklist (A-D, F) pakai
+             ComplianceScale yang sama kayak tempat lain, jumlahnya ngikut
+             config('health_check_checklist') secara dinamis; Kategori E
+             (Dokumentasi Visual) terpisah total, gak ikut compliance manapun. --}}
         <x-card>
             <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori</h3>
             <p class="text-xs text-gray-400 mb-3">Dari form Health Check terbaru tiap uker (bukan seluruh histori), sesuai cakupan akses Anda.</p>
@@ -74,7 +75,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 mb-5">
                 @foreach ($kesehatanPerKategori as $k)
                     <div class="border border-gray-200 rounded-xl p-4">
                         <p class="text-xs font-bold text-gray-700 mb-2 leading-snug">{{ $k['kategori'] }}</p>
@@ -299,7 +300,7 @@
                         <div class="flex flex-col">
                             @foreach ($aktivitasTerbaru as $a)
                                 <div class="flex items-start gap-2.5 text-sm border-b border-gray-100 py-2.5">
-                                    <x-badge :color="$a['jenis'] === 'Aset' ? 'blue' : 'nusantara'" class="flex-none">
+                                    <x-badge :color="match($a['jenis']) { 'Kendala' => 'red', 'Health Check' => 'blue', 'Permintaan Perangkat' => 'yellow', default => 'nusantara' }" class="flex-none">
                                         {{ $a['jenis'] }}
                                     </x-badge>
                                     <div class="flex-1 min-w-0">

@@ -83,8 +83,8 @@ class HealthCheckForm extends Model
     }
 
     // Persentase compliance keseluruhan (OK / total langkah) -- murni dari
-    // checklist Kategori A-D, Kategori E (dokumentasi visual) gak pernah
-    // ikut dihitung di sini.
+    // item checklist (kategori dinamis dari config), Kategori E (dokumentasi
+    // visual) gak pernah ikut dihitung di sini.
     public function persenCompliance(): float
     {
         $total = $this->items()->count();

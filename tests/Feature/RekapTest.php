@@ -151,3 +151,45 @@ test('rekap aset menjumlahkan kondisi aset semua uker dalam satu cabang (uker_sp
         'Lainnya' => 1,
     ]);
 });
+
+// ===================== Export =====================
+
+test('user biasa tidak bisa export rekap cabang maupun rekap aset', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('rekap.cabang.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('rekap.cabang.export.pdf'))->assertForbidden();
+    $this->actingAs($user)->get(route('rekap.aset.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('rekap.aset.export.pdf'))->assertForbidden();
+});
+
+test('export rekap cabang Excel & PDF berhasil, ngikutin ?periode= yang lagi aktif', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $form->id, 'status' => 'OK']);
+
+    $responseExcelMinggu = $this->actingAs($admin)->get(route('rekap.cabang.export.excel', ['periode' => 'minggu']));
+    $responseExcelMinggu->assertOk();
+    $responseExcelMinggu->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $responsePdfBulan = $this->actingAs($admin)->get(route('rekap.cabang.export.pdf', ['periode' => 'bulan']));
+    $responsePdfBulan->assertOk();
+    $responsePdfBulan->assertHeader('content-type', 'application/pdf');
+});
+
+test('export rekap aset Excel & PDF berhasil', function () {
+    $admin = User::factory()->admin()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $uker = Uker::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $this->actingAs($admin)->get(route('rekap.aset.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('rekap.aset.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});

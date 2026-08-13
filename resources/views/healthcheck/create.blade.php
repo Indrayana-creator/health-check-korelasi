@@ -14,7 +14,7 @@
                 @endif
 
                 <p class="mb-4 text-sm text-gray-500">
-                    Setelah disimpan, 61 item pemeriksaan resmi (kategori A-D) akan otomatis dibuat dengan status awal "Belum Diperiksa", dan Anda akan diarahkan ke halaman pengisian.
+                    Setelah disimpan, {{ collect(config('health_check_checklist'))->flatten()->count() }} item pemeriksaan resmi akan otomatis dibuat dengan status awal "Belum Diperiksa", dan Anda akan diarahkan ke halaman pengisian.
                 </p>
 
                 <form action="{{ route('healthcheck.store') }}" method="POST" class="space-y-4" x-data="{ ukerKodeTerpilih: '{{ old('uker_kode') }}' }">

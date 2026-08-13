@@ -24,7 +24,6 @@ test('admin bisa melihat, menambah, dan mengedit user', function () {
 
     $store = $this->actingAs($admin)->post(route('users.store'), [
         'name' => 'Budi',
-        'email' => 'budi@example.com',
         'pn' => $pekerja->pn,
         'password' => 'password123',
         'role' => 'user',
@@ -32,7 +31,7 @@ test('admin bisa melihat, menambah, dan mengedit user', function () {
     ]);
     $store->assertRedirect(route('users.index'));
 
-    $budi = User::where('email', 'budi@example.com')->first();
+    $budi = User::where('pn', $pekerja->pn)->first();
     expect($budi)->not->toBeNull();
     expect($budi->role)->toBe('user');
     expect($budi->uker_kode)->toBe($uker->kode);
@@ -40,7 +39,6 @@ test('admin bisa melihat, menambah, dan mengedit user', function () {
 
     $update = $this->actingAs($admin)->put(route('users.update', $budi), [
         'name' => 'Budi Santoso',
-        'email' => 'budi@example.com',
         'pn' => $pekerja->pn,
         'role' => 'admin',
         'uker_kode' => '',
@@ -51,13 +49,31 @@ test('admin bisa melihat, menambah, dan mengedit user', function () {
     expect($budi->fresh()->uker_kode)->toBeNull();
 });
 
+test('user baru bisa dibuat tanpa mengisi email sama sekali (email opsional, gak lagi wajib)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $pekerja = Pekerja::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('users.store'), [
+        'name' => 'Tanpa Email',
+        'pn' => $pekerja->pn,
+        'password' => 'password123',
+        'role' => 'user',
+        'uker_kode' => $uker->kode,
+    ]);
+
+    $response->assertRedirect(route('users.index'));
+    $user = User::where('pn', $pekerja->pn)->first();
+    expect($user)->not->toBeNull();
+    expect($user->email)->toBeNull();
+});
+
 test('pn wajib diisi dan harus terdaftar di data pekerja saat menambah user', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
 
     $kosong = $this->actingAs($admin)->post(route('users.store'), [
         'name' => 'Tanpa PN',
-        'email' => 'tanpapn@example.com',
         'password' => 'password123',
         'role' => 'user',
         'uker_kode' => $uker->kode,
@@ -66,7 +82,6 @@ test('pn wajib diisi dan harus terdaftar di data pekerja saat menambah user', fu
 
     $tidakTerdaftar = $this->actingAs($admin)->post(route('users.store'), [
         'name' => 'PN Ngasal',
-        'email' => 'pnngasal@example.com',
         'pn' => '99999999',
         'password' => 'password123',
         'role' => 'user',
@@ -74,8 +89,8 @@ test('pn wajib diisi dan harus terdaftar di data pekerja saat menambah user', fu
     ]);
     $tidakTerdaftar->assertSessionHasErrors('pn');
 
-    expect(User::where('email', 'tanpapn@example.com')->exists())->toBeFalse();
-    expect(User::where('email', 'pnngasal@example.com')->exists())->toBeFalse();
+    expect(User::where('name', 'Tanpa PN')->exists())->toBeFalse();
+    expect(User::where('name', 'PN Ngasal')->exists())->toBeFalse();
 });
 
 test('dropdown uker di form Tambah/Edit User cuma nampilin level KC ke atas, gak ada KCP/Unit', function () {
@@ -160,4 +175,24 @@ test('user aktif tetap bisa login seperti biasa', function () {
 
     $response->assertRedirect(route('dashboard'));
     $this->assertAuthenticated();
+});
+
+test('user biasa tidak bisa export kelola user', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('users.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('users.export.pdf'))->assertForbidden();
+});
+
+test('admin bisa export kelola user Excel & PDF', function () {
+    $admin = User::factory()->admin()->create();
+
+    $excel = $this->actingAs($admin)->get(route('users.export.excel'));
+    $excel->assertOk();
+    $excel->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $pdf = $this->actingAs($admin)->get(route('users.export.pdf'));
+    $pdf->assertOk();
+    $pdf->assertHeader('content-type', 'application/pdf');
 });

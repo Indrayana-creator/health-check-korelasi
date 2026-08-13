@@ -57,7 +57,6 @@ test('admin bisa menambah pekerja baru sehingga PN-nya bisa dipakai bikin user',
     // saat dipakai bikin akun User baru.
     $userResponse = $this->actingAs($admin)->post(route('users.store'), [
         'name' => 'User Baru',
-        'email' => 'userbaru@example.com',
         'pn' => '90000001',
         'password' => 'password123',
         'role' => 'user',
@@ -165,4 +164,25 @@ test('pekerja tanpa data terkait bisa dihapus', function () {
 
     $response->assertRedirect(route('pekerja.index'));
     expect(Pekerja::where('pn', '90000060')->exists())->toBeFalse();
+});
+
+test('user biasa tidak bisa export kelola pekerja', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('pekerja.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('pekerja.export.pdf'))->assertForbidden();
+});
+
+test('admin bisa export kelola pekerja Excel & PDF', function () {
+    $admin = User::factory()->admin()->create();
+    Pekerja::factory()->create();
+
+    $this->actingAs($admin)->get(route('pekerja.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('pekerja.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
 });

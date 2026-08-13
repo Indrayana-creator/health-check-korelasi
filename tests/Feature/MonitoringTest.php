@@ -6,6 +6,8 @@ use App\Models\HealthCheckItem;
 use App\Models\Pekerja;
 use App\Models\Uker;
 use App\Models\User;
+use App\Notifications\MonitoringTindakLanjutDiupdate;
+use Illuminate\Support\Facades\Notification;
 
 test('guest tidak bisa akses monitoring kendala', function () {
     $this->get(route('monitoring.index'))->assertRedirect(route('login'));
@@ -484,4 +486,55 @@ test('user cabang TIDAK melihat riwayat item cabang lain (di luar subtree-nya) k
     $response = $this->actingAs($userA)->get(route('monitoring.index'));
 
     $response->assertDontSee('Rahasia cabang B');
+});
+
+// ===================== Notifikasi update tindak lanjut =====================
+
+test('semua admin dinotifikasi waktu user cabang update status tindak lanjut', function () {
+    Notification::fake();
+    $admin1 = User::factory()->admin()->create();
+    $admin2 = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    $this->actingAs($user)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Sedang Diproses',
+    ]);
+
+    Notification::assertSentTo($admin1, MonitoringTindakLanjutDiupdate::class);
+    Notification::assertSentTo($admin2, MonitoringTindakLanjutDiupdate::class);
+});
+
+test('user cabang terkait (subtree) dinotifikasi waktu admin update status tindak lanjut', function () {
+    Notification::fake();
+    $admin = User::factory()->admin()->create();
+    $cabangA = Uker::factory()->create();
+    $kcpA1 = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $userCabangA = User::factory()->forUker($cabangA->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $kcpA1->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Selesai Diperbaiki',
+    ]);
+
+    Notification::assertSentTo($userCabangA, MonitoringTindakLanjutDiupdate::class);
+});
+
+test('user cabang lain (di luar subtree) TIDAK dinotifikasi waktu admin update item cabang lain', function () {
+    Notification::fake();
+    $admin = User::factory()->admin()->create();
+    $cabangA = Uker::factory()->create();
+    $cabangB = Uker::factory()->create();
+    $userCabangB = User::factory()->forUker($cabangB->kode)->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $cabangA->kode]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    $this->actingAs($admin)->post(route('monitoring.updateTindakLanjut', $item), [
+        'status_tindak_lanjut' => 'Selesai Diperbaiki',
+    ]);
+
+    Notification::assertNotSentTo($userCabangB, MonitoringTindakLanjutDiupdate::class);
 });

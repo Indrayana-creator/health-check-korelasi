@@ -4,6 +4,15 @@
 // Setiap kali form health check baru dibuat, seluruh item ini otomatis
 // digenerate sebagai baris health_check_items dengan status default
 // "Belum Diperiksa".
+//
+// Kategori "F - Genset" BUKAN dari template resmi di atas -- ini draft
+// berdasarkan praktik umum pemeliharaan genset, ditambahkan atas
+// persetujuan langsung user (bukan lewat approval atasan/dokumen resmi).
+// Kalau nanti ada daftar resmi dari atasan, item-item di kategori ini
+// harus disesuaikan/diganti. Sengaja dikasih huruf "F" (bukan "E") biar
+// gak bentrok sama "Kategori E - Dokumentasi Visual" yang sudah lebih
+// dulu jadi istilah baku di seluruh aplikasi (lihat dashboard & form
+// health check) walau bukan bagian dari config ini.
 
 return [
     'A - Ruang Server/Jaringan' => [
@@ -74,5 +83,18 @@ return [
         'Panel ATS (Automatic Transfer Switch) berfungsi baik dan perpindahan sumber listrik berjalan otomatis',
         'Kondisi fisik panel COS baik, tidak ada tanda keausan atau panas berlebih',
         'Panel COS berlabel jelas dan dokumentasi tersedia',
+    ],
+    'F - Genset' => [
+        'Genset dapat menyala otomatis (auto-start) saat pasokan listrik PLN padam',
+        'Automatic Transfer Switch (ATS) berfungsi baik, perpindahan PLN-Genset berjalan otomatis',
+        'Level bahan bakar (solar) minimal 3/4 dari kapasitas tangki',
+        'Tidak ada kebocoran bahan bakar, oli, maupun air radiator',
+        'Level oli mesin dalam batas normal sesuai indikator dipstick',
+        'Air radiator/coolant cukup dan tidak keruh',
+        'Aki (accu) starter dalam kondisi baik, tegangan sesuai standar (tidak soak)',
+        'Panel kontrol genset menunjukkan status normal, tidak ada alarm/fault aktif',
+        'Uji beban (load test) dilakukan rutin sesuai jadwal pemeliharaan',
+        'Ruang genset bersih, berventilasi baik, dan bebas dari barang mudah terbakar',
+        'Dokumentasi jadwal pemeliharaan dan riwayat servis genset tersedia dan terisi',
     ],
 ];

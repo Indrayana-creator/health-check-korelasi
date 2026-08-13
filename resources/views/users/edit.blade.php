@@ -19,6 +19,7 @@
                     class="space-y-4"
                     x-data="{
                         role: '{{ old('role', $user->role) }}',
+                        namaTerisi: '{{ old('name', $user->name) }}',
                         ukerKodeTerpilih: '{{ old('uker_kode', $user->uker_kode) }}',
                         statusLookupPn: '',
                         async cariUkerDariPn(pn) {
@@ -28,6 +29,7 @@
                                 const res = await fetch(`/api/pekerja-uker/${pn}`);
                                 if (!res.ok) { this.statusLookupPn = 'PN tidak ditemukan di data pekerja.'; return; }
                                 const data = await res.json();
+                                this.namaTerisi = data.nama;
                                 this.ukerKodeTerpilih = String(data.uker_kode);
                                 this.statusLookupPn = `Ditemukan: ${data.nama} - ${data.uker_nama}`;
                             } catch (e) {
@@ -40,23 +42,17 @@
                     @method('PUT')
 
                     <div>
-                        <x-input-label value="Nama" required />
-                        <x-text-input type="text" name="name" value="{{ old('name', $user->name) }}" class="mt-1.5 block w-full" required />
-                        <x-input-error :messages="$errors->get('name')" class="mt-1.5" />
-                    </div>
-
-                    <div>
-                        <x-input-label value="Email" required />
-                        <x-text-input type="email" name="email" value="{{ old('email', $user->email) }}" class="mt-1.5 block w-full" required />
-                        <x-input-error :messages="$errors->get('email')" class="mt-1.5" />
-                    </div>
-
-                    <div>
                         <x-input-label value="PN (Personal Number)" required />
                         <x-text-input type="text" name="pn" value="{{ old('pn', $user->pn) }}" @change="cariUkerDariPn($event.target.value)" class="mt-1.5 block w-full" required />
                         <p class="text-xs mt-1.5" :class="statusLookupPn.startsWith('Ditemukan') ? 'text-green-600' : 'text-gray-400'" x-text="statusLookupPn"></p>
-                        <p class="text-xs text-gray-400 mt-1.5">Harus PN yang sudah terdaftar di data pekerja -- dipakai buat login. Ubah PN biar Uker di bawah ikut otomatis ter-update (opsional, tetap bisa dipilih manual).</p>
+                        <p class="text-xs text-gray-400 mt-1.5">Harus PN yang sudah terdaftar di data pekerja -- dipakai buat login. Ubah PN biar Nama & Uker di bawah ikut otomatis ter-update (opsional, tetap bisa diedit manual).</p>
                         <x-input-error :messages="$errors->get('pn')" class="mt-1.5" />
+                    </div>
+
+                    <div>
+                        <x-input-label value="Nama" required />
+                        <x-text-input type="text" name="name" x-model="namaTerisi" class="mt-1.5 block w-full" required />
+                        <x-input-error :messages="$errors->get('name')" class="mt-1.5" />
                     </div>
 
                     <div>
@@ -66,8 +62,8 @@
                     </div>
 
                     <div>
-                        <x-input-label value="Role" />
-                        <x-select name="role" x-model="role" class="mt-1.5 block w-full">
+                        <x-input-label value="Role" required />
+                        <x-select name="role" x-model="role" class="mt-1.5 block w-full" required>
                             <option value="user" @selected(old('role', $user->role) == 'user')>User (per unit kerja)</option>
                             <option value="admin" @selected(old('role', $user->role) == 'admin')>Admin</option>
                         </x-select>
@@ -75,13 +71,14 @@
                     </div>
 
                     <div x-show="role === 'user'" x-cloak>
-                        <x-input-label value="Uker" />
-                        <x-select name="uker_kode" x-model="ukerKodeTerpilih" class="mt-1.5 block w-full">
-                            <option value="">-- Pilih Uker --</option>
-                            @foreach ($ukerList as $uker)
-                                <option value="{{ $uker->kode }}">{{ $uker->nama }}</option>
-                            @endforeach
-                        </x-select>
+                        <x-uker-combobox
+                            name="uker_kode"
+                            label="Uker"
+                            :daftar-uker="$ukerList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                            model-value="ukerKodeTerpilih"
+                            :initial-label="$ukerList->firstWhere('kode', old('uker_kode', $user->uker_kode))?->nama"
+                            placeholder="Ketik nama atau kode uker..."
+                        />
                         <p class="text-xs text-gray-400 mt-1.5">Cuma level KC (Kantor Cabang) ke atas -- yang punya akun login cuma kantor cabang. Otomatis ikut kalau PN di atas diubah.</p>
                         <x-input-error :messages="$errors->get('uker_kode')" class="mt-1.5" />
                     </div>

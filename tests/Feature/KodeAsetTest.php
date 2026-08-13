@@ -108,3 +108,24 @@ test('kode aset tanpa data aset terkait bisa dihapus', function () {
     $response->assertRedirect(route('kode-aset.index'));
     expect(KodeAset::where('kode', $kodeAset->kode)->exists())->toBeFalse();
 });
+
+test('user biasa tidak bisa export kelola kode aset', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('kode-aset.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('kode-aset.export.pdf'))->assertForbidden();
+});
+
+test('admin bisa export kelola kode aset Excel & PDF', function () {
+    $admin = User::factory()->admin()->create();
+    KodeAset::factory()->create();
+
+    $this->actingAs($admin)->get(route('kode-aset.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('kode-aset.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});

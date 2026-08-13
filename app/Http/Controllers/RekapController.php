@@ -7,8 +7,11 @@ use App\Models\HealthCheckForm;
 use App\Models\PermintaanPerangkat;
 use App\Support\ComplianceScale;
 use App\Support\PeriodeMingguan;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class RekapController extends Controller
 {
@@ -26,6 +29,25 @@ class RekapController extends Controller
     // ke waktu, bukan snapshot periode tertentu.
     public function index(Request $request)
     {
+        ['minggu' => $rekapMingguan, 'bulan' => $rekapBulanan, 'labelMinggu' => $labelMinggu, 'labelBulan' => $labelBulan, 'formList' => $formList]
+            = $this->rekapCabangMingguDanBulan();
+
+        $statMingguan = $this->ringkasStat($rekapMingguan);
+        $statBulanan = $this->ringkasStat($rekapBulanan);
+
+        $trenCompliance = $this->hitungTrenCompliance($formList);
+
+        return view('rekap.index', compact(
+            'rekapMingguan', 'rekapBulanan', 'statMingguan', 'statBulanan',
+            'trenCompliance', 'labelMinggu', 'labelBulan'
+        ));
+    }
+
+    // Dipakai bareng oleh index() (butuh dua-duanya buat toggle) DAN export
+    // (butuh salah satu tergantung ?periode=minggu|bulan) -- biar gak
+    // duplikat logic hitung rentang tanggal & roll-up per cabang.
+    protected function rekapCabangMingguDanBulan(): array
+    {
         $formList = HealthCheckForm::with(['uker', 'items'])->get();
 
         [$awalMinggu, $akhirMinggu] = PeriodeMingguan::rentang(now());
@@ -35,21 +57,13 @@ class RekapController extends Controller
         $formMingguIni = $formList->filter(fn ($f) => $f->tanggal_pemeriksaan?->between($awalMinggu, $akhirMinggu));
         $formBulanIni = $formList->filter(fn ($f) => $f->tanggal_pemeriksaan?->between($awalBulan, $akhirBulan));
 
-        $rekapMingguan = $this->rekapPerCabang($formMingguIni);
-        $rekapBulanan = $this->rekapPerCabang($formBulanIni);
-
-        $statMingguan = $this->ringkasStat($rekapMingguan);
-        $statBulanan = $this->ringkasStat($rekapBulanan);
-
-        $trenCompliance = $this->hitungTrenCompliance($formList);
-
-        $labelMinggu = PeriodeMingguan::label(now());
-        $labelBulan = now()->locale('id')->translatedFormat('F Y');
-
-        return view('rekap.index', compact(
-            'rekapMingguan', 'rekapBulanan', 'statMingguan', 'statBulanan',
-            'trenCompliance', 'labelMinggu', 'labelBulan'
-        ));
+        return [
+            'minggu' => $this->rekapPerCabang($formMingguIni),
+            'bulan' => $this->rekapPerCabang($formBulanIni),
+            'labelMinggu' => PeriodeMingguan::label(now()),
+            'labelBulan' => now()->locale('id')->translatedFormat('F Y'),
+            'formList' => $formList,
+        ];
     }
 
     // Roll-up per cabang (uker_spv) dari sekumpulan form -- dipakai bareng
@@ -93,6 +107,141 @@ class RekapController extends Controller
         ];
     }
 
+    // ===================== EXPORT: Rekap Health Check per Cabang =====================
+    // ?periode=minggu (default) atau ?periode=bulan -- reuse computation yang
+    // sama dipakai index(), jadi hasil export SELALU konsisten sama tab yang
+    // lagi aktif di layar (link export di view kirim query ini sesuai toggle).
+
+    protected function rekapCabangHeaders(): array
+    {
+        return ['Cabang', 'Uker Lapor', 'Total Item', 'OK', 'Not OK', 'N/A', 'Belum', 'Compliance (%)', 'Status'];
+    }
+
+    protected function rekapCabangRow(array $r): array
+    {
+        return [
+            $r['cabang'], $r['jumlah_uker_lapor'], $r['total_item'],
+            $r['ok'], $r['not_ok'], $r['na'], $r['belum'], $r['persen'], $r['status'],
+        ];
+    }
+
+    protected function rekapCabangUntukExport(Request $request): array
+    {
+        $data = $this->rekapCabangMingguDanBulan();
+        $periode = $request->input('periode') === 'bulan' ? 'bulan' : 'minggu';
+
+        return $periode === 'bulan'
+            ? [$data['bulan'], $data['labelBulan']]
+            : [$data['minggu'], $data['labelMinggu']];
+    }
+
+    public function exportCabangExcel(Request $request)
+    {
+        [$rekap, $label] = $this->rekapCabangUntukExport($request);
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Health Check');
+
+        $sheet->setCellValue('A1', "Rekap Health Check per Cabang - {$label}");
+        $sheet->mergeCells('A1:I1');
+        $sheet->getStyle('A1')->getFont()->setBold(true);
+
+        $headers = $this->rekapCabangHeaders();
+        $sheet->fromArray($headers, null, 'A3');
+        $sheet->getStyle('A3:I3')->getFont()->setBold(true);
+
+        $row = 4;
+        foreach ($rekap as $r) {
+            $sheet->fromArray($this->rekapCabangRow($r), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'rekap-health-check-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportCabangPdf(Request $request)
+    {
+        [$rekap, $label] = $this->rekapCabangUntukExport($request);
+        $headers = $this->rekapCabangHeaders();
+        $rows = $rekap->map(fn ($r) => $this->rekapCabangRow($r));
+        $judul = "Rekap Health Check per Cabang - {$label}";
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('rekap-health-check-'.now()->format('Ymd-His').'.pdf');
+    }
+
+    // ===================== EXPORT: Rekap Aset per Cabang =====================
+
+    protected function rekapAsetHeaders(): array
+    {
+        return ['Cabang', 'Uker Lapor', 'Total', 'Normal', 'Rusak', 'Tidak Layak', 'Lainnya', 'Sehat (%)', 'Status'];
+    }
+
+    protected function rekapAsetRow(array $r): array
+    {
+        return [
+            $r['cabang'], $r['jumlah_uker_lapor'], $r['total'],
+            $r['normal'], $r['rusak'], $r['tidak_layak'], $r['lainnya'], $r['persen_sehat'], $r['status'],
+        ];
+    }
+
+    public function exportAsetExcel()
+    {
+        $rekap = $this->rekapAsetPerCabang();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Aset');
+
+        $headers = $this->rekapAsetHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($rekap as $r) {
+            $sheet->fromArray($this->rekapAsetRow($r), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'I') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'rekap-aset-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportAsetPdf()
+    {
+        $rekap = $this->rekapAsetPerCabang();
+        $headers = $this->rekapAsetHeaders();
+        $rows = $rekap->map(fn ($r) => $this->rekapAsetRow($r));
+        $judul = 'Rekap Aset per Cabang';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('rekap-aset-'.now()->format('Ymd-His').'.pdf');
+    }
+
     // Tren compliance keseluruhan (semua cabang digabung) per PERIODE, buat
     // dilihat naik/turunnya dari waktu ke waktu. "periode" itu teks bebas
     // ("Juli 2026", dst, bukan format Triwulan tetap) jadi urutan kronologisnya
@@ -120,11 +269,10 @@ class RekapController extends Controller
     // Rekap kondisi ASET (bukan health check) di-roll up per CABANG, pola
     // groupby & threshold status-nya sama persis kayak index() di atas biar
     // konsisten -- cuma sumber datanya Aset::kondisi, bukan item checklist.
-    public function aset(Request $request)
+    // Diekstrak jadi method sendiri biar dipakai bareng aset() & export.
+    protected function rekapAsetPerCabang()
     {
-        $asetList = Aset::with('uker')->get();
-
-        $rekap = $asetList
+        return Aset::with('uker')->get()
             ->groupBy(fn ($aset) => $aset->uker?->uker_spv ?? 'Tidak diketahui')
             ->map(function ($asetDalamCabang, $namaCabang) {
                 $total = $asetDalamCabang->count();
@@ -148,6 +296,12 @@ class RekapController extends Controller
             })
             ->sortBy('persen_sehat')
             ->values();
+    }
+
+    public function aset(Request $request)
+    {
+        $asetList = Aset::with('uker')->get();
+        $rekap = $this->rekapAsetPerCabang();
 
         $totalCabang = $rekap->count();
         $avgPersenSehat = $totalCabang > 0 ? round($rekap->avg('persen_sehat'), 1) : 0;
@@ -174,6 +328,25 @@ class RekapController extends Controller
     {
         $request->validate(['minggu' => 'nullable|date']);
 
+        [$permintaanList, $labelMinggu, $awalMinggu] = $this->permintaanMingguan($request);
+
+        $totalMinggu = $permintaanList->count();
+        $breakdownStatus = collect(PermintaanPerangkat::DAFTAR_STATUS)
+            ->mapWithKeys(fn ($status) => [$status => $permintaanList->where('status', $status)->count()]);
+
+        $mingguSebelumnya = $awalMinggu->copy()->subWeek()->toDateString();
+        $mingguSesudahnya = $awalMinggu->copy()->addWeek()->toDateString();
+
+        return view('rekap.permintaan-perangkat', compact(
+            'permintaanList', 'totalMinggu', 'breakdownStatus', 'labelMinggu', 'mingguSebelumnya', 'mingguSesudahnya'
+        ));
+    }
+
+    // Dipakai bareng permintaanPerangkat() & export -- biar minggu yang
+    // di-export SELALU sama persis minggu yang lagi ditampilkan/dinavigasi
+    // (link export ikut nerusin query ?minggu= yang sama).
+    protected function permintaanMingguan(Request $request): array
+    {
         $tanggalAcuan = $request->filled('minggu')
             ? Carbon::parse($request->input('minggu'))
             : now();
@@ -185,16 +358,72 @@ class RekapController extends Controller
             ->orderBy('tanggal_request')
             ->get();
 
-        $totalMinggu = $permintaanList->count();
-        $breakdownStatus = collect(PermintaanPerangkat::DAFTAR_STATUS)
-            ->mapWithKeys(fn ($status) => [$status => $permintaanList->where('status', $status)->count()]);
+        return [$permintaanList, PeriodeMingguan::label($tanggalAcuan), $awalMinggu];
+    }
 
-        $labelMinggu = PeriodeMingguan::label($tanggalAcuan);
-        $mingguSebelumnya = $awalMinggu->copy()->subWeek()->toDateString();
-        $mingguSesudahnya = $awalMinggu->copy()->addWeek()->toDateString();
+    // ===================== EXPORT: Rekap Permintaan Perangkat =====================
 
-        return view('rekap.permintaan-perangkat', compact(
-            'permintaanList', 'totalMinggu', 'breakdownStatus', 'labelMinggu', 'mingguSebelumnya', 'mingguSesudahnya'
-        ));
+    protected function rekapPermintaanHeaders(): array
+    {
+        return ['No Nota Dinas', 'Tanggal Request', 'Fungsi Requester', 'Jumlah', 'Status', 'Keterangan', 'Uker'];
+    }
+
+    protected function rekapPermintaanRow(PermintaanPerangkat $p): array
+    {
+        return [
+            $p->no_nota_dinas, $p->tanggal_request?->format('Y-m-d'), $p->fungsi_requester,
+            $p->jumlah, $p->status, $p->keterangan, $p->uker?->nama,
+        ];
+    }
+
+    public function exportPermintaanExcel(Request $request)
+    {
+        $request->validate(['minggu' => 'nullable|date']);
+        [$permintaanList, $label] = $this->permintaanMingguan($request);
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Rekap Permintaan Perangkat');
+
+        $sheet->setCellValue('A1', "Rekap Permintaan Perangkat - {$label}");
+        $sheet->mergeCells('A1:G1');
+        $sheet->getStyle('A1')->getFont()->setBold(true);
+
+        $headers = $this->rekapPermintaanHeaders();
+        $sheet->fromArray($headers, null, 'A3');
+        $sheet->getStyle('A3:G3')->getFont()->setBold(true);
+
+        $row = 4;
+        foreach ($permintaanList as $p) {
+            $sheet->fromArray($this->rekapPermintaanRow($p), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'G') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'rekap-permintaan-perangkat-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportPermintaanPdf(Request $request)
+    {
+        $request->validate(['minggu' => 'nullable|date']);
+        [$permintaanList, $label] = $this->permintaanMingguan($request);
+
+        $headers = $this->rekapPermintaanHeaders();
+        $rows = $permintaanList->map(fn ($p) => $this->rekapPermintaanRow($p));
+        $judul = "Rekap Permintaan Perangkat - {$label}";
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('rekap-permintaan-perangkat-'.now()->format('Ymd-His').'.pdf');
     }
 }

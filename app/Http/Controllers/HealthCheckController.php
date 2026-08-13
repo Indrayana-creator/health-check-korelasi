@@ -302,8 +302,9 @@ class HealthCheckController extends Controller
     }
 
     // ===================== BULK UPLOAD (Excel) =====================
-    // Tiap baris = 1 form baru (uker + tanggal + periode), 61 item checklist
-    // digenerate otomatis persis seperti store() manual.
+    // Tiap baris = 1 form baru (uker + tanggal + periode), seluruh item
+    // checklist dari config('health_check_checklist') digenerate otomatis
+    // persis seperti store() manual.
 
     public function bulkUploadForm(Request $request)
     {
@@ -356,8 +357,11 @@ class HealthCheckController extends Controller
         }
 
         $isAdmin = $request->user()->role === 'admin';
-        $ukerSendiri = $request->user()->uker_kode;
-        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
+        // Cuma dihitung buat non-admin -- uker_kode admin selalu null, jadi
+        // descendantKodes(null) bakal nge-crash (TypeError) kalau dipaksa
+        // dihitung juga buat admin padahal gak pernah kepake ($isAdmin true
+        // di bawah selalu skip pengecekan ini).
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($request->user()->uker_kode);
 
         $berhasil = 0;
         $gagal = [];
@@ -402,7 +406,9 @@ class HealthCheckController extends Controller
             ActivityLog::catat('health_check', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}");
         }
 
-        return back()->with('status', "Upload massal selesai: {$berhasil} form health check dibuat (masing-masing otomatis berisi 61 item checklist).")
+        $totalItemPerForm = collect(config('health_check_checklist'))->flatten()->count();
+
+        return back()->with('status', "Upload massal selesai: {$berhasil} form health check dibuat (masing-masing otomatis berisi {$totalItemPerForm} item checklist).")
             ->with('gagal', $gagal);
     }
 
@@ -423,8 +429,10 @@ class HealthCheckController extends Controller
         $highestRow = $sheet->getHighestRow();
 
         $isAdmin = $request->user()->role === 'admin';
-        $ukerSendiri = $request->user()->uker_kode;
-        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
+        // Sama kayak bulkUpload() -- cuma dihitung buat non-admin, biar gak
+        // crash mecoba descendantKodes(null) padahal admin selalu skip
+        // pengecekan whereIn ini.
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($request->user()->uker_kode);
 
         $terhapus = 0;
         $tidakKetemu = [];

@@ -6,7 +6,10 @@ use App\Http\Controllers\Concerns\BuildsUkerTree;
 use App\Models\Aset;
 use App\Models\HealthCheckForm;
 use App\Models\Uker;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class UkerTreeController extends Controller
 {
@@ -147,5 +150,86 @@ class UkerTreeController extends Controller
             'status_approval' => $statusApproval,
             'status_tindak_lanjut' => $statusTindakLanjut,
         ]);
+    }
+
+    // ===================== EXPORT =====================
+    // Tree-nya diratakan (flatten) jadi baris-baris tabel -- nama unit
+    // diberi awalan "-- " x kedalaman biar struktur induk-anak tetap
+    // kebaca meski dalam bentuk tabel datar. Root scoping SAMA kayak
+    // index() (admin: dari Kanwil, user: subtree sendiri).
+
+    protected function flattenTree(array $node, int $depth = 0): array
+    {
+        $baris = [[
+            'kode' => $node['kode'],
+            'nama' => str_repeat('-- ', $depth).$node['nama'],
+            'jenis' => $node['jenis'],
+            'total_aset' => $node['total_aset'],
+            'rata_compliance' => $node['rata_compliance'] !== null ? $node['rata_compliance'].'%' : '-',
+            'jumlah_unit_bawah' => $node['jumlah_unit_bawah'],
+        ]];
+
+        foreach ($node['anak'] as $anak) {
+            $baris = array_merge($baris, $this->flattenTree($anak, $depth + 1));
+        }
+
+        return $baris;
+    }
+
+    protected function exportHeaders(): array
+    {
+        return ['Kode', 'Nama Unit', 'Jenis', 'Total Aset', 'Rata Compliance', 'Jumlah Unit di Bawahnya'];
+    }
+
+    protected function exportRow(array $r): array
+    {
+        return [$r['kode'], $r['nama'], $r['jenis'], $r['total_aset'], $r['rata_compliance'], $r['jumlah_unit_bawah']];
+    }
+
+    public function exportExcel(Request $request)
+    {
+        $tree = $this->bangunTreeUker($this->rootKodeUntuk($request));
+        $baris = $tree ? $this->flattenTree($tree) : [];
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Struktur Organisasi');
+
+        $headers = $this->exportHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($baris as $r) {
+            $sheet->fromArray($this->exportRow($r), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'struktur-organisasi-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportPdf(Request $request)
+    {
+        $tree = $this->bangunTreeUker($this->rootKodeUntuk($request));
+        $baris = $tree ? $this->flattenTree($tree) : [];
+
+        $headers = $this->exportHeaders();
+        $rows = collect($baris)->map(fn ($r) => $this->exportRow($r));
+        $judul = 'Struktur Organisasi';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('struktur-organisasi-'.now()->format('Ymd-His').'.pdf');
     }
 }

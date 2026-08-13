@@ -128,3 +128,24 @@ test('uker tanpa data terkait bisa dihapus', function () {
     $response->assertRedirect(route('ukers.index'));
     expect(Uker::where('kode', $uker->kode)->exists())->toBeFalse();
 });
+
+test('user biasa tidak bisa export kelola uker', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('ukers.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('ukers.export.pdf'))->assertForbidden();
+});
+
+test('admin bisa export kelola uker Excel & PDF', function () {
+    $admin = User::factory()->admin()->create();
+    Uker::factory()->create();
+
+    $this->actingAs($admin)->get(route('ukers.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('ukers.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});

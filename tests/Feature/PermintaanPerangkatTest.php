@@ -268,3 +268,28 @@ test('rekap mingguan bisa navigasi ke minggu lain lewat query string ?minggu=', 
     $response->assertOk();
     expect($response->viewData('permintaanList')->pluck('no_nota_dinas'))->toContain('ND-MINGGU-LALU');
 });
+
+test('user biasa tidak bisa export rekap permintaan perangkat', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('rekap.permintaanPerangkat.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('rekap.permintaanPerangkat.export.pdf'))->assertForbidden();
+});
+
+test('export rekap permintaan perangkat Excel & PDF berhasil, ngikutin minggu yang lagi dinavigasi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $seninMingguLalu = now()->startOfWeek(Carbon::MONDAY)->subWeek();
+    PermintaanPerangkat::factory()->create([
+        'uker_kode' => $uker->kode, 'no_nota_dinas' => 'ND-EXPORT-TEST', 'tanggal_request' => $seninMingguLalu,
+    ]);
+
+    $this->actingAs($admin)->get(route('rekap.permintaanPerangkat.export.excel', ['minggu' => $seninMingguLalu->toDateString()]))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('rekap.permintaanPerangkat.export.pdf', ['minggu' => $seninMingguLalu->toDateString()]))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});

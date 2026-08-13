@@ -39,6 +39,11 @@
                             </svg>
                         </span>
                         <span class="text-base font-extrabold tracking-tight">AsetSehat</span>
+                        <img
+                            src="{{ asset('images/bri-logo-putih.png') }}"
+                            alt="Bank Rakyat Indonesia"
+                            class="h-5 w-auto object-contain flex-none"
+                        >
                     </a>
                     <button @click="sidebarOpen = false" class="w-8 h-8 flex-none rounded-lg flex items-center justify-center text-white/70 hover:bg-white/10 lg:hidden">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M18 6L6 18M6 6l12 12"></path></svg>
@@ -95,6 +100,8 @@
                             $navAdmin = [
                                 ['route' => 'users.index', 'pattern' => 'users.*', 'label' => 'Kelola User', 'icon' => 'M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM22 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75'],
                                 ['route' => 'ukers.index', 'pattern' => 'ukers.*', 'label' => 'Kelola Uker', 'icon' => 'M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1M9 21v-4h6v4'],
+                                ['route' => 'pekerja.index', 'pattern' => 'pekerja.*', 'label' => 'Kelola Pekerja', 'icon' => 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z'],
+                                ['route' => 'kode-aset.index', 'pattern' => 'kode-aset.*', 'label' => 'Kelola Kode Aset', 'icon' => 'M20.59 13.41L11 3.83V3H3v8h.83l9.58 9.59a2 2 0 002.83 0l4.35-4.35a2 2 0 000-2.83zM6.5 7.5a1 1 0 110-2 1 1 0 010 2z'],
                                 ['route' => 'aset.editRequests.index', 'pattern' => 'aset.editRequests.*', 'label' => 'Permintaan Edit Aset', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
                                 ['route' => 'log-history.index', 'pattern' => 'log-history.*', 'label' => 'Log History', 'icon' => 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 6v6l4 2'],
                             ];

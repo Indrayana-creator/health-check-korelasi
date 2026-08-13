@@ -6,6 +6,7 @@ use App\Models\HealthCheckItem;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 // bangunTreeUker() (dipakai di /uker-tree & dashboard) buat ADMIN selalu
 // mulai dari Kanwil kode 146 sebagai root -- jadi tiap test yang butuh tree
@@ -182,4 +183,54 @@ test('admin tetap bisa akses detail()/complianceDetail() uker manapun, gak berub
     $this->actingAs($admin)->getJson(route('uker-tree.detail', $s['cabangB']->kode))->assertOk();
     $this->actingAs($admin)->getJson(route('uker-tree.complianceDetail', $s['kcpA1']->kode))->assertOk();
     $this->actingAs($admin)->getJson(route('uker-tree.complianceDetail', $s['kcpB1']->kode))->assertOk();
+});
+
+// ===================== Export =====================
+// Beda dari export lain di app ini yang admin-only -- export Struktur
+// Organisasi ngikutin scope akses HALAMAN-nya (semua role bisa), bukan
+// role:admin, karena non-admin juga boleh liat/export subtree sendiri.
+
+test('user biasa BISA export struktur organisasi (root subtree sendiri, bukan admin-only)', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $this->actingAs($user)->get(route('uker-tree.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($user)->get(route('uker-tree.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+test('export Excel struktur organisasi user biasa cuma isi subtree sendiri, bukan cabang lain', function () {
+    $s = buatStrukturCabangUjiCoba();
+    $user = User::factory()->forUker($s['cabangA']->kode)->create();
+
+    $response = $this->actingAs($user)->get(route('uker-tree.export.excel'));
+    $response->assertOk();
+
+    // PDF isinya binary terkompresi (gak bisa di-assertSee langsung), jadi
+    // verifikasi isi datanya lewat Excel yang bisa dibaca ulang pakai
+    // PhpSpreadsheet -- lebih reliable daripada nebak-nebak byte PDF.
+    $tmpFile = tempnam(sys_get_temp_dir(), 'export').'.xlsx';
+    file_put_contents($tmpFile, $response->streamedContent());
+    $sheet = IOFactory::load($tmpFile)->getActiveSheet();
+    $isiSheet = implode(' | ', $sheet->toArray()[0] ?? []);
+    for ($i = 1; $i < $sheet->getHighestRow(); $i++) {
+        $isiSheet .= ' | '.implode(' | ', $sheet->toArray()[$i] ?? []);
+    }
+    unlink($tmpFile);
+
+    expect($isiSheet)->toContain('Cabang A', 'KCP A1');
+    expect($isiSheet)->not->toContain('Cabang B');
+});
+
+test('admin bisa export struktur organisasi lengkap dari Kanwil', function () {
+    buatStrukturUkerUjiCoba();
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->get(route('uker-tree.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 });

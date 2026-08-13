@@ -5,6 +5,10 @@ use App\Models\AsetEditRequest;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 function asetPayload(Uker $uker, KodeAset $kodeAset, array $overrides = []): array
 {
@@ -15,6 +19,20 @@ function asetPayload(Uker $uker, KodeAset $kodeAset, array $overrides = []): arr
         'tipe_model' => 'Latitude 5420',
         'sn' => 'SN12345678',
     ], $overrides);
+}
+
+// Bikin file xlsx SUNGGUHAN di disk (bukan UploadedFile::fake() yang isinya
+// random bytes) -- dibutuhkan karena bulkUpload()/bulkDelete() beneran parse
+// isi filenya pakai PhpSpreadsheet, bukan cuma cek mime type.
+function buatFileXlsx(array $rows, string $namaFile = 'upload.xlsx'): UploadedFile
+{
+    $spreadsheet = new Spreadsheet;
+    $spreadsheet->getActiveSheet()->fromArray($rows, null, 'A1');
+
+    $path = tempnam(sys_get_temp_dir(), 'test').'.xlsx';
+    (new Xlsx($spreadsheet))->save($path);
+
+    return new UploadedFile($path, $namaFile, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 }
 
 test('guest tidak bisa akses daftar aset', function () {
@@ -264,4 +282,117 @@ test('user tidak bisa memindahkan aset ke uker lain lewat update', function () {
 
     $response->assertForbidden();
     expect($aset->fresh()->uker_kode)->toBe($ukerSendiri->kode);
+});
+
+// ===================== Export =====================
+
+test('guest tidak bisa akses export aset', function () {
+    $this->get(route('aset.export.excel'))->assertRedirect(route('login'));
+    $this->get(route('aset.export.pdf'))->assertRedirect(route('login'));
+});
+
+test('user bisa export aset Excel & PDF, hasilnya cuma aset uker sendiri', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    Aset::factory()->create(['uker_kode' => $ukerSendiri->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-MILIK-SENDIRI']);
+    Aset::factory()->create(['uker_kode' => $ukerLain->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-MILIK-LAIN']);
+
+    $excel = $this->actingAs($user)->get(route('aset.export.excel'));
+    $excel->assertOk();
+    $excel->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $pdf = $this->actingAs($user)->get(route('aset.export.pdf'));
+    $pdf->assertOk();
+    $pdf->assertHeader('content-type', 'application/pdf');
+
+    $tmpFile = tempnam(sys_get_temp_dir(), 'export').'.xlsx';
+    file_put_contents($tmpFile, $excel->streamedContent());
+    $isiSheet = implode(' | ', IOFactory::load($tmpFile)->getActiveSheet()->toArray()[1] ?? []);
+    unlink($tmpFile);
+
+    expect($isiSheet)->toContain('SN-MILIK-SENDIRI');
+});
+
+// ===================== Bulk upload/delete & template =====================
+
+test('guest tidak bisa akses fitur bulk upload/delete/template aset', function () {
+    $this->get(route('aset.bulkUploadForm'))->assertRedirect(route('login'));
+    $this->get(route('aset.downloadTemplate'))->assertRedirect(route('login'));
+    $this->get(route('aset.bulkDeleteForm'))->assertRedirect(route('login'));
+});
+
+test('admin bisa lihat form bulk upload & bulk delete aset', function () {
+    $admin = User::factory()->admin()->create();
+
+    $this->actingAs($admin)->get(route('aset.bulkUploadForm'))->assertOk();
+    $this->actingAs($admin)->get(route('aset.bulkDeleteForm'))->assertOk();
+});
+
+test('download template aset menghasilkan file xlsx', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('aset.downloadTemplate'));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+});
+
+test('bulk upload aset berhasil menambahkan aset dari file valid', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create(['kategori' => 'PRINTER & SCANNER']);
+
+    $file = buatFileXlsx([
+        ['uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset', 'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus', 'keterangan'],
+        [$uker->kode, $kodeAset->kode, 'Epson', 'L3110', 'SN-BULK-001', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('aset.bulkUpload'), ['file' => $file]);
+
+    $response->assertRedirect();
+    $response->assertSessionHas('status');
+    expect(Aset::where('sn', 'SN-BULK-001')->exists())->toBeTrue();
+});
+
+test('bulk upload aset ditolak kalau header file gak sesuai template', function () {
+    $admin = User::factory()->admin()->create();
+    $file = buatFileXlsx([['kolom_salah', 'lainnya']]);
+
+    $response = $this->actingAs($admin)->post(route('aset.bulkUpload'), ['file' => $file]);
+
+    $response->assertSessionHas('formatSalah', true);
+});
+
+test('bulk upload aset: user biasa gak bisa upload ke uker di luar subtree-nya', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create(['kategori' => 'PRINTER & SCANNER']);
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+
+    $file = buatFileXlsx([
+        ['uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset', 'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus', 'keterangan'],
+        [$ukerLain->kode, $kodeAset->kode, 'Epson', 'L3110', 'SN-BULK-002', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+    ]);
+
+    $response = $this->actingAs($user)->post(route('aset.bulkUpload'), ['file' => $file]);
+
+    $response->assertSessionHas('gagal');
+    expect(Aset::where('sn', 'SN-BULK-002')->exists())->toBeFalse();
+});
+
+test('bulk delete aset menghapus aset berdasarkan SN', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-HAPUS-001']);
+
+    $file = buatFileXlsx([['sn'], ['SN-HAPUS-001']]);
+
+    $response = $this->actingAs($admin)->post(route('aset.bulkDelete'), ['file' => $file]);
+
+    $response->assertRedirect();
+    expect(Aset::where('id', $aset->id)->exists())->toBeFalse();
+    expect(Aset::onlyTrashed()->where('id', $aset->id)->exists())->toBeTrue();
 });

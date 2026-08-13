@@ -6,6 +6,8 @@ use App\Models\ActivityLog;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
+use App\Models\User;
+use App\Notifications\MonitoringTindakLanjutDiupdate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -197,6 +199,21 @@ class MonitoringController extends Controller
             1,
             "Tindak lanjut item '{$item->item_pemeriksaan}' ({$item->form?->uker?->nama}) diupdate jadi {$validated['status_tindak_lanjut']}"
         );
+
+        // Notifikasi 2 arah -- admin update -> cabang terkait dinotif;
+        // cabang update -> semua admin dinotif. "Cabang terkait" dicari
+        // pakai Uker::descendantKodes() yang sama (subtree), bukan exact
+        // match, konsisten sama scoping akses halaman ini.
+        $ukerKode = $item->form?->uker_kode;
+        if ($request->user()->role === 'admin') {
+            if ($ukerKode) {
+                User::where('role', 'user')->where('is_active', true)->whereNotNull('uker_kode')->get()
+                    ->filter(fn ($u) => in_array($ukerKode, Uker::descendantKodes($u->uker_kode)))
+                    ->each->notify(new MonitoringTindakLanjutDiupdate($item));
+            }
+        } else {
+            User::where('role', 'admin')->get()->each->notify(new MonitoringTindakLanjutDiupdate($item));
+        }
 
         return back()->with('status', 'Status tindak lanjut item berhasil diupdate.');
     }

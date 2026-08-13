@@ -350,8 +350,11 @@ class AsetController extends Controller
         }
 
         $isAdmin = $request->user()->role === 'admin';
-        $ukerSendiri = $request->user()->uker_kode;
-        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
+        // Cuma dihitung buat non-admin -- uker_kode admin selalu null, jadi
+        // descendantKodes(null) bakal nge-crash (TypeError) kalau dipaksa
+        // dihitung juga buat admin padahal gak pernah kepake ($isAdmin true
+        // di bawah selalu skip pengecekan ini).
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($request->user()->uker_kode);
 
         $berhasil = 0;
         $gagal = [];
@@ -512,8 +515,10 @@ class AsetController extends Controller
         $highestRow = $sheet->getHighestRow();
 
         $isAdmin = $request->user()->role === 'admin';
-        $ukerSendiri = $request->user()->uker_kode;
-        $ukerBolehDiakses = Uker::descendantKodes($ukerSendiri);
+        // Sama kayak bulkUpload() -- cuma dihitung buat non-admin, biar gak
+        // crash mecoba descendantKodes(null) padahal admin selalu skip
+        // pengecekan whereIn ini.
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($request->user()->uker_kode);
 
         $terhapus = 0;
         $tidakKetemu = [];

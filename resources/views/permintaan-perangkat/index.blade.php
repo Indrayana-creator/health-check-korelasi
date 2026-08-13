@@ -54,12 +54,13 @@
         @if ($isAdmin)
             <x-card padding="p-3.5">
                 <form method="GET" action="{{ route('permintaan-perangkat.index') }}" class="flex flex-wrap gap-3 items-center">
-                    <x-select name="uker_kode" class="min-w-[190px]">
-                        <option value="">Semua Uker</option>
-                        @foreach ($ukerFilterList as $u)
-                            <option value="{{ $u->kode }}" @selected(request('uker_kode') == $u->kode)>{{ $u->nama }}</option>
-                        @endforeach
-                    </x-select>
+                    <x-uker-filter-combobox
+                        name="uker_kode"
+                        :daftar-uker="$ukerFilterList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                        :selected="request('uker_kode')"
+                        :initial-label="$ukerFilterList->firstWhere('kode', request('uker_kode'))?->nama"
+                        class="min-w-[190px]"
+                    />
                     <x-select name="status" class="min-w-[190px]">
                         <option value="">Semua Status</option>
                         @foreach (\App\Models\PermintaanPerangkat::DAFTAR_STATUS as $s)

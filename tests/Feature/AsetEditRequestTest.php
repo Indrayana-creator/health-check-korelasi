@@ -108,3 +108,28 @@ test('admin menyetujui permintaan edit mencatat handled_by dan handled_at', func
     expect($editRequest->handled_by)->toBe($admin->id);
     expect($editRequest->handled_at)->not->toBeNull();
 });
+
+test('user biasa tidak bisa export permintaan edit aset', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('aset.editRequests.export.excel'))->assertForbidden();
+    $this->actingAs($user)->get(route('aset.editRequests.export.pdf'))->assertForbidden();
+});
+
+test('admin bisa export permintaan edit aset Excel & PDF', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    AsetEditRequest::create(['aset_id' => $aset->id, 'requested_by' => $user->id, 'status' => 'Menunggu']);
+
+    $this->actingAs($admin)->get(route('aset.editRequests.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('aset.editRequests.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});

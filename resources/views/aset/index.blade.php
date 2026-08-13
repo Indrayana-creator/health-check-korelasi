@@ -81,12 +81,13 @@
                     <x-text-input type="text" name="q" value="{{ request('q') }}" placeholder="Cari ASET ID, merek, SN, atau nama user..." class="block w-full !pl-9" />
                 </div>
                 @if ($ukerFilterList->isNotEmpty())
-                    <x-select name="uker_kode" class="min-w-[190px]">
-                        <option value="">Semua Uker</option>
-                        @foreach ($ukerFilterList as $u)
-                            <option value="{{ $u->kode }}" @selected(request('uker_kode') == $u->kode)>{{ $u->nama }}</option>
-                        @endforeach
-                    </x-select>
+                    <x-uker-filter-combobox
+                        name="uker_kode"
+                        :daftar-uker="$ukerFilterList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
+                        :selected="request('uker_kode')"
+                        :initial-label="$ukerFilterList->firstWhere('kode', request('uker_kode'))?->nama"
+                        class="min-w-[190px]"
+                    />
                 @endif
                 <x-select name="kondisi" class="min-w-[170px]">
                     <option value="">Semua Kondisi</option>

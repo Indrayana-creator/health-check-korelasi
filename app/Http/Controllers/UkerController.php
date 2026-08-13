@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Uker;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class UkerController extends Controller
 {
@@ -92,5 +95,61 @@ class UkerController extends Controller
         ActivityLog::catat('uker', 'hapus', 1, "Uker {$nama} ({$kode}) dihapus");
 
         return redirect()->route('ukers.index')->with('status', 'Uker berhasil dihapus.');
+    }
+
+    // ===================== EXPORT =====================
+
+    protected function exportHeaders(): array
+    {
+        return ['Kode', 'Nama', 'Jenis', 'Cabang Induk', 'Alamat'];
+    }
+
+    protected function exportRow(Uker $uker): array
+    {
+        return [$uker->kode, $uker->nama, $uker->jenis, $uker->uker_spv, $uker->alamat];
+    }
+
+    public function exportExcel()
+    {
+        $ukers = Uker::orderBy('nama')->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Kelola Uker');
+
+        $headers = $this->exportHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($ukers as $u) {
+            $sheet->fromArray($this->exportRow($u), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'E') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'kelola-uker-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportPdf()
+    {
+        $ukers = Uker::orderBy('nama')->get();
+        $headers = $this->exportHeaders();
+        $rows = $ukers->map(fn ($u) => $this->exportRow($u));
+        $judul = 'Kelola Uker';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('kelola-uker-'.now()->format('Ymd-His').'.pdf');
     }
 }

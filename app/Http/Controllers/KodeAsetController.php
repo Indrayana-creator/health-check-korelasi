@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\KodeAset;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class KodeAsetController extends Controller
 {
@@ -87,5 +90,61 @@ class KodeAsetController extends Controller
         ActivityLog::catat('kode_aset', 'hapus', 1, "Kode Aset {$kode} ({$nama}) dihapus");
 
         return redirect()->route('kode-aset.index')->with('status', 'Kode Aset berhasil dihapus.');
+    }
+
+    // ===================== EXPORT =====================
+
+    protected function exportHeaders(): array
+    {
+        return ['Kode', 'Kategori', 'Nama'];
+    }
+
+    protected function exportRow(KodeAset $kodeAset): array
+    {
+        return [$kodeAset->kode, $kodeAset->kategori, $kodeAset->nama];
+    }
+
+    public function exportExcel()
+    {
+        $kodeAsetList = KodeAset::orderBy('kategori')->orderBy('kode')->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Kelola Kode Aset');
+
+        $headers = $this->exportHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:C1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($kodeAsetList as $k) {
+            $sheet->fromArray($this->exportRow($k), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'C') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'kelola-kode-aset-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportPdf()
+    {
+        $kodeAsetList = KodeAset::orderBy('kategori')->orderBy('kode')->get();
+        $headers = $this->exportHeaders();
+        $rows = $kodeAsetList->map(fn ($k) => $this->exportRow($k));
+        $judul = 'Kelola Kode Aset';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('kelola-kode-aset-'.now()->format('Ymd-His').'.pdf');
     }
 }

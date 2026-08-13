@@ -6,8 +6,11 @@ use App\Models\ActivityLog;
 use App\Models\HealthCheckForm;
 use App\Models\Pekerja;
 use App\Models\Uker;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class PekerjaController extends Controller
 {
@@ -108,5 +111,64 @@ class PekerjaController extends Controller
         ActivityLog::catat('pekerja_uker', 'hapus', 1, "Pekerja {$nama} (PN {$pn}) dihapus");
 
         return redirect()->route('pekerja.index')->with('status', 'Pekerja berhasil dihapus.');
+    }
+
+    // ===================== EXPORT =====================
+
+    protected function exportHeaders(): array
+    {
+        return ['PN', 'Nama', 'Jabatan', 'Uker', 'No HP', 'Petugas IT'];
+    }
+
+    protected function exportRow(Pekerja $pekerja): array
+    {
+        return [
+            $pekerja->pn, $pekerja->nama, $pekerja->jabatan, $pekerja->uker?->nama,
+            $pekerja->no_hp, $pekerja->is_petugas_it ? 'Ya' : 'Tidak',
+        ];
+    }
+
+    public function exportExcel()
+    {
+        $pekerjaList = Pekerja::with('uker')->orderBy('nama')->get();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Kelola Pekerja');
+
+        $headers = $this->exportHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($pekerjaList as $p) {
+            $sheet->fromArray($this->exportRow($p), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'kelola-pekerja-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportPdf()
+    {
+        $pekerjaList = Pekerja::with('uker')->orderBy('nama')->get();
+        $headers = $this->exportHeaders();
+        $rows = $pekerjaList->map(fn ($p) => $this->exportRow($p));
+        $judul = 'Kelola Pekerja';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('kelola-pekerja-'.now()->format('Ymd-His').'.pdf');
     }
 }

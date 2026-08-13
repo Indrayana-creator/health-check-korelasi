@@ -1,9 +1,11 @@
 <?php
 
 use App\Models\Aset;
+use App\Models\AsetEditRequest;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\KodeAset;
+use App\Models\PermintaanPerangkat;
 use App\Models\Uker;
 use App\Models\User;
 
@@ -84,16 +86,16 @@ test('kesehatan per kategori di-scope RBAC: user cuma lihat uker sendiri + turun
     expect($kategoriBAdmin['breakdown']['Not OK'])->toBe(2);
 });
 
-test('kesehatan per kategori mencakup 4 kategori A-D, bukan kategori E', function () {
+test('kesehatan per kategori mencakup semua kategori checklist dari config, bukan kategori E', function () {
     $admin = User::factory()->admin()->create();
+    $kategoriChecklist = array_keys(config('health_check_checklist'));
 
     $response = $this->actingAs($admin)->get(route('dashboard'));
 
     $kategoriList = $response->viewData('kesehatanPerKategori')->pluck('kategori');
-    expect($kategoriList)->toHaveCount(4);
-    expect($kategoriList)->toContain(
-        'A - Ruang Server/Jaringan', 'B - CCTV & Storage', 'C - Jaringan', 'D - Power System (UPS)'
-    );
+    expect($kategoriList)->toHaveCount(count($kategoriChecklist));
+    expect($kategoriList->all())->toEqual($kategoriChecklist);
+    expect($kategoriList)->not->toContain('E - Dokumentasi Visual');
 });
 
 test('dokumentasi visual (kategori E) dihitung terpisah dan gak masuk compliance kategori manapun', function () {
@@ -187,4 +189,86 @@ test('tab Ranking Terendah TIDAK muncul buat non-admin, panel Belum Isi HC/Belum
     $response->assertSee('Belum Isi HC');
     $response->assertSee('Belum Ada Aset');
     $response->assertDontSee('Ranking Terendah');
+});
+
+// ===================== Aktivitas Terbaru (dipersempit ke event actionable) =====================
+
+test('aktivitas terbaru TIDAK nampilin aset baru ditambahkan atau form HC baru dibuat (rutin, gak actionable)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'status_approval' => 'Draft']);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' ');
+    expect($teks)->not->toContain('ditambahkan ke');
+    expect($teks)->not->toContain('dibuat untuk');
+});
+
+test('aktivitas terbaru nampilin form HC yang disubmit untuk approval', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['nama' => 'KC Aktivitas Test']);
+    HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode, 'periode' => 'Agustus 2026', 'status_approval' => 'Menunggu Approval',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' | ');
+    expect($teks)->toContain('Agustus 2026', 'KC Aktivitas Test', 'disubmit untuk approval');
+});
+
+test('aktivitas terbaru nampilin item checklist yang berstatus Not OK', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['nama' => 'KC Kendala Test']);
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK', 'item_pemeriksaan' => 'AC ruang server mati',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' | ');
+    expect($teks)->toContain('AC ruang server mati', 'KC Kendala Test', 'Not OK');
+});
+
+test('aktivitas terbaru nampilin permintaan perangkat yang baru diajukan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['nama' => 'KC Permintaan Test']);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'no_nota_dinas' => 'ND-AKTIVITAS-001']);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' | ');
+    expect($teks)->toContain('ND-AKTIVITAS-001', 'KC Permintaan Test');
+});
+
+test('aktivitas terbaru nampilin permintaan edit aset yang baru diajukan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'no_asset' => 'AKTIVITAS-TEST-001']);
+    AsetEditRequest::create(['aset_id' => $aset->id, 'requested_by' => $user->id, 'status' => 'Menunggu']);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' | ');
+    expect($teks)->toContain('AKTIVITAS-TEST-001', 'diajukan');
+});
+
+test('aktivitas terbaru Permintaan Perangkat di-scope exact-match uker sendiri buat non-admin (bukan subtree)', function () {
+    $cabangA = Uker::factory()->create();
+    $anakCabangA = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $userA = User::factory()->forUker($cabangA->kode)->create();
+    PermintaanPerangkat::factory()->create(['uker_kode' => $cabangA->kode, 'no_nota_dinas' => 'ND-MILIK-SENDIRI']);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $anakCabangA->kode, 'no_nota_dinas' => 'ND-MILIK-ANAK']);
+
+    $response = $this->actingAs($userA)->get(route('dashboard'));
+
+    $teks = $response->viewData('aktivitasTerbaru')->pluck('teks')->implode(' | ');
+    expect($teks)->toContain('ND-MILIK-SENDIRI');
+    expect($teks)->not->toContain('ND-MILIK-ANAK');
 });
