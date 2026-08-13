@@ -18,9 +18,13 @@
                     Daftar permintaan perangkat/perbaikan yang diajukan uker Anda ke admin.
                 @endif
             </p>
-            @unless ($isAdmin)
-                <x-button type="button" @click="ajukanOpen = true">Ajukan Permintaan</x-button>
-            @endunless
+            <div class="flex gap-2 flex-none">
+                <x-button variant="secondary" :href="route('permintaan-perangkat.export.excel', request()->query())">Export Excel</x-button>
+                <x-button variant="secondary" :href="route('permintaan-perangkat.export.pdf', request()->query())">Export PDF</x-button>
+                @unless ($isAdmin)
+                    <x-button type="button" @click="ajukanOpen = true">Ajukan Permintaan</x-button>
+                @endunless
+            </div>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">

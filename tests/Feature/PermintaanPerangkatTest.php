@@ -157,6 +157,53 @@ test('user yang mengajukan dinotifikasi balik waktu admin update status', functi
     Notification::assertSentTo($user, PermintaanPerangkatStatusDiupdate::class);
 });
 
+// ===================== Export =====================
+
+test('admin bisa export permintaan perangkat ke excel', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode]);
+
+    $response = $this->actingAs($admin)->get(route('permintaan-perangkat.export.excel'));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+});
+
+test('admin bisa export permintaan perangkat ke pdf', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode]);
+
+    $response = $this->actingAs($admin)->get(route('permintaan-perangkat.export.pdf'));
+
+    $response->assertOk();
+    $response->assertHeader('content-type', 'application/pdf');
+});
+
+test('export permintaan perangkat tetap ikut filter status yang aktif', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT']);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Done Terkirim']);
+
+    $response = $this->actingAs($admin)->get(route('permintaan-perangkat.export.excel', ['status' => 'Done Terkirim']));
+
+    $response->assertOk();
+});
+
+test('user cabang bisa export tapi cuma dapet punya uker sendiri (exact match)', function () {
+    $cabangA = Uker::factory()->create();
+    $cabangB = Uker::factory()->create();
+    $userA = User::factory()->forUker($cabangA->kode)->create();
+    PermintaanPerangkat::factory()->create(['uker_kode' => $cabangA->kode, 'no_nota_dinas' => 'ND-A']);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $cabangB->kode, 'no_nota_dinas' => 'ND-B']);
+
+    $response = $this->actingAs($userA)->get(route('permintaan-perangkat.export.excel'));
+
+    $response->assertOk();
+});
+
 // ===================== Rekap Mingguan =====================
 
 test('user biasa tidak bisa akses rekap permintaan perangkat', function () {

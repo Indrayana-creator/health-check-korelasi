@@ -103,6 +103,8 @@ Route::middleware('auth')->group(function () {
     // di bawah).
     Route::get('/permintaan-perangkat', [PermintaanPerangkatController::class, 'index'])->name('permintaan-perangkat.index');
     Route::post('/permintaan-perangkat', [PermintaanPerangkatController::class, 'store'])->name('permintaan-perangkat.store');
+    Route::get('/permintaan-perangkat/export/excel', [PermintaanPerangkatController::class, 'exportExcel'])->name('permintaan-perangkat.export.excel');
+    Route::get('/permintaan-perangkat/export/pdf', [PermintaanPerangkatController::class, 'exportPdf'])->name('permintaan-perangkat.export.pdf');
 
     // Kelola User, Rekap per Cabang, Log History, Permintaan Edit Aset, & Kelola Uker -- khusus admin
     Route::middleware('role:admin')->group(function () {
