@@ -89,13 +89,12 @@
                         </div>
 
                         <div class="flex items-center justify-between mt-6">
-                            @if (Route::has('password.request'))
-                                <a class="text-sm text-gray-500 hover:text-gray-800 underline" href="{{ route('password.request') }}">
-                                    {{ __('Forgot your password?') }}
-                                </a>
-                            @else
-                                <span></span>
-                            @endif
+                            {{-- Bukan link -- reset password lewat email sekarang gak
+                                 realistis (login pakai PN, kebanyakan akun gak punya
+                                 email sama sekali sejak field ini jadi opsional).
+                                 Lupa password ditangani manual oleh admin lewat
+                                 Kelola User, bukan self-service. --}}
+                            <span class="text-sm text-gray-500">Lupa password? Hubungi admin.</span>
 
                             <button type="submit" class="px-6 py-2.5 rounded-lg bg-cakrawala text-white text-sm font-bold hover:bg-nusantara transition">
                                 {{ __('Masuk') }}
