@@ -10,22 +10,30 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        {{-- 0. Notifikasi permintaan edit yang menunggu (paling atas, khusus admin) --}}
-        @if ($isAdmin && $editRequestsMenunggu->isNotEmpty())
-            <div class="bg-yellow-50 border border-yellow-300 rounded-2xl px-5 py-3.5 flex items-center justify-between flex-wrap gap-3">
-                <div class="flex items-center gap-3">
+        {{-- 0. Perlu Tindakan Anda -- satu titik kumpul buat semua hal yang
+             butuh diproses (sebelumnya tersebar: HC menunggu approval,
+             Kendala belum ditindaklanjuti, Permintaan Perangkat pending,
+             Permintaan Edit Aset menunggu), tiap baris langsung ke halaman
+             terkait dengan filter status yang udah diterapkan. --}}
+        @if ($aksiPerlu->isNotEmpty())
+            <div class="bg-yellow-50 border border-yellow-300 rounded-2xl px-5 py-4">
+                <div class="flex items-center gap-2 mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5 flex-none text-yellow-600"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
-                    <div>
-                        <p class="font-semibold text-sm text-yellow-800">{{ $editRequestsMenunggu->count() }} permintaan edit aset menunggu approval</p>
-                        <p class="text-xs text-yellow-700 mt-0.5">
-                            @foreach ($editRequestsMenunggu->take(3) as $r)
-                                {{ $r->aset->uker?->nama }} ({{ $r->requester?->name }}){{ !$loop->last ? ', ' : '' }}
-                            @endforeach
-                            @if ($editRequestsMenunggu->count() > 3) , dan lainnya @endif
-                        </p>
-                    </div>
+                    <p class="font-bold text-sm text-yellow-800">Perlu Tindakan Anda</p>
                 </div>
-                <x-button variant="warning" :href="route('aset.editRequests.index')" class="whitespace-nowrap">Lihat &amp; Proses</x-button>
+                <div class="grid grid-cols-1 sm:grid-cols-2 {{ $aksiPerlu->count() >= 3 ? 'lg:grid-cols-4' : '' }} gap-2.5">
+                    @foreach ($aksiPerlu as $aksi)
+                        <a href="{{ $aksi['href'] }}" class="flex items-center gap-3 bg-white border border-yellow-200 rounded-xl px-3.5 py-3 hover:border-yellow-400 hover:shadow-sm transition">
+                            <div class="w-8 h-8 rounded-lg bg-yellow-100 text-yellow-700 flex items-center justify-center flex-none">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="{{ $aksi['icon'] }}"></path></svg>
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-lg font-extrabold text-gray-800 leading-none">{{ $aksi['jumlah'] }}</p>
+                                <p class="text-[11px] font-semibold text-gray-500 mt-1 leading-tight">{{ $aksi['label'] }}</p>
+                            </div>
+                        </a>
+                    @endforeach
+                </div>
             </div>
         @endif
 

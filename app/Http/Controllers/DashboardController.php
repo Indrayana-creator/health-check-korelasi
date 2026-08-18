@@ -20,6 +20,78 @@ class DashboardController extends Controller
     {
         $isAdmin = $request->user()->role === 'admin';
         $ukerKode = $request->user()->uker_kode;
+        $ukerBolehDiakses = $isAdmin ? [] : Uker::descendantKodes($ukerKode);
+
+        // ===== 0. Perlu Tindakan Anda =====
+        // Sebelumnya hal yang "butuh tindakan" tersebar di 4 halaman terpisah
+        // (HC menunggu approval, Kendala belum ditindaklanjuti, Permintaan
+        // Perangkat pending, Permintaan Edit Aset menunggu) tanpa satu titik
+        // kumpul -- widget ini narik angka dari keempatnya sekaligus (admin)
+        // atau dari yang relevan buat cabang (user), masing-masing langsung
+        // link ke halaman terkait dengan filter status yang sudah diterapkan.
+        $aksiPerlu = collect();
+        if ($isAdmin) {
+            $hcMenunggu = HealthCheckForm::where('status_approval', 'Menunggu Approval')->count();
+            if ($hcMenunggu > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Health Check menunggu approval',
+                    'jumlah' => $hcMenunggu,
+                    'href' => route('healthcheck.index', ['status_approval' => 'Menunggu Approval']),
+                    'icon' => 'M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z',
+                ]);
+            }
+
+            $kendalaBelum = HealthCheckItem::where('status', 'Not OK')->where('status_tindak_lanjut', 'Belum Ditindaklanjuti')->count();
+            if ($kendalaBelum > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Kendala belum ditindaklanjuti',
+                    'jumlah' => $kendalaBelum,
+                    'href' => route('monitoring.index', ['status_tindak_lanjut' => 'Belum Ditindaklanjuti']),
+                    'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
+                ]);
+            }
+
+            $permintaanPending = PermintaanPerangkat::where('status', '!=', 'Done Terkirim')->count();
+            if ($permintaanPending > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Permintaan perangkat belum selesai',
+                    'jumlah' => $permintaanPending,
+                    'href' => route('permintaan-perangkat.index'),
+                    'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4',
+                ]);
+            }
+
+            $editAsetMenunggu = AsetEditRequest::where('status', 'Menunggu')->count();
+            if ($editAsetMenunggu > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Permintaan edit aset menunggu approval',
+                    'jumlah' => $editAsetMenunggu,
+                    'href' => route('aset.editRequests.index'),
+                    'icon' => 'M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z',
+                ]);
+            }
+        } else {
+            $kendalaBelumSaya = HealthCheckItem::whereHas('form', fn ($q) => $q->whereIn('uker_kode', $ukerBolehDiakses))
+                ->where('status', 'Not OK')->where('status_tindak_lanjut', 'Belum Ditindaklanjuti')->count();
+            if ($kendalaBelumSaya > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Kendala di uker Anda belum ditindaklanjuti',
+                    'jumlah' => $kendalaBelumSaya,
+                    'href' => route('monitoring.index', ['status_tindak_lanjut' => 'Belum Ditindaklanjuti']),
+                    'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
+                ]);
+            }
+
+            $hcDitolakSaya = HealthCheckForm::whereIn('uker_kode', $ukerBolehDiakses)->where('status_approval', 'Ditolak')->count();
+            if ($hcDitolakSaya > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Health Check ditolak, perlu direvisi',
+                    'jumlah' => $hcDitolakSaya,
+                    'href' => route('healthcheck.index', ['status_approval' => 'Ditolak']),
+                    'icon' => 'M18.36 6.64a9 9 0 11-12.73 0M12 2v10',
+                ]);
+            }
+        }
 
         // ===== 1. KPI ringkas =====
         // Non-admin di-scope ke uker sendiri + SEMUA turunannya (bukan cuma
@@ -28,7 +100,6 @@ class DashboardController extends Controller
         $asetQuery = Aset::query();
         $formQuery = HealthCheckForm::query()->with('items');
         if (! $isAdmin) {
-            $ukerBolehDiakses = Uker::descendantKodes($ukerKode);
             $asetQuery->whereIn('uker_kode', $ukerBolehDiakses);
             $formQuery->whereIn('uker_kode', $ukerBolehDiakses);
         }
@@ -202,7 +273,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'totalAset', 'totalFormHc', 'rataCompliance', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
+            'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
             'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }

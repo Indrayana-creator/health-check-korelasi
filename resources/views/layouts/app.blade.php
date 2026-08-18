@@ -52,12 +52,21 @@
 
                 <nav class="flex flex-col gap-1">
                     @php
+                        // Dikelompokkan per "apa yang dikerjakan user", bukan sekadar
+                        // view vs admin -- Monitoring Kendala & Permintaan Edit Aset
+                        // dulu nyasar di grup Laporan/Administrasi padahal keduanya
+                        // antrian kerja yang butuh tindakan, sama kayak Health Check
+                        // & Permintaan Perangkat, jadi disatukan di sini.
                         $navMain = [
                             ['route' => 'dashboard', 'pattern' => 'dashboard', 'label' => 'Dashboard', 'icon' => 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z'],
                             ['route' => 'aset.index', 'pattern' => 'aset.*', 'label' => 'Data Aset', 'icon' => 'M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8'],
-                            ['route' => 'healthcheck.index', 'pattern' => 'healthcheck.*', 'label' => 'Health Check', 'icon' => 'M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z'],
-                            ['route' => 'permintaan-perangkat.index', 'pattern' => 'permintaan-perangkat.*', 'label' => 'Permintaan Perangkat', 'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4'],
                         ];
+                        if (auth()->user()->role === 'admin') {
+                            $navMain[] = ['route' => 'aset.editRequests.index', 'pattern' => 'aset.editRequests.*', 'label' => 'Permintaan Edit Aset', 'icon' => 'M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z'];
+                        }
+                        $navMain[] = ['route' => 'healthcheck.index', 'pattern' => 'healthcheck.*', 'label' => 'Health Check', 'icon' => 'M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z'];
+                        $navMain[] = ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'];
+                        $navMain[] = ['route' => 'permintaan-perangkat.index', 'pattern' => 'permintaan-perangkat.*', 'label' => 'Permintaan Perangkat', 'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4'];
                     @endphp
                     @foreach ($navMain as $item)
                         <a href="{{ route($item['route']) }}" class="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold {{ request()->routeIs($item['pattern']) ? 'bg-white/20' : 'hover:bg-white/10' }}">
@@ -77,12 +86,10 @@
                             ? [
                                 ['route' => 'rekap.cabang', 'pattern' => 'rekap.*', 'label' => 'Rekap Cabang', 'icon' => 'M4 20V10M10 20V4M16 20v-7M22 20H2'],
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
-                                ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
                                 ['route' => 'rekap.permintaanPerangkat', 'pattern' => 'rekap.permintaanPerangkat', 'label' => 'Rekap Permintaan Perangkat', 'icon' => 'M20 7h-9M14 17H5M17 3l3 4-3 4M7 21l-3-4 3-4'],
                             ]
                             : [
                                 ['route' => 'uker-tree.index', 'pattern' => 'uker-tree.index', 'label' => 'Struktur Organisasi', 'icon' => 'M6 3v12M18 9a3 3 0 100-6 3 3 0 000 6zM6 21a3 3 0 100-6 3 3 0 000 6zM15 6a9 9 0 01-9 9'],
-                                ['route' => 'monitoring.index', 'pattern' => 'monitoring.*', 'label' => 'Monitoring Kendala', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
                             ];
                     @endphp
                     @foreach ($navLaporan as $item)
@@ -102,7 +109,6 @@
                                 ['route' => 'ukers.index', 'pattern' => 'ukers.*', 'label' => 'Kelola Uker', 'icon' => 'M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1M9 21v-4h6v4'],
                                 ['route' => 'pekerja.index', 'pattern' => 'pekerja.*', 'label' => 'Kelola Pekerja', 'icon' => 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z'],
                                 ['route' => 'kode-aset.index', 'pattern' => 'kode-aset.*', 'label' => 'Kelola Kode Aset', 'icon' => 'M20.59 13.41L11 3.83V3H3v8h.83l9.58 9.59a2 2 0 002.83 0l4.35-4.35a2 2 0 000-2.83zM6.5 7.5a1 1 0 110-2 1 1 0 010 2z'],
-                                ['route' => 'aset.editRequests.index', 'pattern' => 'aset.editRequests.*', 'label' => 'Permintaan Edit Aset', 'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z'],
                                 ['route' => 'log-history.index', 'pattern' => 'log-history.*', 'label' => 'Log History', 'icon' => 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 6v6l4 2'],
                             ];
                         @endphp
