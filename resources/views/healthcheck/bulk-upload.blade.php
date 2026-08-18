@@ -1,6 +1,7 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-extrabold text-lg text-gray-800">Upload Massal Form Health Check</h2>
+        <h2 class="font-extrabold text-lg text-gray-800">Buat Form Massal Health Check</h2>
+        <p class="text-xs text-gray-500 mt-0.5">Bikin banyak form kosong sekaligus -- isi checklist per item tetap manual satu-satu di tiap form</p>
     </x-slot>
 
     <div class="p-7">

@@ -23,7 +23,7 @@
                     </button>
                 </x-slot>
                 <x-slot name="content">
-                    <x-dropdown-link :href="route('healthcheck.bulkUploadForm')">Upload Massal (Excel)</x-dropdown-link>
+                    <x-dropdown-link :href="route('healthcheck.bulkUploadForm')">Buat Form Massal (Excel)</x-dropdown-link>
                     <x-dropdown-link :href="route('healthcheck.bulkDeleteForm')" class="!text-red-600">Delete Massal (Excel)</x-dropdown-link>
                 </x-slot>
             </x-dropdown>

@@ -154,6 +154,9 @@
                                                         <option value="{{ $s }}" @selected($item->status_tindak_lanjut === $s)>{{ $s }}</option>
                                                     @endforeach
                                                 </x-select>
+                                                <p class="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
+                                                    <span class="font-semibold text-gray-500">Sedang Diproses</span> = perbaikan udah mulai dikerjakan tapi belum kelar (mis. nunggu vendor) &mdash; mulai hitung SLA 7 hari sendiri dari sini, terpisah dari SLA "Mendesak" di status Belum Ditindaklanjuti.
+                                                </p>
                                             </div>
                                             <div>
                                                 <x-input-label value="Catatan (opsional)" />
