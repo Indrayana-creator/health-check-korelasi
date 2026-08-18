@@ -41,7 +41,7 @@ class AsetController extends Controller
             ],
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
-            'kondisi' => 'nullable|in:'.implode(',', Aset::DAFTAR_KONDISI),
+            'kondisi' => 'required|in:'.implode(',', Aset::DAFTAR_KONDISI),
             'pemegang_nama' => 'nullable|string|max:150',
             'jabatan' => 'nullable|string|max:150',
             'pemegang_pn' => 'nullable|string|max:50',
@@ -87,11 +87,24 @@ class AsetController extends Controller
         }
 
         if ($request->filled('uker_kode')) {
-            $query->where('uker_kode', $request->input('uker_kode'));
+            // Subtree, bukan exact-match -- filter ini juga dipakai jalan pintas
+            // dari chart Struktur Organisasi yang angkanya emang akumulasi
+            // 1 cabang + seluruh unit di bawahnya (konsisten sama cara RBAC
+            // scoping di seluruh app), jadi pilih "KC X" harus ikut nampilin
+            // aset yang tercatat di unit/KCP turunannya, bukan cuma persis di
+            // kode KC itu sendiri (yang seringkali kosong).
+            $query->whereIn('uker_kode', Uker::descendantKodes((int) $request->input('uker_kode')));
         }
 
         if ($request->filled('kondisi')) {
-            $query->where('kondisi', $request->input('kondisi'));
+            // Sentinel value, bukan salah satu isi Aset::DAFTAR_KONDISI -- buat
+            // nyari aset lama (dibuat sebelum kolom ini wajib) yang kondisinya
+            // masih kosong, dipakai jalan pintas dari chart Struktur Organisasi.
+            if ($request->input('kondisi') === 'BELUM_DIISI') {
+                $query->whereNull('kondisi');
+            } else {
+                $query->where('kondisi', $request->input('kondisi'));
+            }
         }
 
         return $query;

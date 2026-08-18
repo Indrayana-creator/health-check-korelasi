@@ -231,6 +231,16 @@
                             <div>
                                 <p class="text-sm font-medium text-gray-700 mb-2 text-center">Distribusi Kondisi</p>
                                 <canvas x-ref="canvasKondisi"></canvas>
+                                {{-- "Belum Diisi" = kolom Kondisi aset itu masih kosong (data lama,
+                                     sebelum kolom ini wajib diisi) -- kasih jalan pintas langsung ke
+                                     daftar asetnya, bukan cuma angka doang tanpa tindak lanjut. --}}
+                                <template x-if="($store.ukerDetail.data.distribusi_kondisi.find(d => d.label === 'Belum Diisi')?.jumlah ?? 0) > 0">
+                                    <p class="text-xs text-gray-500 text-center mt-2">
+                                        <span x-text="$store.ukerDetail.data.distribusi_kondisi.find(d => d.label === 'Belum Diisi').jumlah"></span>
+                                        aset belum diisi kolom Kondisinya &mdash;
+                                        <a :href="`{{ route('aset.index') }}?uker_kode=${$store.ukerDetail.data.kode}&kondisi=BELUM_DIISI`" class="text-cakrawala font-semibold hover:underline">lihat &amp; lengkapi</a>
+                                    </p>
+                                </template>
                             </div>
                         </div>
                     </div>

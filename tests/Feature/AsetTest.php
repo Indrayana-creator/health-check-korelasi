@@ -18,6 +18,7 @@ function asetPayload(Uker $uker, KodeAset $kodeAset, array $overrides = []): arr
         'merek' => 'Dell',
         'tipe_model' => 'Latitude 5420',
         'sn' => 'SN12345678',
+        'kondisi' => 'NORMAL',
     ], $overrides);
 }
 

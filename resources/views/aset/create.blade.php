@@ -102,8 +102,8 @@
                         </div>
 
                         <div>
-                            <x-input-label value="Kondisi (opsional)" />
-                            <x-select name="kondisi" class="mt-1.5 block w-full">
+                            <x-input-label value="Kondisi" required />
+                            <x-select name="kondisi" class="mt-1.5 block w-full" required>
                                 <option value="">-- Pilih Kondisi --</option>
                                 @foreach (\App\Models\Aset::DAFTAR_KONDISI as $k)
                                     <option value="{{ $k }}" @selected(old('kondisi') == $k)>{{ $k }}</option>

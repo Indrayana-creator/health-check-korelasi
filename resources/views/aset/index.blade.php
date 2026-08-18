@@ -94,6 +94,7 @@
                     @foreach (\App\Models\Aset::DAFTAR_KONDISI as $k)
                         <option value="{{ $k }}" @selected(request('kondisi') == $k)>{{ $k }}</option>
                     @endforeach
+                    <option value="BELUM_DIISI" @selected(request('kondisi') == 'BELUM_DIISI')>Belum Diisi</option>
                 </x-select>
                 <div class="flex gap-2">
                     <x-button type="submit" size="sm">Terapkan</x-button>
@@ -145,7 +146,7 @@
                             </td>
                             <td class="px-4">
                                 <x-badge :color="match($aset->kondisi) { 'NORMAL' => 'green', 'RUSAK', 'TIDAK LAYAK' => 'red', default => 'gray' }">
-                                    {{ $aset->kondisi }}
+                                    {{ $aset->kondisi ?? 'Belum Diisi' }}
                                 </x-badge>
                             </td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->pemegang_nama }}</td>

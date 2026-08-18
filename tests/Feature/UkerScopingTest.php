@@ -114,6 +114,7 @@ test('user Cabang A bisa input aset baru untuk KCP di bawahnya (turunan, bukan c
         'kode_aset_kode' => $kodeAset->kode,
         'merek' => 'Dell',
         'tipe_model' => 'Latitude 5420',
+        'kondisi' => 'NORMAL',
         'sn' => 'SN-SUBTREE-001',
     ]);
 
@@ -133,6 +134,7 @@ test('user Cabang A TIDAK bisa input aset untuk Cabang B (bukan bagian dari subt
         'kode_aset_kode' => $kodeAset->kode,
         'merek' => 'Dell',
         'tipe_model' => 'Latitude 5420',
+        'kondisi' => 'NORMAL',
         'sn' => 'SN-TOLAK-001',
     ]);
 
@@ -150,6 +152,7 @@ test('user Cabang A TIDAK bisa input aset untuk turunan Cabang B (KCP B1), walau
         'kode_aset_kode' => $kodeAset->kode,
         'merek' => 'Dell',
         'tipe_model' => 'Latitude 5420',
+        'kondisi' => 'NORMAL',
         'sn' => 'SN-TOLAK-002',
     ]);
 
