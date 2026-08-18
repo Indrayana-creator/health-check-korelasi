@@ -60,6 +60,10 @@
                     <canvas
                         x-data="{
                             init() {
+                                // Peta label chart -> value kolom kondisi asli. 'Lainnya' sengaja
+                                // gak diklikin -- itu gabungan banyak kondisi berbeda (termasuk
+                                // yang belum diisi), gak ada 1 filter tunggal yang mewakilinya.
+                                const kondisiParam = { Normal: 'NORMAL', Rusak: 'RUSAK', 'Tidak Layak': 'TIDAK LAYAK' };
                                 new Chart(this.$el, {
                                     type: 'doughnut',
                                     data: {
@@ -73,6 +77,17 @@
                                     options: {
                                         maintainAspectRatio: false,
                                         plugins: { legend: { position: 'right' } },
+                                        onClick: (evt, elements, chart) => {
+                                            if (!elements.length) return;
+                                            const label = chart.data.labels[elements[0].index];
+                                            if (kondisiParam[label]) {
+                                                window.location.href = `{{ route('aset.index') }}?kondisi=${encodeURIComponent(kondisiParam[label])}`;
+                                            }
+                                        },
+                                        onHover: (evt, elements, chart) => {
+                                            const label = elements.length ? chart.data.labels[elements[0].index] : null;
+                                            evt.native.target.style.cursor = (label && kondisiParam[label]) ? 'pointer' : 'default';
+                                        },
                                     },
                                 });
                             }

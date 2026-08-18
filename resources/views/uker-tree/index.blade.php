@@ -166,13 +166,24 @@
                     if (this.chartKondisi) { this.chartKondisi.destroy(); this.chartKondisi = null; }
                     if (!data || data.error || !this.$refs.canvasPerangkat) return;
 
+                    // Semua segmen di 2 chart ini bisa diklik -- langsung ke Data
+                    // Aset dengan filter uker (subtree) + kategori/kondisi yang
+                    // diklik, biar chart-nya jadi jalan pintas, bukan cuma angka.
                     this.chartPerangkat = new Chart(this.$refs.canvasPerangkat, {
                         type: 'pie',
                         data: {
                             labels: data.distribusi_perangkat.map(d => d.label),
                             datasets: [{ data: data.distribusi_perangkat.map(d => d.jumlah) }]
                         },
-                        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+                        options: {
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+                            onClick: (evt, elements, chart) => {
+                                if (!elements.length) return;
+                                const kategori = chart.data.labels[elements[0].index];
+                                window.location.href = `{{ route('aset.index') }}?uker_kode=${data.kode}&kategori=${encodeURIComponent(kategori)}`;
+                            },
+                            onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+                        }
                     });
                     this.chartKondisi = new Chart(this.$refs.canvasKondisi, {
                         type: 'pie',
@@ -180,7 +191,16 @@
                             labels: data.distribusi_kondisi.map(d => d.label),
                             datasets: [{ data: data.distribusi_kondisi.map(d => d.jumlah) }]
                         },
-                        options: { plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } } }
+                        options: {
+                            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 10 } } } },
+                            onClick: (evt, elements, chart) => {
+                                if (!elements.length) return;
+                                const label = chart.data.labels[elements[0].index];
+                                const kondisi = label === 'Belum Diisi' ? 'BELUM_DIISI' : label;
+                                window.location.href = `{{ route('aset.index') }}?uker_kode=${data.kode}&kondisi=${encodeURIComponent(kondisi)}`;
+                            },
+                            onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+                        }
                     });
                 });
             }
@@ -267,7 +287,16 @@
                         options: {
                             indexAxis: 'y',
                             scales: { x: { min: 0, max: 100 } },
-                            plugins: { legend: { display: false } }
+                            plugins: { legend: { display: false } },
+                            // Klik kategori -- langsung ke Monitoring Kendala yang
+                            // difilter uker (subtree) + kategori itu, buat lihat item
+                            // Not OK spesifik yang bikin compliance-nya gak 100%.
+                            onClick: (evt, elements, chart) => {
+                                if (!elements.length) return;
+                                const kategori = chart.data.labels[elements[0].index];
+                                window.location.href = `{{ route('monitoring.index') }}?uker_kode=${data.kode}&kategori=${encodeURIComponent(kategori)}`;
+                            },
+                            onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
                         }
                     });
                 });

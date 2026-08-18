@@ -92,6 +92,8 @@
                                 <canvas
                                     x-data="{
                                         init() {
+                                            const kategori = @js($k['kategori']);
+                                            const urlNotOk = `{{ route('monitoring.index') }}?kategori=${encodeURIComponent(kategori)}`;
                                             new Chart(this.$el, {
                                                 type: 'doughnut',
                                                 data: {
@@ -105,6 +107,19 @@
                                                 options: {
                                                     maintainAspectRatio: false,
                                                     plugins: { legend: { display: false } },
+                                                    // Cuma segmen 'Not OK' yang punya tujuan konkret (Monitoring
+                                                    // Kendala) -- OK/N/A/Belum Diperiksa gak punya halaman daftar
+                                                    // tersendiri, jadi sengaja gak diklikin biar gak nyasar.
+                                                    onClick: (evt, elements, chart) => {
+                                                        if (!elements.length) return;
+                                                        if (chart.data.labels[elements[0].index] === 'Not OK') {
+                                                            window.location.href = urlNotOk;
+                                                        }
+                                                    },
+                                                    onHover: (evt, elements, chart) => {
+                                                        const label = elements.length ? chart.data.labels[elements[0].index] : null;
+                                                        evt.native.target.style.cursor = label === 'Not OK' ? 'pointer' : 'default';
+                                                    },
                                                 },
                                             });
                                         }
@@ -136,6 +151,7 @@
                                 <canvas
                                     x-data="{
                                         init() {
+                                            const urlBelumLengkap = `{{ route('healthcheck.index') }}?dokumentasi_belum_lengkap=1`;
                                             new Chart(this.$el, {
                                                 type: 'doughnut',
                                                 data: {
@@ -149,6 +165,16 @@
                                                 options: {
                                                     maintainAspectRatio: false,
                                                     plugins: { legend: { display: false } },
+                                                    onClick: (evt, elements, chart) => {
+                                                        if (!elements.length) return;
+                                                        if (chart.data.labels[elements[0].index] === 'Belum Lengkap') {
+                                                            window.location.href = urlBelumLengkap;
+                                                        }
+                                                    },
+                                                    onHover: (evt, elements, chart) => {
+                                                        const label = elements.length ? chart.data.labels[elements[0].index] : null;
+                                                        evt.native.target.style.cursor = label === 'Belum Lengkap' ? 'pointer' : 'default';
+                                                    },
                                                 },
                                             });
                                         }

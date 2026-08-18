@@ -38,7 +38,12 @@ class MonitoringController extends Controller
         $query = $this->scopedQuery($request);
 
         if ($request->filled('uker_kode')) {
-            $query->whereHas('form', fn ($q) => $q->where('uker_kode', $request->input('uker_kode')));
+            // Subtree, bukan exact-match -- sama kayak fix di Data Aset,
+            // biar link dari chart per-uker (mis. modal Struktur Organisasi)
+            // yang milih "KC X" ikut nampilin kendala dari unit turunannya,
+            // bukan cuma persis kode KC itu sendiri.
+            $kumpulanKode = Uker::descendantKodes((int) $request->input('uker_kode'));
+            $query->whereHas('form', fn ($q) => $q->whereIn('uker_kode', $kumpulanKode));
         }
 
         if ($request->filled('kategori')) {

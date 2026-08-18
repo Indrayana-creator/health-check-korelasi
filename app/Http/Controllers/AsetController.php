@@ -96,6 +96,14 @@ class AsetController extends Controller
             $query->whereIn('uker_kode', Uker::descendantKodes((int) $request->input('uker_kode')));
         }
 
+        if ($request->filled('kategori')) {
+            // Dipakai jalan pintas dari chart "Distribusi per Kategori" di
+            // modal Struktur Organisasi -- kategori itu milik kode_aset,
+            // bukan kolom langsung di tabel aset.
+            $kategori = $request->input('kategori');
+            $query->whereHas('kodeAset', fn ($q) => $q->where('kategori', $kategori));
+        }
+
         if ($request->filled('kondisi')) {
             // Sentinel value, bukan salah satu isi Aset::DAFTAR_KONDISI -- buat
             // nyari aset lama (dibuat sebelum kolom ini wajib) yang kondisinya

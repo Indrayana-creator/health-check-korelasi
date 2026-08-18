@@ -141,6 +141,7 @@ class UkerTreeController extends Controller
         $rataCompliance = $totalItem > 0 ? round($totalOk / $totalItem * 100, 1) : null;
 
         return response()->json([
+            'kode' => $node->kode,
             'nama' => $node->nama,
             'jenis' => $node->jenis,
             'jumlah_form' => $forms->count(),

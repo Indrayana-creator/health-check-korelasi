@@ -39,11 +39,26 @@ class HealthCheckController extends Controller
         }
 
         if ($request->filled('uker_kode')) {
-            $query->where('uker_kode', $request->input('uker_kode'));
+            // Subtree, bukan exact-match -- sama kayak fix di Data Aset &
+            // Monitoring Kendala, biar link dari chart per-uker (mis. modal
+            // Struktur Organisasi) yang milih "KC X" ikut nampilin form dari
+            // unit turunannya, bukan cuma persis kode KC itu sendiri.
+            $query->whereIn('uker_kode', Uker::descendantKodes((int) $request->input('uker_kode')));
         }
 
         if ($request->filled('status_approval')) {
             $query->where('status_approval', $request->input('status_approval'));
+        }
+
+        if ($request->boolean('dokumentasi_belum_lengkap')) {
+            // Dipakai jalan pintas dari chart "Dokumentasi Visual" di
+            // Dashboard -- form dianggap belum lengkap kalau salah satu dari
+            // 3 foto wajib (Kategori E) masih kosong.
+            $query->where(function ($sub) {
+                foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
+                    $sub->orWhereNull($field);
+                }
+            });
         }
 
         return $query;

@@ -98,7 +98,7 @@
                 </x-select>
                 <div class="flex gap-2">
                     <x-button type="submit" size="sm">Terapkan</x-button>
-                    @if (request('q') || request('uker_kode') || request('kondisi'))
+                    @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori'))
                         <x-button variant="secondary" size="sm" :href="route('aset.index')">Reset</x-button>
                     @endif
                 </div>
