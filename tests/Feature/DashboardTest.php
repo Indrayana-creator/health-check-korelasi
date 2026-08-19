@@ -8,6 +8,8 @@ use App\Models\KodeAset;
 use App\Models\PermintaanPerangkat;
 use App\Models\Uker;
 use App\Models\User;
+use App\Notifications\ReminderInputAset;
+use App\Notifications\ReminderPengisianHealthCheck;
 
 test('dashboard admin menghitung total kendala aktif dari item Not OK yang belum selesai ditindaklanjuti', function () {
     $admin = User::factory()->admin()->create();
@@ -336,6 +338,53 @@ test('itemDetail nolak status yang bukan salah satu dari OK/Not OK/N-A/Belum Dip
     $response = $this->actingAs($admin)->getJson(route('dashboard.itemDetail', [
         'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'Ngasal',
     ]));
+
+    $response->assertStatus(422);
+});
+
+test('admin bisa kirim pengingat pengisian HC ke uker manapun', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $userUker = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($admin)->post(route('dashboard.kirimPengingatHc', $uker));
+
+    $response->assertRedirect();
+    $response->assertSessionHas('status');
+    expect($userUker->notifications()->where('type', ReminderPengisianHealthCheck::class)->exists())->toBeTrue();
+});
+
+test('admin bisa kirim pengingat input aset ke uker manapun', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $userUker = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($admin)->post(route('dashboard.kirimPengingatAset', $uker));
+
+    $response->assertRedirect();
+    expect($userUker->notifications()->where('type', ReminderInputAset::class)->exists())->toBeTrue();
+});
+
+test('user biasa cuma bisa kirim pengingat ke uker di subtree sendiri, bukan uker lain', function () {
+    $cabangA = Uker::factory()->create();
+    $anakCabangA = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create();
+    $userA = User::factory()->forUker($cabangA->kode)->create();
+    User::factory()->forUker($anakCabangA->kode)->create();
+    User::factory()->forUker($cabangB->kode)->create();
+
+    $bolehSubtree = $this->actingAs($userA)->post(route('dashboard.kirimPengingatHc', $anakCabangA));
+    $bolehSubtree->assertRedirect();
+
+    $tolakLuarSubtree = $this->actingAs($userA)->post(route('dashboard.kirimPengingatHc', $cabangB));
+    $tolakLuarSubtree->assertForbidden();
+});
+
+test('kirim pengingat ditolak kalau uker belum punya user aktif', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('dashboard.kirimPengingatHc', $uker));
 
     $response->assertStatus(422);
 });

@@ -139,8 +139,40 @@
                                     {{ $form->status_approval }}
                                 </x-badge>
                             </td>
-                            <td class="px-4 py-3 whitespace-nowrap text-right">
+                            <td class="px-4 py-3 whitespace-nowrap text-right" x-data="{ tolakOpen: false }">
                                 <div class="inline-flex items-center gap-1.5">
+                                    @if (auth()->user()->role === 'admin' && $form->status_approval === 'Menunggu Approval')
+                                        {{-- Quick approve/reject -- gak perlu buka halaman edit penuh
+                                             buat form yang keputusannya udah jelas dari daftar aja
+                                             (compliance tinggi, gak ada Not OK, dsb). --}}
+                                        <form action="{{ route('healthcheck.approve', $form) }}" method="POST" class="inline" onsubmit="return confirm('Setujui form ini?')">
+                                            @csrf
+                                            <x-icon-button variant="success" label="Setujui" type="submit">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M20 6L9 17l-5-5"></path></svg>
+                                            </x-icon-button>
+                                        </form>
+                                        <x-icon-button variant="danger" label="Tolak" type="button" @click="tolakOpen = true">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                                        </x-icon-button>
+
+                                        <div x-show="tolakOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="tolakOpen = false">
+                                            <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                                <h3 class="font-extrabold text-sm text-gray-800 mb-1">Tolak Form Health Check</h3>
+                                                <p class="text-xs text-gray-400 mb-3.5">{{ $form->uker?->nama }} &middot; {{ $form->periode }}</p>
+                                                <form action="{{ route('healthcheck.reject', $form) }}" method="POST" class="space-y-3">
+                                                    @csrf
+                                                    <div>
+                                                        <x-input-label value="Alasan Ditolak" required />
+                                                        <textarea name="catatan_approval" rows="3" required class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" placeholder="contoh: ada item yang belum diisi, tolong dilengkapi dulu"></textarea>
+                                                    </div>
+                                                    <div class="flex gap-2 pt-1">
+                                                        <x-button type="submit" variant="danger">Tolak</x-button>
+                                                        <x-button type="button" variant="secondary" @click="tolakOpen = false">Batal</x-button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    @endif
                                     <x-icon-button variant="edit" label="Isi/Edit" :href="route('healthcheck.edit', $form)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </x-icon-button>

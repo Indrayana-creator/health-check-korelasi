@@ -9,6 +9,9 @@ use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\PermintaanPerangkat;
 use App\Models\Uker;
+use App\Models\User;
+use App\Notifications\ReminderInputAset;
+use App\Notifications\ReminderPengisianHealthCheck;
 use App\Support\ComplianceScale;
 use Illuminate\Http\Request;
 
@@ -60,6 +63,45 @@ class DashboardController extends Controller
             ]);
 
         return response()->json(['items' => $items]);
+    }
+
+    // Boleh kirim pengingat ke suatu uker kalau ADMIN (bebas semua uker) atau
+    // uker itu ada di dalam subtree sendiri (sama kayak cakupan yang dipakai
+    // buat nampilin daftar "Belum Isi HC"/"Belum Ada Aset" di Dashboard --
+    // gak masuk akal ngirim pengingat ke uker yang bahkan gak kelihatan
+    // di daftar sendiri).
+    protected function authorizeKirimPengingat(Request $request, Uker $uker): void
+    {
+        $isAdmin = $request->user()->role === 'admin';
+        if ($isAdmin) {
+            return;
+        }
+
+        abort_unless(in_array($uker->kode, Uker::descendantKodes($request->user()->uker_kode)), 403);
+    }
+
+    public function kirimPengingatHc(Request $request, Uker $uker)
+    {
+        $this->authorizeKirimPengingat($request, $uker);
+
+        $users = User::where('uker_kode', $uker->kode)->where('is_active', true)->get();
+        abort_if($users->isEmpty(), 422, 'Uker ini belum punya akun user aktif buat dikirimin notifikasi.');
+
+        $users->each->notify(new ReminderPengisianHealthCheck($uker));
+
+        return back()->with('status', "Pengingat pengisian Health Check terkirim ke {$uker->nama}.");
+    }
+
+    public function kirimPengingatAset(Request $request, Uker $uker)
+    {
+        $this->authorizeKirimPengingat($request, $uker);
+
+        $users = User::where('uker_kode', $uker->kode)->where('is_active', true)->get();
+        abort_if($users->isEmpty(), 422, 'Uker ini belum punya akun user aktif buat dikirimin notifikasi.');
+
+        $users->each->notify(new ReminderInputAset($uker));
+
+        return back()->with('status', "Pengingat input data aset terkirim ke {$uker->nama}.");
     }
 
     public function index(Request $request)

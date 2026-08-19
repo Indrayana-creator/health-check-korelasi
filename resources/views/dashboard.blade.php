@@ -56,6 +56,10 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
+        @if (session('status'))
+            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
+        @endif
+
         {{-- 0. Perlu Tindakan Anda -- satu titik kumpul buat semua hal yang
              butuh diproses (sebelumnya tersebar: HC menunggu approval,
              Kendala belum ditindaklanjuti, Permintaan Perangkat pending,
@@ -363,17 +367,13 @@
                                 <div x-data="{ expanded: false }">
                                     <div class="flex flex-wrap gap-2">
                                         @foreach ($ukerBelumMengisi->take(8) as $u)
-                                            <span class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-200">
-                                                {{ $u->nama }}
-                                            </span>
+                                            <x-dashboard-reminder-chip :uker="$u" :action="route('dashboard.kirimPengingatHc', $u)" color="red" />
                                         @endforeach
                                     </div>
                                     @if ($ukerBelumMengisi->count() > 8)
                                         <div x-show="expanded" x-cloak class="flex flex-wrap gap-2 mt-2">
                                             @foreach ($ukerBelumMengisi->skip(8) as $u)
-                                                <span class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-red-50 text-red-600 border border-red-200">
-                                                    {{ $u->nama }}
-                                                </span>
+                                                <x-dashboard-reminder-chip :uker="$u" :action="route('dashboard.kirimPengingatHc', $u)" color="red" />
                                             @endforeach
                                         </div>
                                         <button type="button" @click="expanded = !expanded" class="mt-3 text-xs font-semibold text-cakrawala hover:underline">
@@ -393,9 +393,7 @@
                             @else
                                 <div class="flex flex-wrap gap-2">
                                     @foreach ($ukerBelumAdaAset as $u)
-                                        <span class="px-3 py-1.5 text-xs font-semibold rounded-lg bg-orange-50 text-orange-600 border border-orange-200">
-                                            {{ $u->nama }}
-                                        </span>
+                                        <x-dashboard-reminder-chip :uker="$u" :action="route('dashboard.kirimPengingatAset', $u)" color="orange" />
                                     @endforeach
                                 </div>
                                 <p class="text-xs text-gray-400 mt-3">{{ $ukerBelumAdaAset->count() }} uker belum ada data aset.</p>

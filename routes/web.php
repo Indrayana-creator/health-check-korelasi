@@ -31,6 +31,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['au
 // validasi) di-render sebagai JSON (lihat bootstrap/app.php shouldRenderJsonWhen),
 // wajib dipakai buat endpoint yang dipanggil via fetch() kayak gini.
 Route::get('/api/dashboard/item-detail', [DashboardController::class, 'itemDetail'])->middleware(['auth', 'verified'])->name('dashboard.itemDetail');
+Route::post('/dashboard/kirim-pengingat-hc/{uker}', [DashboardController::class, 'kirimPengingatHc'])->middleware(['auth', 'verified'])->name('dashboard.kirimPengingatHc');
+Route::post('/dashboard/kirim-pengingat-aset/{uker}', [DashboardController::class, 'kirimPengingatAset'])->middleware(['auth', 'verified'])->name('dashboard.kirimPengingatAset');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
