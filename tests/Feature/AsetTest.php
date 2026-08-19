@@ -478,3 +478,25 @@ test('menghapus aset ikut menghapus riwayat kondisinya (cascade)', function () {
 
     expect(AsetKondisiLog::find($logId))->toBeNull();
 });
+
+test('data aset bisa diurutkan lewat klik header tabel (misal by merek)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Zebra', 'sn' => 'SN-Z']);
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Acer', 'sn' => 'SN-A']);
+
+    $response = $this->actingAs($admin)->get(route('aset.index', ['sort' => 'merek', 'dir' => 'asc']));
+
+    $urutan = $response->viewData('asetList')->pluck('merek')->values();
+    expect($urutan->first())->toBe('Acer');
+    expect($urutan->last())->toBe('Zebra');
+});
+
+test('sort field yang gak ada di whitelist diabaikan, gak bikin error', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('aset.index', ['sort' => 'password', 'dir' => 'asc']));
+
+    $response->assertOk();
+});

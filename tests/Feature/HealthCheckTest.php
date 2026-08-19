@@ -490,3 +490,24 @@ test('bulk delete health check menghapus form berdasarkan uker+periode', functio
     expect(HealthCheckForm::where('id', $form->id)->exists())->toBeFalse();
     expect(HealthCheckForm::onlyTrashed()->where('id', $form->id)->exists())->toBeTrue();
 });
+
+test('daftar health check bisa diurutkan lewat klik header tabel (misal by tanggal)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'A', 'tanggal_pemeriksaan' => '2026-08-10']);
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'B', 'tanggal_pemeriksaan' => '2026-01-05']);
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.index', ['sort' => 'tanggal_pemeriksaan', 'dir' => 'asc']));
+
+    $urutan = $response->viewData('formList')->pluck('periode')->values();
+    expect($urutan->first())->toBe('B');
+    expect($urutan->last())->toBe('A');
+});
+
+test('sort field yang gak ada di whitelist buat health check diabaikan, gak bikin error', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.index', ['sort' => 'catatan_approval', 'dir' => 'asc']));
+
+    $response->assertOk();
+});

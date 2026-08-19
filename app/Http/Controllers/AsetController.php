@@ -119,9 +119,20 @@ class AsetController extends Controller
         return $query;
     }
 
+    // Kolom yang boleh dipakai buat sort lewat klik header tabel -- whitelist
+    // ketat, biar 'sort' dari query string gak bisa dipakai buat nge-sort ke
+    // kolom sembarangan (apalagi kolom yang gak ada di tabel aset).
+    protected const KOLOM_BISA_DIURUTKAN = ['no_asset', 'merek', 'sn', 'tahun_perolehan', 'kondisi'];
+
     public function index(Request $request)
     {
-        $asetList = $this->filteredQuery($request)->reorder('id', 'desc')->paginate(20)->withQueryString();
+        $query = $this->filteredQuery($request);
+        if (in_array($request->input('sort'), self::KOLOM_BISA_DIURUTKAN)) {
+            $query->reorder($request->input('sort'), $request->input('dir') === 'desc' ? 'desc' : 'asc');
+        } else {
+            $query->reorder('id', 'desc');
+        }
+        $asetList = $query->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
         // Ringkasan kondisi -- dihitung dari scope user (bukan hasil filter aktif),

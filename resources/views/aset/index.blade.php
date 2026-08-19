@@ -118,13 +118,13 @@
             <table class="min-w-full divide-y divide-gray-100" :class="density === 'compact' ? '[&_td]:py-1.5' : '[&_td]:py-3'">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">ASET ID</th>
+                        <x-sortable-th field="no_asset">ASET ID</x-sortable-th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kode Aset</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Merek / Type</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">SN</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Umur</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kondisi</th>
+                        <x-sortable-th field="merek">Merek / Type</x-sortable-th>
+                        <x-sortable-th field="sn">SN</x-sortable-th>
+                        <x-sortable-th field="tahun_perolehan">Umur</x-sortable-th>
+                        <x-sortable-th field="kondisi">Kondisi</x-sortable-th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama User</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>

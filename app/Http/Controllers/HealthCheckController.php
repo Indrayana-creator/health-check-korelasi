@@ -64,9 +64,22 @@ class HealthCheckController extends Controller
         return $query;
     }
 
+    // Whitelist kolom yang boleh di-sort lewat klik header tabel -- 'compliance'
+    // gak masuk sini karena itu bukan kolom asli (dihitung dari relasi items),
+    // butuh subquery kalau mau di-sort, belum sepadan efortnya sementara
+    // kebutuhan "compliance terendah" udah kepenuhi lewat widget Ranking
+    // Terendah di Dashboard.
+    protected const KOLOM_BISA_DIURUTKAN = ['periode', 'tanggal_pemeriksaan'];
+
     public function index(Request $request)
     {
-        $formList = $this->filteredQuery($request)->withCount('items')->reorder('id', 'desc')->paginate(20)->withQueryString();
+        $query = $this->filteredQuery($request)->withCount('items');
+        if (in_array($request->input('sort'), self::KOLOM_BISA_DIURUTKAN)) {
+            $query->reorder($request->input('sort'), $request->input('dir') === 'desc' ? 'desc' : 'asc');
+        } else {
+            $query->reorder('id', 'desc');
+        }
+        $formList = $query->paginate(20)->withQueryString();
         $ukerFilterList = $request->user()->role === 'admin' ? Uker::orderBy('nama')->get() : collect();
 
         // Ringkasan -- dihitung dari scope user (bukan hasil filter aktif),
