@@ -413,3 +413,18 @@ test('widget Perlu Tindakan Anda misahin angka Kendala Melewati SLA dari Belum D
     expect($slaEntry['jumlah'])->toBe(1);
     expect($slaEntry['href'])->toBe(route('monitoring.index', ['melewati_sla' => 1]));
 });
+
+test('dashboard nunjukin jumlah aset & form health check yang baru ditambahkan 7 hari terakhir', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'created_at' => now()->subDays(2)]);
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'created_at' => now()->subDays(20)]);
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'created_at' => now()->subDays(1)]);
+    HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'created_at' => now()->subDays(30)]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertViewHas('asetBaruMingguIni', 1);
+    $response->assertViewHas('formBaruMingguIni', 1);
+});

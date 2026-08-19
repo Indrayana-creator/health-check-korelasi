@@ -95,6 +95,12 @@
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Aset</p>
                 <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalAset, 0, ',', '.') }}</p>
+                @if ($asetBaruMingguIni > 0)
+                    <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-2.5 h-2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                        {{ number_format($asetBaruMingguIni, 0, ',', '.') }} baru 7 hari terakhir
+                    </p>
+                @endif
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-nusantara/10 text-nusantara flex items-center justify-center mb-3">
@@ -102,6 +108,12 @@
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Form Health Check</p>
                 <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalFormHc, 0, ',', '.') }}</p>
+                @if ($formBaruMingguIni > 0)
+                    <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-2.5 h-2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                        {{ number_format($formBaruMingguIni, 0, ',', '.') }} baru 7 hari terakhir
+                    </p>
+                @endif
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">

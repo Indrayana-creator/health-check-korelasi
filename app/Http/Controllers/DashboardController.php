@@ -231,6 +231,15 @@ class DashboardController extends Controller
         $formList = $formQuery->get();
         $totalFormHc = $formList->count();
 
+        // Konteks tambahan di KPI card -- bukan "naik/turun %" beneran, karena
+        // rataCompliance dihitung dari SELURUH histori item (bukan snapshot per
+        // waktu tertentu), jadi gak ada cara jujur buat bilang "naik/turun X%
+        // dari minggu lalu" tanpa nyimpen snapshot terpisah. Yang dikasih di
+        // sini cuma angka yang emang bisa dihitung akurat dari created_at:
+        // berapa yang BARU ditambahkan minggu ini.
+        $asetBaruMingguIni = (clone $asetQuery)->where('created_at', '>=', now()->subDays(7))->count();
+        $formBaruMingguIni = $formList->where('created_at', '>=', now()->subDays(7))->count();
+
         $totalItem = $formList->sum(fn ($f) => $f->items->count());
         $totalOk = $formList->sum(fn ($f) => $f->items->where('status', 'OK')->count());
         $rataCompliance = $totalItem > 0 ? round($totalOk / $totalItem * 100, 1) : 0;
@@ -396,7 +405,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
+            'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'asetBaruMingguIni', 'formBaruMingguIni', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
             'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }
