@@ -27,6 +27,10 @@ Route::get('/', function () {
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+// /api/* -- satu-satunya prefix yang bikin exception (termasuk gagal
+// validasi) di-render sebagai JSON (lihat bootstrap/app.php shouldRenderJsonWhen),
+// wajib dipakai buat endpoint yang dipanggil via fetch() kayak gini.
+Route::get('/api/dashboard/item-detail', [DashboardController::class, 'itemDetail'])->middleware(['auth', 'verified'])->name('dashboard.itemDetail');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

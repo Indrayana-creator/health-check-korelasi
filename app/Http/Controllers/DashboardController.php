@@ -16,6 +16,51 @@ class DashboardController extends Controller
 {
     use BuildsUkerTree;
 
+    // Reuse yang sama dipakai index() buat isi chart "Kesehatan Checklist per
+    // Kategori" -- form TERBARU per uker (bukan seluruh histori), di-scope RBAC
+    // (admin: semua, non-admin: uker sendiri + turunan). Dipakai juga oleh
+    // itemDetail() biar angka di modal drill-down PERSIS sama sumbernya
+    // kayak angka yang ditampilin di chart, gak ada versi lain yang beda.
+    protected function formTerbaruPerUkerScoped(Request $request)
+    {
+        $isAdmin = $request->user()->role === 'admin';
+        $formQuery = HealthCheckForm::query()->with('items.form.uker');
+        if (! $isAdmin) {
+            $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);
+            $formQuery->whereIn('uker_kode', $ukerBolehDiakses);
+        }
+
+        return $formQuery->get()->groupBy('uker_kode')
+            ->map(fn ($forms) => $forms->sortByDesc('tanggal_pemeriksaan')->first());
+    }
+
+    // Data buat modal drill-down chart per kategori di Dashboard -- daftar
+    // item checklist (dari form terbaru tiap uker, sama kayak chart-nya)
+    // yang match kategori + status yang diklik.
+    public function itemDetail(Request $request)
+    {
+        $validated = $request->validate([
+            'kategori' => 'required|string',
+            'status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
+        ]);
+
+        $items = $this->formTerbaruPerUkerScoped($request)
+            ->flatMap(fn ($f) => $f->items)
+            ->where('kategori', $validated['kategori'])
+            ->where('status', $validated['status'])
+            ->sortBy(fn ($i) => $i->form?->uker?->nama)
+            ->values()
+            ->map(fn ($i) => [
+                'uker' => $i->form?->uker?->nama,
+                'periode' => $i->form?->periode,
+                'item_pemeriksaan' => $i->item_pemeriksaan,
+                'catatan' => $i->catatan,
+                'status_tindak_lanjut' => $i->status_tindak_lanjut,
+            ]);
+
+        return response()->json(['items' => $items]);
+    }
+
     public function index(Request $request)
     {
         $isAdmin = $request->user()->role === 'admin';
@@ -113,11 +158,11 @@ class DashboardController extends Controller
         $rataCompliance = $totalItem > 0 ? round($totalOk / $totalItem * 100, 1) : 0;
 
         // ===== 1b. Kesehatan Checklist per Kategori (A-D + E) =====
-        // Ambil form TERBARU per uker (bukan seluruh histori) dari $formList
-        // yang sama (udah di-scope RBAC di atas) -- biar uker yang rajin isi
-        // tiap minggu gak "menang banyak" dibanding uker yang baru isi sekali.
-        $formTerbaruPerUker = $formList->groupBy('uker_kode')
-            ->map(fn ($forms) => $forms->sortByDesc('tanggal_pemeriksaan')->first());
+        // Form TERBARU per uker (bukan seluruh histori) -- biar uker yang rajin
+        // isi tiap minggu gak "menang banyak" dibanding uker yang baru isi
+        // sekali. Reuse formTerbaruPerUkerScoped() yang sama dipakai itemDetail()
+        // buat modal drill-down, biar angkanya konsisten satu sumber.
+        $formTerbaruPerUker = $this->formTerbaruPerUkerScoped($request);
 
         $semuaItemTerbaru = $formTerbaruPerUker->flatMap(fn ($f) => $f->items);
 

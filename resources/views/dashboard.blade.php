@@ -7,6 +7,38 @@
     </x-slot>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    <script>
+        document.addEventListener('alpine:init', () => {
+            // Modal drill-down buat chart "Kesehatan Checklist per Kategori" --
+            // klik segmen manapun (OK/Not OK/N/A/Belum Diperiksa) nampilin daftar
+            // item aslinya di sini, gak usah pindah halaman.
+            Alpine.store('itemDetail', {
+                open: false,
+                loading: false,
+                data: null,
+                kategori: null,
+                status: null,
+                async buka(kategori, status) {
+                    this.open = true;
+                    this.loading = true;
+                    this.data = null;
+                    this.kategori = kategori;
+                    this.status = status;
+                    try {
+                        const res = await fetch(`{{ route('dashboard.itemDetail') }}?kategori=${encodeURIComponent(kategori)}&status=${encodeURIComponent(status)}`);
+                        const json = await res.json();
+                        this.data = json.items;
+                    } catch (e) {
+                        this.data = [];
+                    }
+                    this.loading = false;
+                },
+                tutup() {
+                    this.open = false;
+                },
+            });
+        });
+    </script>
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
@@ -93,7 +125,6 @@
                                     x-data="{
                                         init() {
                                             const kategori = @js($k['kategori']);
-                                            const urlNotOk = `{{ route('monitoring.index') }}?kategori=${encodeURIComponent(kategori)}`;
                                             new Chart(this.$el, {
                                                 type: 'doughnut',
                                                 data: {
@@ -107,18 +138,15 @@
                                                 options: {
                                                     maintainAspectRatio: false,
                                                     plugins: { legend: { display: false } },
-                                                    // Cuma segmen 'Not OK' yang punya tujuan konkret (Monitoring
-                                                    // Kendala) -- OK/N/A/Belum Diperiksa gak punya halaman daftar
-                                                    // tersendiri, jadi sengaja gak diklikin biar gak nyasar.
+                                                    // Klik segmen manapun -- buka modal daftar item detailnya
+                                                    // (lihat Alpine.store('itemDetail') di atas), gak pindah halaman.
                                                     onClick: (evt, elements, chart) => {
                                                         if (!elements.length) return;
-                                                        if (chart.data.labels[elements[0].index] === 'Not OK') {
-                                                            window.location.href = urlNotOk;
-                                                        }
+                                                        const status = chart.data.labels[elements[0].index];
+                                                        Alpine.store('itemDetail').buka(kategori, status);
                                                     },
-                                                    onHover: (evt, elements, chart) => {
-                                                        const label = elements.length ? chart.data.labels[elements[0].index] : null;
-                                                        evt.native.target.style.cursor = label === 'Not OK' ? 'pointer' : 'default';
+                                                    onHover: (evt, elements) => {
+                                                        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
                                                     },
                                                 },
                                             });
@@ -189,6 +217,51 @@
                 </div>
             </div>
         </x-card>
+
+        {{-- Modal drill-down "Kesehatan Checklist per Kategori" -- muncul saat
+             segmen doughnut mana pun diklik (lihat Alpine.store('itemDetail')). --}}
+        <div x-show="$store.itemDetail.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.itemDetail.tutup()">
+            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+                <div class="flex justify-between items-start mb-1">
+                    <div>
+                        <h3 class="font-extrabold text-lg text-gray-800" x-text="$store.itemDetail.kategori"></h3>
+                        <p class="text-xs text-gray-400 mt-0.5">Status: <span class="font-semibold" x-text="$store.itemDetail.status"></span></p>
+                    </div>
+                    <button @click="$store.itemDetail.tutup()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+                </div>
+
+                <template x-if="$store.itemDetail.loading">
+                    <p class="text-gray-400 text-sm py-8 text-center">Memuat data...</p>
+                </template>
+
+                <template x-if="!$store.itemDetail.loading && $store.itemDetail.data && $store.itemDetail.data.length === 0">
+                    <p class="text-gray-400 text-sm py-8 text-center">Tidak ada item.</p>
+                </template>
+
+                <template x-if="!$store.itemDetail.loading && $store.itemDetail.data && $store.itemDetail.data.length > 0">
+                    <div class="mt-4 space-y-2 max-h-[55vh] overflow-y-auto">
+                        <template x-for="(item, idx) in $store.itemDetail.data" :key="idx">
+                            <div class="border border-gray-100 rounded-lg p-3 text-sm">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="font-semibold text-gray-700" x-text="item.uker"></p>
+                                    <span class="text-[11px] text-gray-400 whitespace-nowrap" x-text="item.periode"></span>
+                                </div>
+                                <p class="text-gray-600 mt-1" x-text="item.item_pemeriksaan"></p>
+                                <template x-if="item.catatan">
+                                    <p class="text-xs text-gray-400 mt-1" x-text="'Catatan: ' + item.catatan"></p>
+                                </template>
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <template x-if="$store.itemDetail.status === 'Not OK'">
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <a :href="`{{ route('monitoring.index') }}?kategori=${encodeURIComponent($store.itemDetail.kategori ?? '')}`" class="text-cakrawala font-semibold text-sm hover:underline">Kelola tindak lanjutnya di Monitoring Kendala &rarr;</a>
+                    </div>
+                </template>
+            </div>
+        </div>
 
         {{-- Notifikasi status permintaan edit aset milik sendiri (khusus user, bukan admin) --}}
         @if (!$isAdmin && $editRequestsSaya->isNotEmpty())

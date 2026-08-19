@@ -272,3 +272,70 @@ test('aktivitas terbaru Permintaan Perangkat di-scope exact-match uker sendiri b
     expect($teks)->toContain('ND-MILIK-SENDIRI');
     expect($teks)->not->toContain('ND-MILIK-ANAK');
 });
+
+test('itemDetail nampilin item checklist sesuai kategori & status yang diminta, dari form terbaru tiap uker', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $formLama = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->subDays(10)]);
+    $formBaru = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formLama->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'OK', 'item_pemeriksaan' => 'Item form lama',
+    ]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formBaru->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'OK', 'item_pemeriksaan' => 'Item form baru',
+    ]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formBaru->id, 'kategori' => 'B - CCTV & Storage',
+        'status' => 'OK', 'item_pemeriksaan' => 'Item kategori beda',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.itemDetail', [
+        'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'OK',
+    ]));
+
+    $response->assertOk();
+    $items = collect($response->json('items'));
+    expect($items)->toHaveCount(1);
+    expect($items->first()['item_pemeriksaan'])->toBe('Item form baru');
+});
+
+test('itemDetail user biasa cuma lihat item dari uker sendiri + turunannya', function () {
+    $cabangA = Uker::factory()->create();
+    $anakCabangA = Uker::factory()->create(['kode_spv' => $cabangA->kode]);
+    $cabangB = Uker::factory()->create();
+    $userA = User::factory()->forUker($cabangA->kode)->create();
+
+    $formAnak = HealthCheckForm::factory()->create(['uker_kode' => $anakCabangA->kode]);
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $cabangB->kode]);
+
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formAnak->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'Not OK', 'item_pemeriksaan' => 'Item milik subtree A',
+    ]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formB->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'Not OK', 'item_pemeriksaan' => 'Item milik cabang B',
+    ]);
+
+    $response = $this->actingAs($userA)->getJson(route('dashboard.itemDetail', [
+        'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'Not OK',
+    ]));
+
+    $response->assertOk();
+    $teks = collect($response->json('items'))->pluck('item_pemeriksaan');
+    expect($teks)->toContain('Item milik subtree A');
+    expect($teks)->not->toContain('Item milik cabang B');
+});
+
+test('itemDetail nolak status yang bukan salah satu dari OK/Not OK/N-A/Belum Diperiksa', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.itemDetail', [
+        'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'Ngasal',
+    ]));
+
+    $response->assertStatus(422);
+});
