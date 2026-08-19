@@ -74,7 +74,13 @@
                         <tr>
                             <td colspan="6" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M9 13h1M14 9h1M14 13h1M9 21v-4h6v4"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada data uker.</p>
+                                @if (request('q'))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada uker yang cocok dengan pencarian ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('ukers.index')">Reset Pencarian</x-button>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada data uker.</p>
+                                    <x-button size="sm" :href="route('ukers.create')">Tambah Uker/Cabang</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

@@ -75,7 +75,13 @@
                         <tr>
                             <td colspan="4" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M20 7h-9M14 17H5M17 3l4 4-4 4M7 21l-4-4 4-4"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada data kode aset.</p>
+                                @if (request('q'))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada kode aset yang cocok dengan pencarian ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('kode-aset.index')">Reset Pencarian</x-button>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada data kode aset.</p>
+                                    <x-button size="sm" :href="route('kode-aset.create')">Tambah Kode Aset</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

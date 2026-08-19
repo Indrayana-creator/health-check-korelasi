@@ -78,7 +78,7 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="{{ $aksi['icon'] }}"></path></svg>
                             </div>
                             <div class="min-w-0">
-                                <p class="text-lg font-extrabold text-gray-800 leading-none">{{ $aksi['jumlah'] }}</p>
+                                <p class="text-lg font-extrabold text-gray-800 leading-none">{{ number_format($aksi['jumlah'], 0, ',', '.') }}</p>
                                 <p class="text-[11px] font-semibold text-gray-500 mt-1 leading-tight">{{ $aksi['label'] }}</p>
                             </div>
                         </a>
@@ -94,14 +94,14 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Aset</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalAset }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalAset, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-nusantara/10 text-nusantara flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Form Health Check</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalFormHc }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalFormHc, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
@@ -415,7 +415,7 @@
                                 <div>
                                     <div class="flex justify-between text-xs mb-1.5">
                                         <span class="text-gray-700 font-semibold">{{ $d->perangkat }}</span>
-                                        <span class="text-gray-500">{{ $d->jumlah }}</span>
+                                        <span class="text-gray-500">{{ number_format($d->jumlah, 0, ',', '.') }}</span>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-[7px]">
                                         <div class="bg-gradient-to-r from-nusantara to-cakrawala h-[7px] rounded-full" style="width: {{ $maxJumlah ? ($d->jumlah / $maxJumlah * 100) : 0 }}%"></div>

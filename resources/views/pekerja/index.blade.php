@@ -83,7 +83,13 @@
                         <tr>
                             <td colspan="6" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M12.5 7a4 4 0 11-8 0 4 4 0 018 0zM22 21v-2a4 4 0 00-3-3.87M17 3.13a4 4 0 010 7.75"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada data pekerja.</p>
+                                @if (request('q'))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada pekerja yang cocok dengan pencarian ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('pekerja.index')">Reset Pencarian</x-button>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada data pekerja.</p>
+                                    <x-button size="sm" :href="route('pekerja.create')">Tambah Pekerja</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

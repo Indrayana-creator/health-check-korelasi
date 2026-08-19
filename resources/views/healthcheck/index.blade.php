@@ -51,7 +51,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Form</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalKeseluruhan }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalKeseluruhan, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
@@ -65,7 +65,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Menunggu Approval</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalMenunggu }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalMenunggu, 0, ',', '.') }}</p>
             </x-card>
         </div>
 
@@ -190,7 +190,13 @@
                         <tr>
                             <td colspan="7" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada form health check.</p>
+                                @if (request('q') || request('uker_kode') || request('status_approval') || request('dokumentasi_belum_lengkap'))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada form yang cocok dengan filter ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('healthcheck.index')">Reset Filter</x-button>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada form health check.</p>
+                                    <x-button size="sm" :href="route('healthcheck.create')">Buat Form Health Check</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

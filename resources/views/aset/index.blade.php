@@ -56,21 +56,21 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Aset</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalKeseluruhan }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalKeseluruhan, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M20 6L9 17l-5-5"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Kondisi Normal</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalNormal }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalNormal, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Perlu Perhatian <span class="font-normal text-gray-400">(Rusak/Tidak Layak)</span></p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalPerluPerhatian }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalPerluPerhatian, 0, ',', '.') }}</p>
             </x-card>
         </div>
 
@@ -172,7 +172,13 @@
                         <tr>
                             <td colspan="9" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada data aset.</p>
+                                @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori'))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada aset yang cocok dengan filter ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('aset.index')">Reset Filter</x-button>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada data aset.</p>
+                                    <x-button size="sm" :href="route('aset.create')">Tambah Aset</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse

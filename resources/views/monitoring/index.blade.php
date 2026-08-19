@@ -32,28 +32,28 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Bermasalah</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalBermasalah }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalBermasalah, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5" :class="$totalMendesak > 0 ? '!border-red-200' : ''">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-red-100 text-red-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Mendesak (&gt;{{ \App\Http\Controllers\MonitoringController::AMBANG_HARI_MENDESAK }} hari)</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalMendesak }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalMendesak, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-gray-100 text-gray-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Belum Ditindaklanjuti</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalBelum }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalBelum, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M20 6L9 17l-5-5"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Selesai Diperbaiki</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalSelesai }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalSelesai, 0, ',', '.') }}</p>
             </x-card>
         </div>
 

@@ -35,7 +35,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Minggu Ini</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalMinggu }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalMinggu, 0, ',', '.') }}</p>
             </x-card>
             @foreach (\App\Models\PermintaanPerangkat::DAFTAR_STATUS as $s)
                 <x-card padding="p-5">
@@ -43,7 +43,7 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                     </div>
                     <p class="text-xs font-semibold text-gray-500 mb-0.5">{{ $s }}</p>
-                    <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $breakdownStatus[$s] }}</p>
+                    <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($breakdownStatus[$s], 0, ',', '.') }}</p>
                 </x-card>
             @endforeach
         </div>

@@ -33,21 +33,21 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Permintaan</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalKeseluruhan }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalKeseluruhan, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-orange-100 text-orange-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Masih Berjalan</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalPending }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalPending, 0, ',', '.') }}</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-green-100 text-green-600 flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M20 6L9 17l-5-5"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Done Terkirim</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $totalSelesai }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalSelesai, 0, ',', '.') }}</p>
             </x-card>
         </div>
 
@@ -181,7 +181,15 @@
                         <tr>
                             <td colspan="{{ $isAdmin ? 9 : 8 }}" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada permintaan perangkat.</p>
+                                @if ($isAdmin && (request('uker_kode') || request('status')))
+                                    <p class="text-gray-400 text-sm mb-3">Gak ada permintaan yang cocok dengan filter ini.</p>
+                                    <x-button variant="secondary" size="sm" :href="route('permintaan-perangkat.index')">Reset Filter</x-button>
+                                @elseif ($isAdmin)
+                                    <p class="text-gray-400 text-sm">Belum ada permintaan perangkat dari cabang manapun.</p>
+                                @else
+                                    <p class="text-gray-400 text-sm mb-3">Belum ada permintaan perangkat.</p>
+                                    <x-button type="button" size="sm" @click="ajukanOpen = true">Ajukan Permintaan</x-button>
+                                @endif
                             </td>
                         </tr>
                     @endforelse
