@@ -113,6 +113,7 @@
             </form>
         </x-card>
 
+        <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100" :class="density === 'compact' ? '[&_td]:py-1.5' : '[&_td]:py-3'">
                 <thead class="bg-gray-50">

@@ -104,6 +104,7 @@
 
         <x-compliance-legend />
 
+        <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
