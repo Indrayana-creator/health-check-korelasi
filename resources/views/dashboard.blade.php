@@ -112,6 +112,31 @@
             </x-card>
         </div>
 
+        {{-- 1c. Struktur Organisasi -- ringkasan kecil, khusus admin. Dipindah ke
+             sini (deket KPI) dari posisi lama di paling bawah halaman, biar
+             sejajar sama metrik ringkasan lain, bukan ketimbun di ujung scroll.
+             Detail lengkap (tree 366 unit) ada di halaman tersendiri /uker-tree. --}}
+        @if ($isAdmin)
+            <x-card>
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Struktur Organisasi</h3>
+                        @if ($tree)
+                            <p class="text-sm text-gray-500">
+                                {{ $tree['jumlah_unit_bawah'] }} unit di bawah {{ $tree['nama'] }}, rata-rata compliance
+                                {{ $tree['rata_compliance'] !== null ? $tree['rata_compliance'].'%' : '-' }}.
+                            </p>
+                        @else
+                            <p class="text-sm text-gray-400">Data struktur belum tersedia.</p>
+                        @endif
+                    </div>
+                    <x-button variant="secondary" :href="route('uker-tree.index')" class="whitespace-nowrap">
+                        Lihat Detail
+                    </x-button>
+                </div>
+            </x-card>
+        @endif
+
         {{-- 1b. Kesehatan Checklist per Kategori -- dari form TERBARU tiap uker
              dalam cakupan RBAC (admin: semua, user: sendiri + turunan), bukan
              dari seluruh histori. Kategori checklist (A-D, F) pakai
@@ -449,54 +474,6 @@
                 </x-card>
             </div>
         </div>
-
-        {{-- 5. Struktur Organisasi -- ringkasan kecil, khusus admin. Detail lengkap
-             (tree 366 unit) ada di halaman tersendiri /uker-tree, biar dashboard
-             gak kepanjangan. --}}
-        @if ($isAdmin)
-            <x-card>
-                <div class="flex items-center justify-between gap-4 flex-wrap">
-                    <div>
-                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Struktur Organisasi</h3>
-                        @if ($tree)
-                            <p class="text-sm text-gray-500">
-                                {{ $tree['jumlah_unit_bawah'] }} unit di bawah {{ $tree['nama'] }}, rata-rata compliance
-                                {{ $tree['rata_compliance'] !== null ? $tree['rata_compliance'].'%' : '-' }}.
-                            </p>
-                        @else
-                            <p class="text-sm text-gray-400">Data struktur belum tersedia.</p>
-                        @endif
-                    </div>
-                    <x-button variant="secondary" :href="route('uker-tree.index')" class="whitespace-nowrap">
-                        Lihat Detail
-                    </x-button>
-                </div>
-            </x-card>
-
-            {{-- 6. Kendala Aktif -- ringkasan kecil, link ke Monitoring Kendala --}}
-            <x-card :class="$totalKendalaAktif > 0 ? '!border-red-200' : ''">
-                <div class="flex items-center justify-between gap-4 flex-wrap">
-                    <div class="flex items-center gap-3">
-                        <div class="w-9 h-9 rounded-lg {{ $totalKendalaAktif > 0 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600' }} flex items-center justify-center flex-none">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
-                        </div>
-                        <div>
-                            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kendala Aktif</h3>
-                            <p class="text-sm text-gray-500">
-                                @if ($totalKendalaAktif > 0)
-                                    {{ $totalKendalaAktif }} item checklist "Not OK" masih belum selesai ditindaklanjuti.
-                                @else
-                                    Semua item checklist "Not OK" sudah selesai ditindaklanjuti.
-                                @endif
-                            </p>
-                        </div>
-                    </div>
-                    <x-button variant="secondary" :href="route('monitoring.index')" class="whitespace-nowrap">
-                        Lihat Detail
-                    </x-button>
-                </div>
-            </x-card>
-        @endif
 
     </div>
 </x-app-layout>
