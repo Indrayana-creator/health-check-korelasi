@@ -61,6 +61,17 @@ class Aset extends Model
         return $this->hasMany(AsetEditRequest::class);
     }
 
+    public function kondisiLogs()
+    {
+        // orderByDesc('id') sebagai tie-breaker -- beberapa perubahan bisa
+        // kejadian dalam detik yang sama, created_at aja gak cukup buat
+        // jamin urutan "paling baru di atas" tetap stabil & sesuai urutan
+        // insert-nya (sama polanya kayak HealthCheckItem::statusLogs()).
+        return $this->hasMany(AsetKondisiLog::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     // Admin selalu bisa edit tanpa perlu izin. User biasa cuma bisa edit
     // kalau ada permintaan yang sudah Disetujui dan belum pernah dipakai.
     public function bisaDiedit(User $user): bool

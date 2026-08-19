@@ -388,3 +388,28 @@ test('kirim pengingat ditolak kalau uker belum punya user aktif', function () {
 
     $response->assertStatus(422);
 });
+
+test('widget Perlu Tindakan Anda misahin angka Kendala Melewati SLA dari Belum Ditindaklanjuti', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(10),
+    ]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $aksiPerlu = $response->viewData('aksiPerlu');
+    $labels = $aksiPerlu->pluck('label');
+    expect($labels)->toContain('Kendala belum ditindaklanjuti', 'Kendala sedang diproses tapi melewati SLA');
+
+    $slaEntry = $aksiPerlu->firstWhere('label', 'Kendala sedang diproses tapi melewati SLA');
+    expect($slaEntry['jumlah'])->toBe(1);
+    expect($slaEntry['href'])->toBe(route('monitoring.index', ['melewati_sla' => 1]));
+});

@@ -293,3 +293,54 @@ test('export rekap permintaan perangkat Excel & PDF berhasil, ngikutin minggu ya
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
+
+test('admin bisa update status banyak permintaan sekaligus (bulk)', function () {
+    Notification::fake();
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $requester = User::factory()->forUker($uker->kode)->create();
+    $p1 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'requested_by' => $requester->id, 'status' => 'Pending IT']);
+    $p2 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'requested_by' => $requester->id, 'status' => 'Pending IT']);
+    $tidakIkut = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'requested_by' => $requester->id, 'status' => 'Pending IT']);
+
+    $response = $this->actingAs($admin)->post(route('permintaan-perangkat.bulkUpdateStatus'), [
+        'ids' => [$p1->id, $p2->id],
+        'status' => 'Pending ESO',
+    ]);
+
+    $response->assertRedirect();
+    expect($p1->fresh()->status)->toBe('Pending ESO');
+    expect($p2->fresh()->status)->toBe('Pending ESO');
+    expect($tidakIkut->fresh()->status)->toBe('Pending IT');
+    Notification::assertSentToTimes($requester, PermintaanPerangkatStatusDiupdate::class, 2);
+});
+
+test('user biasa tidak bisa bulk update status permintaan perangkat', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $p1 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT']);
+
+    $response = $this->actingAs($user)->post(route('permintaan-perangkat.bulkUpdateStatus'), [
+        'ids' => [$p1->id],
+        'status' => 'Pending ESO',
+    ]);
+
+    $response->assertForbidden();
+    expect($p1->fresh()->status)->toBe('Pending IT');
+});
+
+test('bulk update status nolak kalau ids kosong atau status gak valid', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $p1 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode]);
+
+    $this->actingAs($admin)->post(route('permintaan-perangkat.bulkUpdateStatus'), [
+        'ids' => [],
+        'status' => 'Pending ESO',
+    ])->assertSessionHasErrors('ids');
+
+    $this->actingAs($admin)->post(route('permintaan-perangkat.bulkUpdateStatus'), [
+        'ids' => [$p1->id],
+        'status' => 'Ngasal',
+    ])->assertSessionHasErrors('status');
+});

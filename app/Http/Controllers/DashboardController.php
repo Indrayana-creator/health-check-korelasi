@@ -139,6 +139,25 @@ class DashboardController extends Controller
                 ]);
             }
 
+            // Terpisah dari "Belum Ditindaklanjuti" -- ini item yang UDAH mulai
+            // dikerjakan ("Sedang Diproses") tapi kelamaan (>7 hari), gak
+            // kehitung sama sekali di angka manapun sebelum ini padahal
+            // justru paling butuh perhatian ulang.
+            $kendalaMelewatiSla = HealthCheckItem::where('status', 'Not OK')
+                ->where('status_tindak_lanjut', 'Sedang Diproses')
+                ->whereNotNull('mulai_diproses_at')
+                ->get()
+                ->filter(fn ($item) => MonitoringController::itemMelewatiSlaDiproses($item))
+                ->count();
+            if ($kendalaMelewatiSla > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Kendala sedang diproses tapi melewati SLA',
+                    'jumlah' => $kendalaMelewatiSla,
+                    'href' => route('monitoring.index', ['melewati_sla' => 1]),
+                    'icon' => 'M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z',
+                ]);
+            }
+
             $permintaanPending = PermintaanPerangkat::where('status', '!=', 'Done Terkirim')->count();
             if ($permintaanPending > 0) {
                 $aksiPerlu->push([
@@ -167,6 +186,22 @@ class DashboardController extends Controller
                     'jumlah' => $kendalaBelumSaya,
                     'href' => route('monitoring.index', ['status_tindak_lanjut' => 'Belum Ditindaklanjuti']),
                     'icon' => 'M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z',
+                ]);
+            }
+
+            $kendalaMelewatiSlaSaya = HealthCheckItem::whereHas('form', fn ($q) => $q->whereIn('uker_kode', $ukerBolehDiakses))
+                ->where('status', 'Not OK')
+                ->where('status_tindak_lanjut', 'Sedang Diproses')
+                ->whereNotNull('mulai_diproses_at')
+                ->get()
+                ->filter(fn ($item) => MonitoringController::itemMelewatiSlaDiproses($item))
+                ->count();
+            if ($kendalaMelewatiSlaSaya > 0) {
+                $aksiPerlu->push([
+                    'label' => 'Kendala di uker Anda sedang diproses tapi melewati SLA',
+                    'jumlah' => $kendalaMelewatiSlaSaya,
+                    'href' => route('monitoring.index', ['melewati_sla' => 1]),
+                    'icon' => 'M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z',
                 ]);
             }
 

@@ -54,6 +54,21 @@ class MonitoringController extends Controller
             $query->where('status_tindak_lanjut', $request->input('status_tindak_lanjut'));
         }
 
+        if ($request->boolean('melewati_sla')) {
+            // Dipakai jalan pintas dari widget "Perlu Tindakan Anda" di
+            // Dashboard -- "Melewati SLA" itu status turunan (dihitung dari
+            // mulai_diproses_at), bukan kolom langsung, jadi difilter di
+            // collection (sama kayak itemMelewatiSlaDiproses()) biar exact
+            // sama logic yang dipakai buat badge-nya, bukan raw date query.
+            $idsMelewatiSla = (clone $query)
+                ->where('status_tindak_lanjut', 'Sedang Diproses')
+                ->whereNotNull('mulai_diproses_at')
+                ->get()
+                ->filter(fn ($item) => self::itemMelewatiSlaDiproses($item))
+                ->pluck('id');
+            $query->whereIn('id', $idsMelewatiSla);
+        }
+
         return $query;
     }
 

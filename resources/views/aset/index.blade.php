@@ -152,6 +152,9 @@
                             <td class="px-4 text-sm text-gray-700">{{ $aset->pemegang_nama }}</td>
                             <td class="px-4 whitespace-nowrap text-right">
                                 <div class="inline-flex items-center gap-1.5">
+                                    <x-icon-button type="button" variant="neutral" label="Lihat Riwayat Kondisi" @click="$store.riwayatKondisi.buka({{ $aset->id }})">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                                    </x-icon-button>
                                     <x-icon-button variant="edit" label="Edit" :href="route('aset.edit', $aset)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </x-icon-button>
@@ -179,6 +182,77 @@
 
         <div>
             {{ $asetList->links() }}
+        </div>
+    </div>
+
+    {{-- Modal Riwayat Kondisi -- fetch on-demand (Alpine store), pola sama
+         kayak $store.ukerDetail di halaman Struktur Organisasi, biar gak
+         perlu eager-load kondisiLogs buat semua baris di daftar yang bisa
+         ribuan aset. --}}
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('riwayatKondisi', {
+                open: false,
+                loading: false,
+                data: null,
+                async buka(asetId) {
+                    this.open = true;
+                    this.loading = true;
+                    this.data = null;
+                    try {
+                        const res = await fetch(`{{ url('/aset') }}/${asetId}/kondisi-riwayat`);
+                        this.data = await res.json();
+                    } catch (e) {
+                        this.data = { error: true };
+                    }
+                    this.loading = false;
+                },
+                tutup() {
+                    this.open = false;
+                },
+            });
+        });
+    </script>
+
+    <div x-show="$store.riwayatKondisi.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.riwayatKondisi.tutup()">
+        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="font-extrabold text-lg text-gray-800">Riwayat Kondisi</h3>
+                    <p class="text-xs text-gray-400 mt-0.5" x-text="$store.riwayatKondisi.data?.no_asset ?? ''"></p>
+                </div>
+                <button @click="$store.riwayatKondisi.tutup()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+            </div>
+
+            <template x-if="$store.riwayatKondisi.loading">
+                <p class="text-gray-400 text-sm py-8 text-center">Memuat data...</p>
+            </template>
+
+            <template x-if="!$store.riwayatKondisi.loading && $store.riwayatKondisi.data?.error">
+                <p class="text-red-500 text-sm py-8 text-center">Gagal memuat data.</p>
+            </template>
+
+            <template x-if="!$store.riwayatKondisi.loading && $store.riwayatKondisi.data && !$store.riwayatKondisi.data.error && $store.riwayatKondisi.data.logs.length === 0">
+                <p class="text-gray-400 text-sm py-8 text-center">Belum ada riwayat perubahan kondisi.</p>
+            </template>
+
+            <template x-if="!$store.riwayatKondisi.loading && $store.riwayatKondisi.data && !$store.riwayatKondisi.data.error && $store.riwayatKondisi.data.logs.length > 0">
+                <div class="space-y-2.5">
+                    <template x-for="(log, i) in $store.riwayatKondisi.data.logs" :key="i">
+                        <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
+                            <div>
+                                <p class="font-semibold text-gray-700">
+                                    <template x-if="log.kondisi_lama"><span x-text="log.kondisi_lama"></span></template>
+                                    <template x-if="!log.kondisi_lama"><span class="text-gray-400 italic">(baru dicatat)</span></template>
+                                    <span class="mx-1 text-gray-400">&rarr;</span>
+                                    <span x-text="log.kondisi_baru"></span>
+                                </p>
+                                <p class="text-gray-400 text-xs mt-0.5" x-text="`${log.changed_by ?? '-'} · ${log.created_at}`"></p>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </template>
         </div>
     </div>
 </x-app-layout>

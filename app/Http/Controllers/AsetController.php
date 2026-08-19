@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
+use App\Models\AsetKondisiLog;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
@@ -154,6 +155,15 @@ class AsetController extends Controller
         $aset = Aset::create($validated);
         ActivityLog::catat('aset', 'tambah', 1, "Aset {$aset->no_asset} ditambahkan");
 
+        // Catatan pertama di riwayat kondisi -- kondisi_lama null nandain ini
+        // baseline awal, bukan perubahan dari kondisi sebelumnya.
+        AsetKondisiLog::create([
+            'aset_id' => $aset->id,
+            'kondisi_lama' => null,
+            'kondisi_baru' => $aset->kondisi,
+            'changed_by' => $request->user()->id,
+        ]);
+
         return redirect()->route('aset.index')->with('status', "Aset berhasil ditambahkan dengan ID {$validated['no_asset']}.");
     }
 
@@ -183,9 +193,20 @@ class AsetController extends Controller
 
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
+        $kondisiLama = $aset->kondisi;
+
         // ASET ID gak diregenerate saat edit, biar ID-nya tetap sama sepanjang umur aset
         $aset->update($validated);
         ActivityLog::catat('aset', 'update', 1, "Aset {$aset->no_asset} diupdate");
+
+        if ($kondisiLama !== $aset->kondisi) {
+            AsetKondisiLog::create([
+                'aset_id' => $aset->id,
+                'kondisi_lama' => $kondisiLama,
+                'kondisi_baru' => $aset->kondisi,
+                'changed_by' => $request->user()->id,
+            ]);
+        }
 
         // Kalau yang edit bukan admin, tandai izin edit yang dipakai barusan
         // biar "habis" -- gak bisa dipakai buat edit lagi tanpa ngajuin ulang
@@ -300,6 +321,25 @@ class AsetController extends Controller
         ActivityLog::catat('aset', 'restore', 1, "Aset {$aset->no_asset} dipulihkan dari sampah");
 
         return back()->with('status', "Aset {$aset->no_asset} berhasil dipulihkan.");
+    }
+
+    // Read-only -- gak pakai policy 'update' (yang ikut ngecek bisaDiedit()/
+    // lock edit) karena lihat riwayat gak seharusnya sekeras itu, cukup
+    // aset-nya emang ada di cakupan RBAC yang boleh dia lihat di daftar.
+    public function kondisiRiwayat(Request $request, Aset $aset)
+    {
+        if ($request->user()->role !== 'admin' && ! in_array($aset->uker_kode, Uker::descendantKodes($request->user()->uker_kode))) {
+            abort(403, 'Anda tidak punya akses ke riwayat aset ini.');
+        }
+
+        $logs = $aset->kondisiLogs()->with('changedBy')->get()->map(fn ($log) => [
+            'kondisi_lama' => $log->kondisi_lama,
+            'kondisi_baru' => $log->kondisi_baru,
+            'changed_by' => $log->changedBy?->name,
+            'created_at' => $log->created_at->format('d M Y H:i'),
+        ]);
+
+        return response()->json(['no_asset' => $aset->no_asset, 'logs' => $logs]);
     }
 
     // ===================== BULK UPLOAD (Excel) =====================

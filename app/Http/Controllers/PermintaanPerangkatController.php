@@ -110,6 +110,37 @@ class PermintaanPerangkatController extends Controller
         return back()->with('status', 'Status permintaan perangkat berhasil diupdate.');
     }
 
+    // Bulk update status -- dipanggil dari checkbox di daftar Permintaan
+    // Perangkat, admin milih banyak baris sekaligus lalu ubah status
+    // bareng-bareng, daripada satu-satu lewat updateStatus() di atas.
+    public function bulkUpdateStatus(Request $request)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa update status permintaan perangkat.');
+        }
+
+        $validated = $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:permintaan_perangkat,id',
+            'status' => 'required|in:'.implode(',', PermintaanPerangkat::DAFTAR_STATUS),
+        ]);
+
+        $permintaanList = PermintaanPerangkat::whereIn('id', $validated['ids'])->get();
+        foreach ($permintaanList as $permintaan) {
+            $permintaan->update(['status' => $validated['status']]);
+            $permintaan->requester?->notify(new PermintaanPerangkatStatusDiupdate($permintaan));
+        }
+
+        ActivityLog::catat(
+            'permintaan_perangkat',
+            'bulk_update_status',
+            $permintaanList->count(),
+            "Update status massal {$permintaanList->count()} permintaan perangkat jadi {$validated['status']}"
+        );
+
+        return back()->with('status', "Status {$permintaanList->count()} permintaan berhasil diupdate jadi {$validated['status']}.");
+    }
+
     // ===================== EXPORT =====================
 
     protected function exportHeaders(): array

@@ -58,7 +58,16 @@
         </div>
 
         <x-card padding="p-3.5">
+            @if (request('melewati_sla'))
+                <div class="flex items-center justify-between gap-3 mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700">
+                    <span class="font-semibold">Filter aktif: hanya item "Sedang Diproses" yang sudah melewati SLA (&gt;7 hari).</span>
+                    <a href="{{ route('monitoring.index') }}" class="font-semibold hover:underline whitespace-nowrap">Hapus filter ini</a>
+                </div>
+            @endif
             <form method="GET" action="{{ route('monitoring.index') }}" class="flex flex-wrap gap-3 items-center">
+                @if (request('melewati_sla'))
+                    <input type="hidden" name="melewati_sla" value="1">
+                @endif
                 <x-uker-filter-combobox
                     name="uker_kode"
                     :daftar-uker="$ukerFilterList->map(fn ($u) => ['kode' => $u->kode, 'nama' => $u->nama])->toJson()"
@@ -80,7 +89,7 @@
                 </x-select>
                 <div class="flex gap-2">
                     <x-button type="submit">Terapkan</x-button>
-                    @if (request('uker_kode') || request('kategori') || request('status_tindak_lanjut'))
+                    @if (request('uker_kode') || request('kategori') || request('status_tindak_lanjut') || request('melewati_sla'))
                         <x-button variant="secondary" :href="route('monitoring.index')">Reset</x-button>
                     @endif
                 </div>

@@ -4,7 +4,7 @@
         <p class="text-xs text-gray-500 mt-0.5">{{ $permintaanList->count() }} permintaan ditemukan</p>
     </x-slot>
 
-    <div class="p-7 space-y-4 max-w-[1360px]" x-data="{ ajukanOpen: false }">
+    <div class="p-7 space-y-4 max-w-[1360px]" x-data="{ ajukanOpen: false, selected: [] }">
 
         @if (session('status'))
             <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
@@ -77,10 +77,40 @@
             </x-card>
         @endif
 
+        @if ($isAdmin)
+            <div x-show="selected.length > 0" x-cloak class="bg-cakrawala/5 border border-cakrawala/30 rounded-2xl px-4 py-3">
+                <form
+                    action="{{ route('permintaan-perangkat.bulkUpdateStatus') }}"
+                    method="POST"
+                    class="flex flex-wrap items-center gap-3"
+                    @submit="if (!confirm(`Update status ${selected.length} permintaan terpilih?`)) $event.preventDefault()"
+                >
+                    @csrf
+                    <template x-for="id in selected" :key="id">
+                        <input type="hidden" name="ids[]" :value="id">
+                    </template>
+                    <span class="text-sm font-bold text-gray-700" x-text="`${selected.length} permintaan dipilih`"></span>
+                    <x-select name="status" class="min-w-[190px]" required>
+                        <option value="">-- Ubah status jadi --</option>
+                        @foreach (\App\Models\PermintaanPerangkat::DAFTAR_STATUS as $s)
+                            <option value="{{ $s }}">{{ $s }}</option>
+                        @endforeach
+                    </x-select>
+                    <x-button type="submit" size="sm">Terapkan ke Semua</x-button>
+                    <x-button type="button" variant="secondary" size="sm" @click="selected = []">Batal Pilih</x-button>
+                </form>
+            </div>
+        @endif
+
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
                     <tr>
+                        @if ($isAdmin)
+                            <th class="px-4 py-2.5 w-8">
+                                <input type="checkbox" class="rounded border-gray-300" @change="selected = $event.target.checked ? @js($permintaanList->pluck('id')) : []" :checked="selected.length > 0 && selected.length === {{ $permintaanList->count() }}">
+                            </th>
+                        @endif
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">No Nota Dinas</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tanggal Request</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Fungsi Requester</th>
@@ -94,6 +124,11 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($permintaanList as $p)
                         <tr class="hover:bg-gray-50" x-data="{ open: false }">
+                            @if ($isAdmin)
+                                <td class="px-4 py-3">
+                                    <input type="checkbox" class="rounded border-gray-300" value="{{ $p->id }}" x-model.number="selected">
+                                </td>
+                            @endif
                             <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $p->no_nota_dinas }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $p->tanggal_request->format('d M Y') }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $p->fungsi_requester }}</td>
@@ -144,7 +179,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-10 text-center">
+                            <td colspan="{{ $isAdmin ? 9 : 8 }}" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
                                 <p class="text-gray-400 text-sm">Belum ada permintaan perangkat.</p>
                             </td>

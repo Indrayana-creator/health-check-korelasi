@@ -2,6 +2,7 @@
 
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
+use App\Models\AsetKondisiLog;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
@@ -396,4 +397,84 @@ test('bulk delete aset menghapus aset berdasarkan SN', function () {
     $response->assertRedirect();
     expect(Aset::where('id', $aset->id)->exists())->toBeFalse();
     expect(Aset::onlyTrashed()->where('id', $aset->id)->exists())->toBeTrue();
+});
+
+test('nambah aset baru otomatis nyatet riwayat kondisi awal (baseline)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['kondisi' => 'NORMAL']));
+
+    $aset = Aset::where('sn', 'SN12345678')->first();
+    expect($aset->kondisiLogs)->toHaveCount(1);
+    expect($aset->kondisiLogs->first()->kondisi_lama)->toBeNull();
+    expect($aset->kondisiLogs->first()->kondisi_baru)->toBe('NORMAL');
+    expect($aset->kondisiLogs->first()->changed_by)->toBe($admin->id);
+});
+
+test('update aset yang mengubah kondisi tercatat di riwayat', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['kondisi' => 'RUSAK']));
+
+    $logs = $aset->kondisiLogs()->get();
+    expect($logs)->toHaveCount(1);
+    expect($logs->first()->kondisi_lama)->toBe('NORMAL');
+    expect($logs->first()->kondisi_baru)->toBe('RUSAK');
+});
+
+test('update aset yang TIDAK mengubah kondisi gak nambah riwayat baru', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['kondisi' => 'NORMAL', 'merek' => 'Merek Baru']));
+
+    expect($aset->kondisiLogs()->count())->toBe(0);
+});
+
+test('endpoint riwayat kondisi mengembalikan urutan terbaru dulu', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['kondisi' => 'RUSAK']));
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['kondisi' => 'NORMAL']));
+
+    $response = $this->actingAs($admin)->get(route('aset.kondisiRiwayat', $aset));
+
+    $response->assertOk();
+    $logs = $response->json('logs');
+    expect($logs[0]['kondisi_baru'])->toBe('NORMAL');
+    expect($logs[1]['kondisi_baru'])->toBe('RUSAK');
+});
+
+test('user biasa bisa lihat riwayat kondisi aset di subtree-nya, tapi tidak di luar subtree', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $kodeAset = KodeAset::factory()->create();
+    $asetSendiri = Aset::factory()->create(['uker_kode' => $ukerSendiri->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    $asetLain = Aset::factory()->create(['uker_kode' => $ukerLain->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $this->actingAs($user)->get(route('aset.kondisiRiwayat', $asetSendiri))->assertOk();
+    $this->actingAs($user)->get(route('aset.kondisiRiwayat', $asetLain))->assertForbidden();
+});
+
+test('menghapus aset ikut menghapus riwayat kondisinya (cascade)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+    $logId = $aset->kondisiLogs()->create(['kondisi_lama' => null, 'kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])->id;
+
+    $aset->forceDelete();
+
+    expect(AsetKondisiLog::find($logId))->toBeNull();
 });

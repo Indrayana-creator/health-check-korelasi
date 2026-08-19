@@ -538,3 +538,32 @@ test('user cabang lain (di luar subtree) TIDAK dinotifikasi waktu admin update i
 
     Notification::assertNotSentTo($userCabangB, MonitoringTindakLanjutDiupdate::class);
 });
+
+test('filter melewati_sla cuma nampilin item Sedang Diproses yang udah lewat 7 hari sejak mulai_diproses_at', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+
+    $lewatSla = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(10),
+        'item_pemeriksaan' => 'Item Lewat SLA',
+    ]);
+    $belumLewat = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Sedang Diproses', 'mulai_diproses_at' => now()->subDays(2),
+        'item_pemeriksaan' => 'Item Belum Lewat SLA',
+    ]);
+    $belumDitindaklanjuti = HealthCheckItem::factory()->create([
+        'health_check_form_id' => $form->id, 'status' => 'Not OK',
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'item_pemeriksaan' => 'Item Belum Ditindaklanjuti',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index', ['melewati_sla' => 1]));
+
+    $response->assertOk();
+    $ids = $response->viewData('items')->pluck('id');
+    expect($ids)->toContain($lewatSla->id);
+    expect($ids)->not->toContain($belumLewat->id, $belumDitindaklanjuti->id);
+});

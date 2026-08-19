@@ -49,6 +49,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/aset/export/pdf', [AsetController::class, 'exportPdf'])->name('aset.export.pdf');
     Route::get('/aset/sampah', [AsetController::class, 'trash'])->name('aset.trash');
     Route::post('/aset/{id}/restore', [AsetController::class, 'restore'])->name('aset.restore');
+    Route::get('/aset/{aset}/kondisi-riwayat', [AsetController::class, 'kondisiRiwayat'])->name('aset.kondisiRiwayat');
 
     Route::get('/healthcheck/bulk-upload', [HealthCheckController::class, 'bulkUploadForm'])->name('healthcheck.bulkUploadForm');
     Route::get('/healthcheck/template', [HealthCheckController::class, 'downloadTemplate'])->name('healthcheck.downloadTemplate');
@@ -130,6 +131,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/rekap-permintaan-perangkat/export/excel', [RekapController::class, 'exportPermintaanExcel'])->name('rekap.permintaanPerangkat.export.excel');
         Route::get('/rekap-permintaan-perangkat/export/pdf', [RekapController::class, 'exportPermintaanPdf'])->name('rekap.permintaanPerangkat.export.pdf');
         Route::post('/permintaan-perangkat/{permintaanPerangkat}/status', [PermintaanPerangkatController::class, 'updateStatus'])->name('permintaan-perangkat.updateStatus');
+        Route::post('/permintaan-perangkat/bulk-update-status', [PermintaanPerangkatController::class, 'bulkUpdateStatus'])->name('permintaan-perangkat.bulkUpdateStatus');
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');
         Route::get('/log-history/export/excel', [LogHistoryController::class, 'exportExcel'])->name('log-history.export.excel');
         Route::get('/log-history/export/pdf', [LogHistoryController::class, 'exportPdf'])->name('log-history.export.pdf');
