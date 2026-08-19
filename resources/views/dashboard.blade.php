@@ -36,6 +36,20 @@
                 tutup() {
                     this.open = false;
                 },
+                // Khusus status 'Belum Diperiksa' -- form yang sama biasanya nyumbang
+                // banyak baris item sekaligus, jadi tombol "Lengkapi Form" dikumpulin
+                // per form (unik), bukan diulang di tiap baris item.
+                formBelumLengkap() {
+                    if (!this.data) return [];
+                    const dilihat = new Set();
+                    const hasil = [];
+                    for (const item of this.data) {
+                        if (!item.form_id || dilihat.has(item.form_id)) continue;
+                        dilihat.add(item.form_id);
+                        hasil.push({ form_id: item.form_id, uker: item.uker, periode: item.periode });
+                    }
+                    return hasil;
+                },
             });
         });
     </script>
@@ -258,6 +272,22 @@
                 <template x-if="$store.itemDetail.status === 'Not OK'">
                     <div class="mt-4 pt-4 border-t border-gray-100">
                         <a :href="`{{ route('monitoring.index') }}?kategori=${encodeURIComponent($store.itemDetail.kategori ?? '')}`" class="text-cakrawala font-semibold text-sm hover:underline">Kelola tindak lanjutnya di Monitoring Kendala &rarr;</a>
+                    </div>
+                </template>
+
+                {{-- "Belum Diperiksa" = form-nya belum kelar diisi -- kasih jalan
+                     langsung ke halaman edit form itu, dikelompokkan per form (1
+                     form bisa nyumbang banyak item sekaligus di kategori yang sama). --}}
+                <template x-if="$store.itemDetail.status === 'Belum Diperiksa' && $store.itemDetail.formBelumLengkap().length > 0">
+                    <div class="mt-4 pt-4 border-t border-gray-100">
+                        <p class="text-xs font-semibold text-gray-500 mb-2">Lengkapi form yang belum kelar diisi:</p>
+                        <div class="flex flex-col gap-1.5">
+                            <template x-for="f in $store.itemDetail.formBelumLengkap()" :key="f.form_id">
+                                <a :href="`{{ url('/healthcheck') }}/${f.form_id}/edit`" class="text-cakrawala font-semibold text-sm hover:underline">
+                                    <span x-text="f.uker"></span> &middot; <span x-text="f.periode"></span> &rarr;
+                                </a>
+                            </template>
+                        </div>
                     </div>
                 </template>
             </div>

@@ -51,6 +51,7 @@ class DashboardController extends Controller
             ->sortBy(fn ($i) => $i->form?->uker?->nama)
             ->values()
             ->map(fn ($i) => [
+                'form_id' => $i->form?->id,
                 'uker' => $i->form?->uker?->nama,
                 'periode' => $i->form?->periode,
                 'item_pemeriksaan' => $i->item_pemeriksaan,
