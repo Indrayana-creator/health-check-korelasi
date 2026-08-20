@@ -42,6 +42,12 @@
                 x-data="{
                     ukerKodeTerpilih: '{{ old('uker_kode', $aset->uker_kode) }}',
                     perangkatTerpilih: '{{ old('perangkat', $aset->perangkat ?? '') }}',
+                    kodeAsetTerpilih: '{{ old('kode_aset_kode', $aset->kode_aset_kode) }}',
+                    kategoriPerKodeAset: @js($kodeAsetList->pluck('kategori', 'kode')),
+                    kategoriIndividu: @js(\App\Models\Aset::KATEGORI_PEMEGANG_INDIVIDU),
+                    get butuhPemegang() {
+                        return this.kategoriIndividu.includes(this.kategoriPerKodeAset[this.kodeAsetTerpilih]);
+                    },
                     statusLookupPn: '',
                     async cariUkerDariPn(pn) {
                         if (!pn) { this.statusLookupPn = ''; return; }
@@ -79,7 +85,7 @@
 
                         <div class="md:col-span-2" x-show="ukerKodeTerpilih" x-cloak>
                             <x-input-label value="2. Kode Aset" required />
-                            <x-select name="kode_aset_kode" class="mt-1.5 block w-full">
+                            <x-select name="kode_aset_kode" x-model="kodeAsetTerpilih" class="mt-1.5 block w-full">
                                 <option value="">-- Pilih Kode Aset --</option>
                                 @foreach ($kodeAsetList->groupBy('kategori') as $kategori => $daftar)
                                     <optgroup label="{{ $kategori }}">
@@ -139,47 +145,70 @@
 
                 <x-card padding="p-6">
                     <h3 class="font-extrabold text-sm text-gray-800 mb-1">Data Pemegang & Keamanan</h3>
-                    <p class="text-xs text-gray-400 mb-4">Opsional, isi jika perangkat ini dipegang oleh 1 orang pengguna.</p>
+                    <p class="text-xs text-gray-400 mb-4">
+                        <span x-show="butuhPemegang" x-cloak class="text-red-500 font-semibold">Wajib diisi -- kategori aset ini dipegang 1 orang pengguna.</span>
+                        <span x-show="!butuhPemegang">Opsional, isi jika perangkat ini dipegang oleh 1 orang pengguna.</span>
+                    </p>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <x-input-label value="Nama User (Pemegang Perangkat)" />
-                            <x-text-input type="text" name="pemegang_nama" value="{{ old('pemegang_nama', $aset->pemegang_nama) }}" class="mt-1.5 block w-full" />
+                            <x-text-input type="text" name="pemegang_nama" value="{{ old('pemegang_nama', $aset->pemegang_nama) }}" x-bind:required="butuhPemegang" class="mt-1.5 block w-full" />
                             <x-input-error :messages="$errors->get('pemegang_nama')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Jabatan" />
-                            <x-text-input type="text" name="jabatan" value="{{ old('jabatan', $aset->jabatan) }}" class="mt-1.5 block w-full" />
+                            <x-text-input type="text" name="jabatan" value="{{ old('jabatan', $aset->jabatan) }}" x-bind:required="butuhPemegang" class="mt-1.5 block w-full" />
                             <x-input-error :messages="$errors->get('jabatan')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Personal Number (PN)" />
-                            <x-text-input type="text" name="pemegang_pn" value="{{ old('pemegang_pn', $aset->pemegang_pn) }}" @change="cariUkerDariPn($event.target.value)" class="mt-1.5 block w-full" />
+                            <x-text-input type="text" name="pemegang_pn" value="{{ old('pemegang_pn', $aset->pemegang_pn) }}" @change="cariUkerDariPn($event.target.value)" x-bind:required="butuhPemegang" class="mt-1.5 block w-full" />
                             <p class="text-xs mt-1.5" :class="statusLookupPn.startsWith('Ditemukan') ? 'text-green-600' : 'text-gray-400'" x-text="statusLookupPn"></p>
                             <x-input-error :messages="$errors->get('pemegang_pn')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="IP Address" />
-                            <x-text-input type="text" name="ip_address" value="{{ old('ip_address', $aset->ip_address) }}" class="mt-1.5 block w-full" />
+                            <x-text-input type="text" name="ip_address" value="{{ old('ip_address', $aset->ip_address) }}" placeholder="contoh: 10.0.0.1" x-bind:required="butuhPemegang" class="mt-1.5 block w-full" />
                             <x-input-error :messages="$errors->get('ip_address')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Status Hardening" />
-                            <x-text-input type="text" name="status_hardening" value="{{ old('status_hardening', $aset->status_hardening) }}" class="mt-1.5 block w-full" />
+                            <x-select name="status_hardening" x-bind:required="butuhPemegang" class="mt-1.5 block w-full">
+                                <option value="">-- Pilih Status --</option>
+                                @foreach (\App\Models\Aset::DAFTAR_STATUS_SUDAH_BELUM as $s)
+                                    <option value="{{ $s }}" @selected(old('status_hardening', $aset->status_hardening) == $s)>{{ $s }}</option>
+                                @endforeach
+                            </x-select>
                             <x-input-error :messages="$errors->get('status_hardening')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Status Bitlocker" />
-                            <x-text-input type="text" name="status_bitlocker" value="{{ old('status_bitlocker', $aset->status_bitlocker) }}" class="mt-1.5 block w-full" />
+                            <x-select name="status_bitlocker" x-bind:required="butuhPemegang" class="mt-1.5 block w-full">
+                                <option value="">-- Pilih Status --</option>
+                                @foreach (\App\Models\Aset::DAFTAR_STATUS_AKTIF as $s)
+                                    <option value="{{ $s }}" @selected(old('status_bitlocker', $aset->status_bitlocker) == $s)>{{ $s }}</option>
+                                @endforeach
+                            </x-select>
                             <x-input-error :messages="$errors->get('status_bitlocker')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Status DLP" />
-                            <x-text-input type="text" name="status_dlp" value="{{ old('status_dlp', $aset->status_dlp) }}" class="mt-1.5 block w-full" />
+                            <x-select name="status_dlp" x-bind:required="butuhPemegang" class="mt-1.5 block w-full">
+                                <option value="">-- Pilih Status --</option>
+                                @foreach (\App\Models\Aset::DAFTAR_STATUS_AKTIF as $s)
+                                    <option value="{{ $s }}" @selected(old('status_dlp', $aset->status_dlp) == $s)>{{ $s }}</option>
+                                @endforeach
+                            </x-select>
                             <x-input-error :messages="$errors->get('status_dlp')" class="mt-1.5" />
                         </div>
                         <div>
                             <x-input-label value="Status Antivirus" />
-                            <x-text-input type="text" name="status_antivirus" value="{{ old('status_antivirus', $aset->status_antivirus) }}" class="mt-1.5 block w-full" />
+                            <x-select name="status_antivirus" x-bind:required="butuhPemegang" class="mt-1.5 block w-full">
+                                <option value="">-- Pilih Status --</option>
+                                @foreach (\App\Models\Aset::DAFTAR_STATUS_AKTIF as $s)
+                                    <option value="{{ $s }}" @selected(old('status_antivirus', $aset->status_antivirus) == $s)>{{ $s }}</option>
+                                @endforeach
+                            </x-select>
                             <x-input-error :messages="$errors->get('status_antivirus')" class="mt-1.5" />
                         </div>
                     </div>

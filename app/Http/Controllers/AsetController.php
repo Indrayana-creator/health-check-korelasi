@@ -59,6 +59,30 @@ class AsetController extends Controller
             ? ['required', 'string', 'max:100']
             : ['nullable', 'string', 'max:100'];
 
+        // Kategori "dipegang individu" (PC/Notebook/Tablet/Monitor) wajib
+        // ngisi data pemegang & keamanan -- sama kayak aturan di bulkUpload(),
+        // sebelumnya form manual ini gak nerapin aturan yang sama sama sekali
+        // (semua opsional), padahal upload Excel udah mewajibkannya.
+        //
+        // TAPI: 5.906 aset kategori ini di data asli, 5.905 di antaranya
+        // belum punya status keamanan sama sekali (hasil import awal, bukan
+        // input lewat app). Kalau langsung wajib ketat buat semua, hampir
+        // semua edit ke aset lama bakal keblokir. Jadi per-field: wajib
+        // buat aset BARU atau kalau field itu SENDIRI beneran mau diubah;
+        // field yang dibiarkan apa adanya (biarpun kosong) gak ngeblokir
+        // edit ke field lain -- konsisten sama pola SN/Merek di atas.
+        $kodeAsetKategori = KodeAset::where('kode', $request->input('kode_aset_kode'))->value('kategori');
+        $butuhPemegang = in_array($kodeAsetKategori, Aset::KATEGORI_PEMEGANG_INDIVIDU);
+
+        $wajibKalauIndividu = function (string $field, array $rulesFormat) use ($request, $aset, $butuhPemegang) {
+            if (! $butuhPemegang) {
+                return array_merge(['nullable'], $rulesFormat);
+            }
+            $berubah = ! $aset || $this->fieldBerubah($request->input($field), $aset->{$field});
+
+            return array_merge([$berubah ? 'required' : 'nullable'], $rulesFormat);
+        };
+
         return [
             'uker_kode' => 'required|integer|exists:ukers,kode',
             'kode_aset_kode' => 'required|string|exists:kode_aset,kode',
@@ -68,14 +92,14 @@ class AsetController extends Controller
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
             'kondisi' => 'required|in:'.implode(',', Aset::DAFTAR_KONDISI),
-            'pemegang_nama' => 'nullable|string|max:150',
-            'jabatan' => 'nullable|string|max:150',
-            'pemegang_pn' => 'nullable|string|max:50',
-            'ip_address' => 'nullable|string|max:50',
-            'status_hardening' => 'nullable|string|max:50',
-            'status_bitlocker' => 'nullable|string|max:50',
-            'status_dlp' => 'nullable|string|max:50',
-            'status_antivirus' => 'nullable|string|max:50',
+            'pemegang_nama' => $wajibKalauIndividu('pemegang_nama', ['string', 'max:150']),
+            'jabatan' => $wajibKalauIndividu('jabatan', ['string', 'max:150']),
+            'pemegang_pn' => $wajibKalauIndividu('pemegang_pn', ['string', 'max:50']),
+            'ip_address' => $wajibKalauIndividu('ip_address', ['ip']),
+            'status_hardening' => $wajibKalauIndividu('status_hardening', ['in:'.implode(',', Aset::DAFTAR_STATUS_SUDAH_BELUM)]),
+            'status_bitlocker' => $wajibKalauIndividu('status_bitlocker', ['in:'.implode(',', Aset::DAFTAR_STATUS_AKTIF)]),
+            'status_dlp' => $wajibKalauIndividu('status_dlp', ['in:'.implode(',', Aset::DAFTAR_STATUS_AKTIF)]),
+            'status_antivirus' => $wajibKalauIndividu('status_antivirus', ['in:'.implode(',', Aset::DAFTAR_STATUS_AKTIF)]),
             'keterangan' => 'nullable|string',
         ];
     }
@@ -84,6 +108,15 @@ class AsetController extends Controller
     {
         return [
             'sn.unique' => 'SN ini sudah dipakai oleh aset lain.',
+            'ip_address.ip' => 'Format IP Address tidak valid (contoh: 10.0.0.1).',
+            'pemegang_nama.required' => 'Nama User wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'jabatan.required' => 'Jabatan wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'pemegang_pn.required' => 'Personal Number wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'ip_address.required' => 'IP Address wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'status_hardening.required' => 'Status Hardening wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'status_bitlocker.required' => 'Status Bitlocker wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'status_dlp.required' => 'Status DLP wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
+            'status_antivirus.required' => 'Status Antivirus wajib diisi untuk kategori aset ini (PC/Notebook/Tablet/Monitor).',
         ];
     }
 

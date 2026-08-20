@@ -46,6 +46,15 @@ class Aset extends Model
         'PERSONAL COMPUTER', 'NOTEBOOK', 'TABLET', 'LAYAR MONITOR',
     ];
 
+    // Dulu 4 field status keamanan ini free text (bisa diisi apa aja: "ya",
+    // "OK", "1", dst), gak ada satu istilah baku. Dikunci ke pilihan tetap
+    // biar konsisten dan gampang direkap -- 2 pola beda karena istilah yang
+    // udah dipakai di data asli beda ('Sudah' utk hardening, 'Aktif' utk
+    // 3 lainnya).
+    public const DAFTAR_STATUS_SUDAH_BELUM = ['Sudah', 'Belum'];
+
+    public const DAFTAR_STATUS_AKTIF = ['Aktif', 'Tidak Aktif'];
+
     public function uker()
     {
         return $this->belongsTo(Uker::class, 'uker_kode', 'kode');

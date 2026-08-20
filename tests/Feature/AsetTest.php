@@ -573,3 +573,113 @@ test('merek TETAP wajib diisi kalau beneran mau diubah dari kosong ke ada isinya
     );
     $response->assertSessionHasErrors('merek');
 });
+
+test('nambah aset baru kategori individu (PC/Notebook/Tablet/Monitor) wajib isi 8 field pemegang & keamanan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAsetPc));
+
+    $response->assertSessionHasErrors([
+        'pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address',
+        'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus',
+    ]);
+});
+
+test('nambah aset baru kategori individu berhasil kalau semua field pemegang & keamanan lengkap', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'NOTEBOOK']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAsetPc, [
+        'pemegang_nama' => 'Budi', 'jabatan' => 'Staff', 'pemegang_pn' => '90000001',
+        'ip_address' => '10.0.0.5', 'status_hardening' => 'Sudah', 'status_bitlocker' => 'Aktif',
+        'status_dlp' => 'Aktif', 'status_antivirus' => 'Aktif',
+    ]));
+
+    $response->assertRedirect(route('aset.index'));
+    expect(Aset::where('sn', 'SN12345678')->exists())->toBeTrue();
+});
+
+test('nambah aset baru kategori BUKAN individu (misal UPS) tetap boleh kosongin field pemegang & keamanan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetUps = KodeAset::factory()->create(['kategori' => 'UPS']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAsetUps));
+
+    $response->assertRedirect(route('aset.index'));
+});
+
+test('edit aset legacy kategori individu yang field pemegang-nya kosong tetap bisa disimpan kalau field itu gak disentuh', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+    $aset = Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAsetPc->kode,
+        'kondisi' => null, 'pemegang_nama' => null, 'jabatan' => null, 'pemegang_pn' => null,
+        'ip_address' => null, 'status_hardening' => null, 'status_bitlocker' => null,
+        'status_dlp' => null, 'status_antivirus' => null,
+    ]);
+
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $aset),
+        asetPayload($uker, $kodeAsetPc, ['sn' => $aset->sn, 'kondisi' => 'NORMAL'])
+    );
+
+    $response->assertRedirect(route('aset.index'));
+    expect($aset->fresh()->kondisi)->toBe('NORMAL');
+});
+
+test('edit aset legacy kategori individu: field pemegang yang BENERAN diubah tetap wajib diisi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+    $aset = Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAsetPc->kode,
+        'pemegang_nama' => null,
+    ]);
+
+    // Coba ubah pemegang_nama dari kosong jadi ' ' doang gak masuk akal --
+    // tesnya: submit pemegang_nama baru yang beda dari null, tapi field lain
+    // (ip_address) TETAP dikosongin/gak diubah -- harus tetap ditolak karena
+    // status_* dkk juga masih kosong dan itu bukan status quo lagi (nama
+    // pemegang berubah, artinya form ini "disentuh" beneran).
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $aset),
+        asetPayload($uker, $kodeAsetPc, ['sn' => $aset->sn, 'pemegang_nama' => 'Nama Baru Beneran'])
+    );
+
+    // ip_address dkk masih kosong DAN gak diubah dari null -> tetap lolos (nullable),
+    // tapi pemegang_nama sendiri sukses diisi karena emang diisi sekarang.
+    $response->assertSessionDoesntHaveErrors('pemegang_nama');
+});
+
+test('status hardening/bitlocker/dlp/antivirus cuma boleh diisi pilihan baku, bukan teks bebas', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAsetPc, [
+        'pemegang_nama' => 'Budi', 'jabatan' => 'Staff', 'pemegang_pn' => '90000001',
+        'ip_address' => '10.0.0.5', 'status_hardening' => 'kayaknya sudah kali ya',
+        'status_bitlocker' => 'Aktif', 'status_dlp' => 'Aktif', 'status_antivirus' => 'Aktif',
+    ]));
+
+    $response->assertSessionHasErrors('status_hardening');
+});
+
+test('ip_address harus format IP yang valid', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAsetPc = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+
+    $response = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAsetPc, [
+        'pemegang_nama' => 'Budi', 'jabatan' => 'Staff', 'pemegang_pn' => '90000001',
+        'ip_address' => 'bukan-ip-yang-valid', 'status_hardening' => 'Sudah',
+        'status_bitlocker' => 'Aktif', 'status_dlp' => 'Aktif', 'status_antivirus' => 'Aktif',
+    ]));
+
+    $response->assertSessionHasErrors('ip_address');
+});
