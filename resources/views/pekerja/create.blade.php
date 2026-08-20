@@ -18,8 +18,8 @@
 
                     <div>
                         <x-input-label value="PN (Personal Number)" required />
-                        <x-text-input type="text" name="pn" value="{{ old('pn') }}" class="mt-1.5 block w-full" required />
-                        <p class="text-xs text-gray-400 mt-1.5">PN unik, dipakai buat login (kalau nanti dibuatkan akun User) & isi PIC di form Health Check.</p>
+                        <x-text-input type="text" name="pn" value="{{ old('pn') }}" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" class="mt-1.5 block w-full" required />
+                        <p class="text-xs text-gray-400 mt-1.5">8 digit angka. PN unik, dipakai buat login (kalau nanti dibuatkan akun User) & isi PIC di form Health Check.</p>
                         <x-input-error :messages="$errors->get('pn')" class="mt-1.5" />
                     </div>
 
@@ -49,7 +49,7 @@
 
                     <div>
                         <x-input-label value="No. HP (opsional)" />
-                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp') }}" class="mt-1.5 block w-full" />
+                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp') }}" placeholder="contoh: 0812-3456-7890" class="mt-1.5 block w-full" />
                         <x-input-error :messages="$errors->get('no_hp')" class="mt-1.5" />
                     </div>
 

@@ -51,7 +51,7 @@
 
                     <div>
                         <x-input-label value="No. HP (opsional)" />
-                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp', $pekerja->no_hp) }}" class="mt-1.5 block w-full" />
+                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp', $pekerja->no_hp) }}" placeholder="contoh: 0812-3456-7890" class="mt-1.5 block w-full" />
                         <x-input-error :messages="$errors->get('no_hp')" class="mt-1.5" />
                     </div>
 

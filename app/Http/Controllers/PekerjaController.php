@@ -42,22 +42,42 @@ class PekerjaController extends Controller
         return view('pekerja.create', compact('ukerList'));
     }
 
-    protected function rules(?Pekerja $pekerja = null): array
+    protected function rules(Request $request, ?Pekerja $pekerja = null): array
     {
+        // PN semestinya 8 digit angka -- wajib buat data BARU, tapi 1 akun
+        // demo lama ("Budi Santoso", PN 00001) sengaja dipertahankan (sesuai
+        // keputusan sebelumnya), jadi jangan ngeblokir edit ke akun itu
+        // selama PN-nya sendiri gak disentuh.
+        $pnRules = (! $pekerja || $request->input('pn') !== $pekerja->pn)
+            ? ['digits:8']
+            : [];
+
         return [
-            'pn' => ['required', 'string', 'max:50', Rule::unique('pekerja', 'pn')->ignore($pekerja?->pn, 'pn')],
+            'pn' => array_merge(['required', 'string', 'max:50'], $pnRules, [
+                Rule::unique('pekerja', 'pn')->ignore($pekerja?->pn, 'pn'),
+            ]),
             'nama' => 'required|string|max:150',
             'jabatan' => 'nullable|string|max:100',
             'status' => 'nullable|string|max:50',
             'uker_kode' => 'required|integer|exists:ukers,kode',
-            'no_hp' => 'nullable|string|max:20',
+            // Nomor HP Indonesia -- diawali "08", boleh pakai strip (0812-3456-7890)
+            // atau angka polos, total 10-14 digit. Dulu bebas ketik apa aja.
+            'no_hp' => ['nullable', 'string', 'max:20', function ($attribute, $value, $fail) {
+                if (! $value) {
+                    return;
+                }
+                $digitOnly = preg_replace('/[^0-9]/', '', $value);
+                if (! preg_match('/^08[0-9]{8,12}$/', $digitOnly)) {
+                    $fail('Format No HP tidak valid (harus diawali 08, contoh: 0812-3456-7890).');
+                }
+            }],
             'is_petugas_it' => 'nullable|boolean',
         ];
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->rules());
+        $validated = $request->validate($this->rules($request));
         $validated['is_petugas_it'] = $request->boolean('is_petugas_it');
 
         Pekerja::create($validated);
@@ -84,7 +104,7 @@ class PekerjaController extends Controller
 
     public function update(Request $request, Pekerja $pekerja)
     {
-        $validated = $request->validate($this->rules($pekerja));
+        $validated = $request->validate($this->rules($request, $pekerja));
         $validated['is_petugas_it'] = $request->boolean('is_petugas_it');
 
         $pekerja->update($validated);

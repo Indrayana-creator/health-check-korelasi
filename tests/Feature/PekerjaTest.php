@@ -186,3 +186,45 @@ test('admin bisa export kelola pekerja Excel & PDF', function () {
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
+
+test('PN pekerja baru harus 8 digit angka', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload(['pn' => '123']));
+
+    $response->assertSessionHasErrors('pn');
+    expect(Pekerja::where('pn', '123')->exists())->toBeFalse();
+});
+
+test('no_hp pekerja harus format nomor Indonesia yang valid', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload(['uker_kode' => $uker->kode, 'no_hp' => 'bukan-nomor-hp']));
+
+    $response->assertSessionHasErrors('no_hp');
+});
+
+test('no_hp pekerja dengan format strip maupun polos yang valid tetap diterima', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload(['uker_kode' => $uker->kode, 'no_hp' => '0812-3456-7890']));
+
+    $response->assertRedirect(route('pekerja.index'));
+    expect(Pekerja::where('pn', '90000001')->first()?->no_hp)->toBe('0812-3456-7890');
+});
+
+test('edit pekerja lama yang PN-nya udah gak 8 digit (data legacy) tetap bisa disimpan selama PN gak diubah', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $pekerjaLegacy = Pekerja::factory()->create(['pn' => '00001', 'uker_kode' => $uker->kode]);
+
+    $response = $this->actingAs($admin)->put(
+        route('pekerja.update', $pekerjaLegacy),
+        pekerjaPayload(['pn' => '00001', 'uker_kode' => $uker->kode, 'jabatan' => 'Jabatan Baru'])
+    );
+
+    $response->assertRedirect(route('pekerja.index'));
+    expect($pekerjaLegacy->fresh()->jabatan)->toBe('Jabatan Baru');
+});
