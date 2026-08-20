@@ -538,3 +538,38 @@ test('edit aset legacy duplikat TETAP ditolak kalau SN-nya sengaja diubah ke SN 
     $response->assertSessionHasErrors('sn');
     expect($asetB->fresh()->sn)->toBe('SN-LEGACY-DUPLIKAT');
 });
+
+test('edit aset legacy dengan merek kosong (data import lama) tetap bisa disimpan selama merek gak diisi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => '']);
+
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $aset),
+        asetPayload($uker, $kodeAset, ['merek' => '', 'sn' => $aset->sn, 'pemegang_nama' => 'Nama Baru'])
+    );
+
+    $response->assertRedirect(route('aset.index'));
+    expect($aset->fresh()->pemegang_nama)->toBe('Nama Baru');
+    expect($aset->fresh()->merek)->toBeNull();
+});
+
+test('merek TETAP wajib diisi kalau beneran mau diubah dari kosong ke ada isinya, dan kalau nambah aset baru', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    // Aset baru -- merek tetap wajib
+    $storeResponse = $this->actingAs($admin)->post(route('aset.store'), asetPayload($uker, $kodeAset, ['merek' => '']));
+    $storeResponse->assertSessionHasErrors('merek');
+
+    // Aset lama merek kosong, dicoba diubah jadi kosong lagi vs string kosong beneran tetap valid,
+    // tapi begitu field lain berubah value merek (bukan dibiarkan sama), tetap wajib diisi kalau baru
+    $asetBaru = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Dell']);
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $asetBaru),
+        asetPayload($uker, $kodeAset, ['merek' => '', 'sn' => $asetBaru->sn])
+    );
+    $response->assertSessionHasErrors('merek');
+});

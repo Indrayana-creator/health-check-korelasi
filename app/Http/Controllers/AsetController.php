@@ -20,6 +20,19 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AsetController extends Controller
 {
+    // Bandingin value lama vs yang disubmit, tapi anggap '' dan null SAMA --
+    // middleware bawaan Laravel (ConvertEmptyStringsToNull) otomatis ngubah
+    // input form yang kosong jadi null, sementara data lama di database ada
+    // yang kesimpen sebagai string kosong ''. Tanpa normalisasi ini, field
+    // yang emang udah kosong dari dulu bakal keanggep "berubah" (null !== '')
+    // padahal user gak nyentuh field itu sama sekali.
+    protected function fieldBerubah(mixed $baru, mixed $lama): bool
+    {
+        $normalisasi = fn ($v) => $v === '' ? null : $v;
+
+        return $normalisasi($baru) !== $normalisasi($lama);
+    }
+
     protected function rules(Request $request, ?Aset $aset = null): array
     {
         $tahunSekarang = (int) date('Y');
@@ -32,16 +45,24 @@ class AsetController extends Controller
         // hasil import awal ada yang kebetulan udah duplikat SN-nya sama aset
         // lain, dan itu bukan salah user yang cuma mau edit field lain (mis.
         // pemegang_nama), jangan sampai malah keblokir gara-gara data legacy.
-        if (! $aset || $request->input('sn') !== $aset->sn) {
+        if (! $aset || $this->fieldBerubah($request->input('sn'), $aset->sn)) {
             $snRules[] = Rule::unique('aset', 'sn')
                 ->ignore($aset?->id)
                 ->where(fn ($query) => $query->whereNull('deleted_at'));
         }
 
+        // Sama kayak SN -- 227 aset legacy (hasil import awal) punya merek
+        // kosong. Wajib diisi buat data BARU / kalau beneran mau diubah, tapi
+        // biarin lolos kalau memang dibiarkan apa adanya (gak disentuh), biar
+        // gak ngeblokir orang yang cuma mau edit field lain.
+        $merekRules = (! $aset || $this->fieldBerubah($request->input('merek'), $aset->merek))
+            ? ['required', 'string', 'max:100']
+            : ['nullable', 'string', 'max:100'];
+
         return [
             'uker_kode' => 'required|integer|exists:ukers,kode',
             'kode_aset_kode' => 'required|string|exists:kode_aset,kode',
-            'merek' => 'required|string|max:100',
+            'merek' => $merekRules,
             'tipe_model' => 'required|string|max:100',
             'sn' => $snRules,
             'kapasitas_memori' => 'nullable|string|max:50',
