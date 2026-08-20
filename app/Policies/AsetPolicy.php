@@ -9,6 +9,16 @@ use Illuminate\Auth\Access\Response;
 
 class AsetPolicy
 {
+    // Sama kayak update() -- boleh liat aset dari uker sendiri + turunannya
+    // (bukan cuma yang boleh diedit), beda dari update() secara SEMANTIK
+    // (lihat vs ubah) walau kebetulan cakupannya sama persis sekarang.
+    public function view(User $user, Aset $aset): Response
+    {
+        return $user->role === 'admin' || in_array($aset->uker_kode, Uker::descendantKodes($user->uker_kode))
+            ? Response::allow()
+            : Response::deny('Anda tidak punya akses ke aset ini.');
+    }
+
     public function update(User $user, Aset $aset): Response
     {
         return $user->role === 'admin' || in_array($aset->uker_kode, Uker::descendantKodes($user->uker_kode))

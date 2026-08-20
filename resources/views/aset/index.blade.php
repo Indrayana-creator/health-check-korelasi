@@ -132,7 +132,7 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($asetList as $aset)
                         <tr class="hover:bg-gray-50">
-                            <td class="px-4 font-mono text-xs text-gray-700">{{ $aset->no_asset }}</td>
+                            <td class="px-4 font-mono text-xs text-gray-700"><a href="{{ route('aset.show', $aset) }}" class="hover:text-cakrawala hover:underline">{{ $aset->no_asset }}</a></td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->uker?->nama }}</td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->kode_aset_kode }} - {{ $aset->kodeAset?->nama }}</td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->merek }} {{ $aset->tipe_model }}</td>
@@ -153,6 +153,9 @@
                             <td class="px-4 text-sm text-gray-700">{{ $aset->pemegang_nama }}</td>
                             <td class="px-4 whitespace-nowrap text-right">
                                 <div class="inline-flex items-center gap-1.5">
+                                    <x-icon-button variant="neutral" label="Lihat Detail" :href="route('aset.show', $aset)">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                                    </x-icon-button>
                                     <x-icon-button type="button" variant="neutral" label="Lihat Riwayat Kondisi" @click="$store.riwayatKondisi.buka({{ $aset->id }})">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                                     </x-icon-button>

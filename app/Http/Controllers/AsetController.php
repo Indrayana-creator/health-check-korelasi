@@ -203,6 +203,20 @@ class AsetController extends Controller
         return view('aset.index', compact('asetList', 'ukerFilterList', 'totalKeseluruhan', 'totalNormal', 'totalPerluPerhatian'));
     }
 
+    // Halaman detail read-only -- sebelumnya gak ada sama sekali, satu-
+    // satunya cara "lihat" data lengkap aset (IP, status keamanan,
+    // keterangan, riwayat kondisi) adalah buka halaman Edit, yang nyampur
+    // urusan lihat & ubah (dan nampilin banner "terkunci" walau orangnya
+    // cuma mau lihat, bukan ubah).
+    public function show(Request $request, Aset $aset)
+    {
+        $this->authorize('view', $aset);
+
+        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
+
+        return view('aset.show', compact('aset'));
+    }
+
     public function create(Request $request)
     {
         $ukerList = $request->user()->role === 'admin'

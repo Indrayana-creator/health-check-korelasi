@@ -62,7 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/healthcheck/{id}/restore', [HealthCheckController::class, 'restore'])->name('healthcheck.restore');
 
     // Data aset (admin lihat semua, user/uker cuma lihat punya sendiri)
-    Route::resource('aset', AsetController::class)->except(['show']);
+    Route::resource('aset', AsetController::class);
     Route::post('/aset/{aset}/request-edit', [AsetController::class, 'requestEdit'])->name('aset.requestEdit');
 
     // Health check per uker

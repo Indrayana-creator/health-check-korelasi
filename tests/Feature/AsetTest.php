@@ -683,3 +683,42 @@ test('ip_address harus format IP yang valid', function () {
 
     $response->assertSessionHasErrors('ip_address');
 });
+
+test('admin bisa lihat halaman detail aset manapun', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Dell']);
+
+    $response = $this->actingAs($admin)->get(route('aset.show', $aset));
+
+    $response->assertOk();
+    $response->assertSee($aset->no_asset);
+    $response->assertSee('Dell');
+});
+
+test('user cuma bisa lihat detail aset di subtree sendiri', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $asetSendiri = Aset::factory()->create(['uker_kode' => $ukerSendiri->kode]);
+    $asetLain = Aset::factory()->create(['uker_kode' => $ukerLain->kode]);
+
+    $this->actingAs($user)->get(route('aset.show', $asetSendiri))->assertOk();
+    $this->actingAs($user)->get(route('aset.show', $asetLain))->assertForbidden();
+});
+
+test('halaman detail aset nampilin riwayat perubahan kondisi & riwayat permintaan edit', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    AsetKondisiLog::create(['aset_id' => $aset->id, 'kondisi_lama' => null, 'kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id]);
+    AsetEditRequest::create(['aset_id' => $aset->id, 'requested_by' => $admin->id, 'alasan' => 'Salah ketik merek', 'status' => 'Menunggu']);
+
+    $response = $this->actingAs($admin)->get(route('aset.show', $aset));
+
+    $response->assertOk();
+    $response->assertSee('NORMAL');
+    $response->assertSee('Salah ketik merek');
+});
