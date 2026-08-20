@@ -500,3 +500,41 @@ test('sort field yang gak ada di whitelist diabaikan, gak bikin error', function
 
     $response->assertOk();
 });
+
+test('edit aset legacy yang SN-nya kebetulan duplikat sama aset lain (data import lama) tetap bisa disimpan selama SN gak diubah', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    // Simulasi 2 aset lama yang SN-nya udah kebetulan sama dari hasil import awal
+    // (skenario nyata: ditemukan 156 grup SN duplikat di data RO12 Surabaya).
+    $asetA = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-LEGACY-DUPLIKAT']);
+    $asetB = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-LEGACY-DUPLIKAT']);
+
+    // Edit aset B, cuma ubah pemegang_nama, SN dibiarkan sama persis (gak diubah)
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $asetB),
+        asetPayload($uker, $kodeAset, ['sn' => 'SN-LEGACY-DUPLIKAT', 'pemegang_nama' => 'Nama Baru'])
+    );
+
+    $response->assertRedirect(route('aset.index'));
+    expect($asetB->fresh()->pemegang_nama)->toBe('Nama Baru');
+});
+
+test('edit aset legacy duplikat TETAP ditolak kalau SN-nya sengaja diubah ke SN aset ketiga yang juga udah dipakai', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-LEGACY-DUPLIKAT']);
+    $asetB = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-LEGACY-DUPLIKAT']);
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'sn' => 'SN-AKTIF-LAIN']);
+
+    // Aset B coba diubah SN-nya jadi SN aset ketiga (perubahan BENERAN, bukan
+    // legacy state) -- ini HARUS tetap ditolak, unique masih berlaku normal.
+    $response = $this->actingAs($admin)->put(
+        route('aset.update', $asetB),
+        asetPayload($uker, $kodeAset, ['sn' => 'SN-AKTIF-LAIN'])
+    );
+
+    $response->assertSessionHasErrors('sn');
+    expect($asetB->fresh()->sn)->toBe('SN-LEGACY-DUPLIKAT');
+});

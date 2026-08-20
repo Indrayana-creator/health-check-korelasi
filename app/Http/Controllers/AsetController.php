@@ -20,26 +20,30 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class AsetController extends Controller
 {
-    protected function rules(?Aset $aset = null): array
+    protected function rules(Request $request, ?Aset $aset = null): array
     {
         $tahunSekarang = (int) date('Y');
+
+        $snRules = ['required', 'string', 'max:100'];
+        // SN itu identitas fisik perangkat -- harus unik antar aset yang masih
+        // aktif (belum di-soft-delete), biar bulk-delete by SN (lihat
+        // bulkDelete()) gak ambigu nemuin aset yang salah. TAPI unique cuma
+        // ditegakkan kalau SN beneran mau diubah jadi nilai baru -- data lama
+        // hasil import awal ada yang kebetulan udah duplikat SN-nya sama aset
+        // lain, dan itu bukan salah user yang cuma mau edit field lain (mis.
+        // pemegang_nama), jangan sampai malah keblokir gara-gara data legacy.
+        if (! $aset || $request->input('sn') !== $aset->sn) {
+            $snRules[] = Rule::unique('aset', 'sn')
+                ->ignore($aset?->id)
+                ->where(fn ($query) => $query->whereNull('deleted_at'));
+        }
 
         return [
             'uker_kode' => 'required|integer|exists:ukers,kode',
             'kode_aset_kode' => 'required|string|exists:kode_aset,kode',
             'merek' => 'required|string|max:100',
             'tipe_model' => 'required|string|max:100',
-            'sn' => [
-                'required',
-                'string',
-                'max:100',
-                // SN itu identitas fisik perangkat -- harus unik antar aset yang
-                // masih aktif (belum di-soft-delete), biar bulk-delete by SN
-                // (lihat bulkDelete()) gak ambigu nemuin aset yang salah.
-                Rule::unique('aset', 'sn')
-                    ->ignore($aset?->id)
-                    ->where(fn ($query) => $query->whereNull('deleted_at')),
-            ],
+            'sn' => $snRules,
             'kapasitas_memori' => 'nullable|string|max:50',
             'tahun_perolehan' => "nullable|integer|min:2000|max:{$tahunSekarang}",
             'kondisi' => 'required|in:'.implode(',', Aset::DAFTAR_KONDISI),
@@ -157,7 +161,7 @@ class AsetController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->rules(), $this->ruleMessages());
+        $validated = $request->validate($this->rules($request), $this->ruleMessages());
 
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
@@ -200,7 +204,7 @@ class AsetController extends Controller
             abort(403, 'Data ini terkunci. Ajukan permintaan edit dan tunggu disetujui admin sebelum bisa mengubah data.');
         }
 
-        $validated = $request->validate($this->rules($aset), $this->ruleMessages());
+        $validated = $request->validate($this->rules($request, $aset), $this->ruleMessages());
 
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
