@@ -27,26 +27,22 @@ class KodeAsetController extends Controller
 
         $kodeAsetList = $query->orderBy('kategori')->orderBy('kode')->paginate(30)->withQueryString();
 
-        // Daftar kategori yang udah pernah dipakai -- ditawarin sebagai saran
-        // (datalist) di form tambah/edit, biar penulisan kategori konsisten
-        // (gak ada "Personal Computer" vs "PERSONAL COMPUTER" nyampur).
-        $kategoriTersedia = KodeAset::pluck('kategori')->unique()->sort()->values();
-
-        return view('kode-aset.index', compact('kodeAsetList', 'kategoriTersedia'));
+        return view('kode-aset.index', compact('kodeAsetList'));
     }
 
     public function create()
     {
-        $kategoriTersedia = KodeAset::pluck('kategori')->unique()->sort()->values();
-
-        return view('kode-aset.create', compact('kategoriTersedia'));
+        return view('kode-aset.create');
     }
 
     protected function rules(?KodeAset $kodeAset = null): array
     {
         return [
             'kode' => ['required', 'string', 'max:20', Rule::unique('kode_aset', 'kode')->ignore($kodeAset?->kode, 'kode')],
-            'kategori' => 'required|string|max:100',
+            // Dulu free text -- dikunci ke daftar tetap (lihat komentar di
+            // KodeAset::DAFTAR_KATEGORI) biar gak ada variasi penulisan yang
+            // bikin logic kategori-individu di Aset::rules() gagal ke-detect.
+            'kategori' => 'required|in:'.implode(',', KodeAset::DAFTAR_KATEGORI),
             'nama' => 'required|string|max:150',
         ];
     }
@@ -63,9 +59,7 @@ class KodeAsetController extends Controller
 
     public function edit(KodeAset $kodeAset)
     {
-        $kategoriTersedia = KodeAset::pluck('kategori')->unique()->sort()->values();
-
-        return view('kode-aset.edit', compact('kodeAset', 'kategoriTersedia'));
+        return view('kode-aset.edit', compact('kodeAset'));
     }
 
     public function update(Request $request, KodeAset $kodeAset)

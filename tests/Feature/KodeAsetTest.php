@@ -129,3 +129,21 @@ test('admin bisa export kelola kode aset Excel & PDF', function () {
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
+
+test('kategori kode aset dikunci ke daftar tetap, gak bisa diisi teks bebas', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('kode-aset.store'), kodeAsetPayload(['kategori' => 'Personal computer (beda kapital)']));
+
+    $response->assertSessionHasErrors('kategori');
+    expect(KodeAset::where('kode', 'PC-TEST')->exists())->toBeFalse();
+});
+
+test('kategori kode aset yang sesuai daftar tetap berhasil disimpan', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->post(route('kode-aset.store'), kodeAsetPayload(['kategori' => 'GENSET']));
+
+    $response->assertRedirect(route('kode-aset.index'));
+    expect(KodeAset::where('kode', 'PC-TEST')->first()?->kategori)->toBe('GENSET');
+});

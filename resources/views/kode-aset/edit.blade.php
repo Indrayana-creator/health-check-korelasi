@@ -26,13 +26,13 @@
 
                     <div>
                         <x-input-label value="Kategori" required />
-                        <x-text-input type="text" name="kategori" value="{{ old('kategori', $kodeAset->kategori) }}" list="kategori-tersedia" class="mt-1.5 block w-full" required />
-                        <datalist id="kategori-tersedia">
-                            @foreach ($kategoriTersedia as $kat)
-                                <option value="{{ $kat }}"></option>
+                        <x-select name="kategori" class="mt-1.5 block w-full" required>
+                            <option value="">-- Pilih Kategori --</option>
+                            @foreach (\App\Models\KodeAset::DAFTAR_KATEGORI as $kat)
+                                <option value="{{ $kat }}" @selected(old('kategori', $kodeAset->kategori) == $kat)>{{ $kat }}</option>
                             @endforeach
-                        </datalist>
-                        <p class="text-xs text-gray-400 mt-1.5">Pakai penulisan yang sama dengan kategori yang sudah ada supaya grafik distribusi di dashboard gak kepecah.</p>
+                        </x-select>
+                        <p class="text-xs text-gray-400 mt-1.5">Dikunci ke daftar tetap -- kategori nentuin field mana yang wajib diisi pas nambah aset, jadi gak boleh beda-beda penulisan.</p>
                         <x-input-error :messages="$errors->get('kategori')" class="mt-1.5" />
                     </div>
 
