@@ -187,14 +187,14 @@ class RekapController extends Controller
 
     protected function rekapAsetHeaders(): array
     {
-        return ['Cabang', 'Uker Lapor', 'Total', 'Normal', 'Rusak', 'Tidak Layak', 'Lainnya', 'Sehat (%)', 'Status'];
+        return ['Cabang', 'Uker Lapor', 'Total', 'Normal', 'Rusak', 'Tidak Layak', 'Lainnya', 'Sehat (%)', 'Data Lengkap (%)', 'Status'];
     }
 
     protected function rekapAsetRow(array $r): array
     {
         return [
             $r['cabang'], $r['jumlah_uker_lapor'], $r['total'],
-            $r['normal'], $r['rusak'], $r['tidak_layak'], $r['lainnya'], $r['persen_sehat'], $r['status'],
+            $r['normal'], $r['rusak'], $r['tidak_layak'], $r['lainnya'], $r['persen_sehat'], $r['persen_lengkap'], $r['status'],
         ];
     }
 
@@ -208,7 +208,7 @@ class RekapController extends Controller
 
         $headers = $this->rekapAsetHeaders();
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:J1')->getFont()->setBold(true);
 
         $row = 2;
         foreach ($rekap as $r) {
@@ -216,7 +216,7 @@ class RekapController extends Controller
             $row++;
         }
 
-        foreach (range('A', 'I') as $col) {
+        foreach (range('A', 'J') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -272,7 +272,7 @@ class RekapController extends Controller
     // Diekstrak jadi method sendiri biar dipakai bareng aset() & export.
     protected function rekapAsetPerCabang()
     {
-        return Aset::with('uker')->get()
+        return Aset::with(['uker', 'kodeAset'])->get()
             ->groupBy(fn ($aset) => $aset->uker?->uker_spv ?? 'Tidak diketahui')
             ->map(function ($asetDalamCabang, $namaCabang) {
                 $total = $asetDalamCabang->count();
@@ -281,6 +281,8 @@ class RekapController extends Controller
                 $tidakLayak = $asetDalamCabang->where('kondisi', 'TIDAK LAYAK')->count();
                 $lainnya = $total - $normal - $rusak - $tidakLayak;
                 $persenSehat = $total > 0 ? round($normal / $total * 100, 1) : 0;
+                $totalLengkap = $asetDalamCabang->filter(fn ($a) => $this->asetDataLengkap($a))->count();
+                $persenLengkap = $total > 0 ? round($totalLengkap / $total * 100, 1) : 0;
 
                 return [
                     'cabang' => $namaCabang,
@@ -291,11 +293,38 @@ class RekapController extends Controller
                     'tidak_layak' => $tidakLayak,
                     'lainnya' => $lainnya,
                     'persen_sehat' => $persenSehat,
+                    'persen_lengkap' => $persenLengkap,
                     'status' => $persenSehat >= 95 ? 'SANGAT BAIK' : ($persenSehat >= 80 ? 'BAIK' : 'PERLU PERHATIAN'),
                 ];
             })
             ->sortBy('persen_sehat')
             ->values();
+    }
+
+    // Aset dianggap "lengkap" kalau merek & SN keisi, DAN kalau kategorinya
+    // termasuk yang wajib punya pemegang individu (PC/Notebook/Tablet/Monitor
+    // -- lihat Aset::KATEGORI_PEMEGANG_INDIVIDU), 8 field pemegang & keamanan
+    // ikut keisi semua. Dipakai buat indikator "% Data Lengkap" per cabang,
+    // BEDA dari "% Sehat" yang ngukur kondisi fisik -- ini ngukur kelengkapan
+    // catatan datanya, dua hal independen (aset bisa NORMAL tapi datanya
+    // bolong, atau sebaliknya).
+    protected function asetDataLengkap(Aset $aset): bool
+    {
+        if (! $aset->merek || ! $aset->sn) {
+            return false;
+        }
+
+        if (! in_array($aset->kodeAset?->kategori, Aset::KATEGORI_PEMEGANG_INDIVIDU)) {
+            return true;
+        }
+
+        foreach (['pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus'] as $field) {
+            if (! $aset->{$field}) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function aset(Request $request)
@@ -305,6 +334,7 @@ class RekapController extends Controller
 
         $totalCabang = $rekap->count();
         $avgPersenSehat = $totalCabang > 0 ? round($rekap->avg('persen_sehat'), 1) : 0;
+        $avgPersenLengkap = $totalCabang > 0 ? round($rekap->avg('persen_lengkap'), 1) : 0;
         $totalPerluPerhatian = $rekap->where('status', 'PERLU PERHATIAN')->count();
 
         // Distribusi kondisi keseluruhan -- ini snapshot KONDISI SAAT INI, bukan
@@ -317,7 +347,7 @@ class RekapController extends Controller
             'Lainnya' => $asetList->whereNotIn('kondisi', ['NORMAL', 'RUSAK', 'TIDAK LAYAK'])->count(),
         ];
 
-        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'totalPerluPerhatian', 'distribusiKondisi'));
+        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'avgPersenLengkap', 'totalPerluPerhatian', 'distribusiKondisi'));
     }
 
     // Rekap Permintaan Perangkat per MINGGU (Senin-Jumat), bisa navigasi

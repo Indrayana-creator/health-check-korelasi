@@ -28,7 +28,7 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-nusantara/10 text-nusantara flex items-center justify-center mb-3">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
@@ -42,6 +42,13 @@
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Rata-rata % Sehat</p>
                 <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $avgPersenSehat }}%</p>
+            </x-card>
+            <x-card padding="p-5">
+                <div class="w-[38px] h-[38px] rounded-[10px] bg-cakrawala/10 text-cakrawala flex items-center justify-center mb-3">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path></svg>
+                </div>
+                <p class="text-xs font-semibold text-gray-500 mb-0.5">Rata-rata % Data Lengkap</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $avgPersenLengkap }}%</p>
             </x-card>
             <x-card padding="p-5">
                 <div class="w-[38px] h-[38px] rounded-[10px] bg-red-100 text-red-600 flex items-center justify-center mb-3">
@@ -112,6 +119,7 @@
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tidak Layak</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Lainnya</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">% Sehat</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">% Data Lengkap</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
                     </tr>
                 </thead>
@@ -126,6 +134,7 @@
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $r['tidak_layak'] }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $r['lainnya'] }}</td>
                             <td class="px-4 py-3 text-sm font-bold text-gray-800">{{ $r['persen_sehat'] }}%</td>
+                            <td class="px-4 py-3 text-sm font-bold text-gray-800">{{ $r['persen_lengkap'] }}%</td>
                             <td class="px-4 py-3">
                                 <x-badge :color="$r['status'] === 'SANGAT BAIK' ? 'green' : ($r['status'] === 'BAIK' ? 'yellow' : 'red')">
                                     {{ $r['status'] }}
@@ -134,7 +143,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-4 py-10 text-center">
+                            <td colspan="10" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"></path></svg>
                                 <p class="text-gray-400 text-sm">Belum ada data aset.</p>
                             </td>

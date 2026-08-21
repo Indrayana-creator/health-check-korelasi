@@ -152,6 +152,42 @@ test('rekap aset menjumlahkan kondisi aset semua uker dalam satu cabang (uker_sp
     ]);
 });
 
+test('rekap aset ngitung persentase kelengkapan data per cabang', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['uker_spv' => 'Cabang Malang']);
+    $kodeAsetIndividu = KodeAset::factory()->create(['kategori' => 'PERSONAL COMPUTER']);
+    $kodeAsetLain = KodeAset::factory()->create(['kategori' => 'HARDISK']);
+
+    // Kategori individu, semua field pemegang & keamanan lengkap -- HARUS lengkap
+    Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAsetIndividu->kode,
+        'pemegang_nama' => 'Budi', 'jabatan' => 'Staff', 'pemegang_pn' => '90000001',
+        'ip_address' => '10.0.0.1', 'status_hardening' => 'Sudah', 'status_bitlocker' => 'Aktif',
+        'status_dlp' => 'Aktif', 'status_antivirus' => 'Aktif',
+    ]);
+    // Kategori individu, tapi status_hardening kosong -- HARUS gak lengkap
+    Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAsetIndividu->kode,
+        'pemegang_nama' => 'Ani', 'jabatan' => 'Staff', 'pemegang_pn' => '90000002',
+        'ip_address' => '10.0.0.2', 'status_hardening' => null, 'status_bitlocker' => 'Aktif',
+        'status_dlp' => 'Aktif', 'status_antivirus' => 'Aktif',
+    ]);
+    // Kategori BUKAN individu -- lengkap asal merek & SN keisi, gak butuh field pemegang
+    Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAsetLain->kode,
+        'pemegang_nama' => null, 'jabatan' => null, 'pemegang_pn' => null,
+        'ip_address' => null, 'status_hardening' => null, 'status_bitlocker' => null,
+        'status_dlp' => null, 'status_antivirus' => null,
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('rekap.aset'));
+
+    $rekap = $response->viewData('rekap')->firstWhere('cabang', 'Cabang Malang');
+
+    // 2 dari 3 aset lengkap = 66.7%
+    expect($rekap['persen_lengkap'])->toBe(66.7);
+});
+
 // ===================== Export =====================
 
 test('user biasa tidak bisa export rekap cabang maupun rekap aset', function () {
