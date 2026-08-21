@@ -29,7 +29,7 @@
             {{-- Sidebar --}}
             <aside
                 :class="sidebarOpen ? 'translate-x-0' : '-translate-x-full'"
-                class="fixed inset-y-0 left-0 z-40 w-64 flex-none bg-gradient-to-b from-nusantara to-slate-900 text-white flex flex-col px-4 py-6 gap-6 h-screen overflow-y-auto transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0"
+                class="print:hidden fixed inset-y-0 left-0 z-40 w-64 flex-none bg-gradient-to-b from-nusantara to-slate-900 text-white flex flex-col px-4 py-6 gap-6 h-screen overflow-y-auto transition-transform duration-200 ease-in-out lg:sticky lg:top-0 lg:translate-x-0"
             >
                 <div class="flex items-center justify-between gap-2.5 px-2">
                     <a href="{{ route('dashboard') }}" class="flex items-center gap-2.5 min-w-0">
@@ -145,7 +145,7 @@
 
             {{-- Main --}}
             <div class="flex-1 min-w-0 flex flex-col">
-                <header class="h-16 flex-none flex items-center justify-between gap-4 px-4 sm:px-7 border-b border-gray-200 bg-white sticky top-0 z-10">
+                <header class="print:hidden h-16 flex-none flex items-center justify-between gap-4 px-4 sm:px-7 border-b border-gray-200 bg-white sticky top-0 z-10">
                     <div class="min-w-0 flex items-center gap-3">
                         <button @click="sidebarOpen = true" class="w-9 h-9 flex-none rounded-lg border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50 lg:hidden">
                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
