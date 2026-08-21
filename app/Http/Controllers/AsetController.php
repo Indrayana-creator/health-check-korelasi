@@ -188,8 +188,10 @@ class AsetController extends Controller
 
     // Batas jumlah aset per cetak QR massal -- generate QR itu berat (1 render
     // gambar per aset), jadi dibatasi biar gak ada request yang nge-generate
-    // ribuan QR sekaligus dan bikin timeout / PDF raksasa.
-    protected const MAKS_QR_SHEET = 300;
+    // puluhan ribu QR sekaligus dan bikin timeout / PDF raksasa. 1000 dipilih
+    // dari benchmark nyata (~585 QR ~7-8 detik dengan GD), jadi masih jauh di
+    // bawah titik yang bikin masalah buat 1 cabang gede sekalipun.
+    protected const MAKS_QR_SHEET = 1000;
 
     public function index(Request $request)
     {

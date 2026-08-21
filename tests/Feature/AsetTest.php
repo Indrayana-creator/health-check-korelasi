@@ -770,7 +770,7 @@ test('cetak QR massal ditolak kalau jumlah aset kelewat batas', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
     $kodeAset = KodeAset::factory()->create();
-    Aset::factory()->count(301)->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    Aset::factory()->count(1001)->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
 
     $response = $this->actingAs($admin)->get(route('aset.qrSheet', ['uker_kode' => $uker->kode]));
 
