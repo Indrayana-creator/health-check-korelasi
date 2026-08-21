@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/aset/bulk-delete', [AsetController::class, 'bulkDelete'])->name('aset.bulkDelete');
     Route::get('/aset/export/excel', [AsetController::class, 'exportExcel'])->name('aset.export.excel');
     Route::get('/aset/export/pdf', [AsetController::class, 'exportPdf'])->name('aset.export.pdf');
+    Route::get('/aset/qr-sheet', [AsetController::class, 'qrSheet'])->name('aset.qrSheet');
     Route::get('/aset/sampah', [AsetController::class, 'trash'])->name('aset.trash');
     Route::post('/aset/{id}/restore', [AsetController::class, 'restore'])->name('aset.restore');
     Route::get('/aset/{aset}/kondisi-riwayat', [AsetController::class, 'kondisiRiwayat'])->name('aset.kondisiRiwayat');

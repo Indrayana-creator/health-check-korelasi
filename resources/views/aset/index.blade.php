@@ -41,6 +41,9 @@
                 <x-slot name="content">
                     <x-dropdown-link :href="route('aset.export.excel', request()->query())">Excel (.xlsx)</x-dropdown-link>
                     <x-dropdown-link :href="route('aset.export.pdf', request()->query())">PDF</x-dropdown-link>
+                    @if (request('uker_kode'))
+                        <x-dropdown-link :href="route('aset.qrSheet', request()->query())">Cetak QR Massal (PDF)</x-dropdown-link>
+                    @endif
                 </x-slot>
             </x-dropdown>
             <x-button variant="secondary" :href="route('aset.trash')">

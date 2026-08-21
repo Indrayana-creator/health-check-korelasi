@@ -186,6 +186,11 @@ class AsetController extends Controller
     // kolom sembarangan (apalagi kolom yang gak ada di tabel aset).
     protected const KOLOM_BISA_DIURUTKAN = ['no_asset', 'merek', 'sn', 'tahun_perolehan', 'kondisi'];
 
+    // Batas jumlah aset per cetak QR massal -- generate QR itu berat (1 render
+    // gambar per aset), jadi dibatasi biar gak ada request yang nge-generate
+    // ribuan QR sekaligus dan bikin timeout / PDF raksasa.
+    protected const MAKS_QR_SHEET = 300;
+
     public function index(Request $request)
     {
         $query = $this->filteredQuery($request);
@@ -787,5 +792,41 @@ class AsetController extends Controller
         $pdf = Pdf::loadView('aset.pdf', compact('asetList'))->setPaper('a4', 'landscape');
 
         return $pdf->download('data-aset-'.now()->format('Ymd-His').'.pdf');
+    }
+
+    // Cetak QR massal -- buat 1 cabang/uker sekaligus, biar petugas gak perlu
+    // buka Detail aset satu-satu buat nempelin QR ke banyak perangkat.
+    // Wajib filter uker_kode biar cakupannya kebatasi (bukan asal semua aset
+    // yang keliatan admin), dan filteredQuery() yang sama dipakai index()/
+    // export lain, jadi hasilnya konsisten sama filter q/kondisi/kategori
+    // yang lagi aktif di layar.
+    public function qrSheet(Request $request)
+    {
+        $request->validate(['uker_kode' => 'required|integer|exists:ukers,kode']);
+
+        $asetList = $this->filteredQuery($request)->get();
+
+        abort_if(
+            $asetList->count() > self::MAKS_QR_SHEET,
+            422,
+            'Terlalu banyak aset ('.$asetList->count().') buat dicetak sekaligus (maks '.self::MAKS_QR_SHEET.'). Persempit filter dulu (mis. tambah kondisi/kategori).'
+        );
+
+        $items = $asetList->map(function (Aset $aset) {
+            $builder = new Builder(
+                writer: new PngWriter,
+                data: route('aset.show', $aset),
+                encoding: new Encoding('UTF-8'),
+                errorCorrectionLevel: ErrorCorrectionLevel::High,
+                size: 200,
+                margin: 8,
+            );
+
+            return ['aset' => $aset, 'qr' => base64_encode($builder->build()->getString())];
+        });
+
+        $pdf = Pdf::loadView('aset.qr-sheet', compact('items'))->setPaper('a4', 'portrait');
+
+        return $pdf->download('qr-aset-'.now()->format('Ymd-His').'.pdf');
     }
 }

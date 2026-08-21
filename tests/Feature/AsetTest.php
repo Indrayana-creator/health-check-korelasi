@@ -745,3 +745,34 @@ test('user cuma bisa generate QR code aset di subtree sendiri', function () {
     $this->actingAs($user)->get(route('aset.qrCode', $asetSendiri))->assertOk();
     $this->actingAs($user)->get(route('aset.qrCode', $asetLain))->assertForbidden();
 });
+
+test('cetak QR massal wajib pilih uker_kode', function () {
+    $admin = User::factory()->admin()->create();
+
+    $response = $this->actingAs($admin)->get(route('aset.qrSheet'));
+
+    $response->assertSessionHasErrors('uker_kode');
+});
+
+test('admin bisa cetak QR massal buat aset di satu uker', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->count(3)->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('aset.qrSheet', ['uker_kode' => $uker->kode]));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/pdf');
+});
+
+test('cetak QR massal ditolak kalau jumlah aset kelewat batas', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    Aset::factory()->count(301)->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('aset.qrSheet', ['uker_kode' => $uker->kode]));
+
+    $response->assertStatus(422);
+});
