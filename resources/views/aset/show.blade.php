@@ -5,7 +5,7 @@
     </x-slot>
 
     <div class="p-7">
-        <div class="max-w-3xl mx-auto space-y-5">
+        <div class="max-w-3xl mx-auto space-y-5" x-data="{ laporOpen: false }">
 
             @if (session('status'))
                 <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
@@ -46,6 +46,41 @@
                 <img src="{{ route('aset.qrCode', $aset) }}" alt="QR Code {{ $aset->no_asset }}" class="w-56 h-56 mx-auto">
                 <p class="font-mono text-sm mt-2">{{ $aset->no_asset }}</p>
             </div>
+
+            <x-card padding="p-6" class="print:hidden !border-red-100 bg-red-50/30">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Lapor Kerusakan</h3>
+                        <p class="text-xs text-gray-500">Nemuin masalah fisik di perangkat ini? Laporin langsung dari sini, boleh sertakan foto.</p>
+                    </div>
+                    <x-button type="button" variant="secondary" size="sm" @click="laporOpen = true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
+                        Lapor Kerusakan
+                    </x-button>
+                </div>
+
+                <div x-show="laporOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="laporOpen = false">
+                    <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Lapor Kerusakan</h3>
+                        <p class="text-xs text-gray-400 mb-3.5">{{ $aset->no_asset }} &middot; {{ $aset->uker?->nama }}</p>
+                        <form action="{{ route('monitoring.laporanAset.store', $aset) }}" method="POST" enctype="multipart/form-data" class="space-y-3">
+                            @csrf
+                            <div>
+                                <x-input-label value="Deskripsi Kerusakan" />
+                                <textarea name="deskripsi" rows="3" required class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" placeholder="contoh: layar berkedip-kedip, mati total, dst"></textarea>
+                            </div>
+                            <div>
+                                <x-input-label value="Foto (opsional)" />
+                                <input type="file" name="foto" accept="image/*" capture="environment" class="mt-1.5 block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                            </div>
+                            <div class="flex gap-2 pt-1">
+                                <x-button type="submit">Kirim Laporan</x-button>
+                                <x-button type="button" variant="secondary" @click="laporOpen = false">Batal</x-button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </x-card>
 
             <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-4">Identitas Aset</h3>
@@ -202,6 +237,35 @@
                                 </div>
                                 <x-badge :color="match($r->status) { 'Disetujui' => 'green', 'Menunggu' => 'yellow', 'Ditolak' => 'red', default => 'gray' }" class="flex-none">
                                     {{ $r->status }}
+                                </x-badge>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-card>
+
+            <x-card padding="p-6" class="print:hidden">
+                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Laporan Kerusakan</h3>
+                @if ($aset->laporanKendala->isEmpty())
+                    <p class="text-gray-400 text-sm">Belum ada laporan kerusakan buat aset ini.</p>
+                @else
+                    <div class="space-y-3">
+                        @foreach ($aset->laporanKendala as $k)
+                            <div class="flex items-start gap-3 text-sm border-b border-gray-100 pb-3">
+                                @if ($k->foto_url)
+                                    <img src="{{ $k->foto_url }}" alt="Foto kerusakan" class="w-14 h-14 rounded-lg object-cover flex-none border border-gray-100">
+                                @endif
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-gray-700">{{ $k->deskripsi }}</p>
+                                    <p class="text-gray-400 text-xs mt-0.5">
+                                        Dilaporkan {{ $k->reporter?->name ?? '-' }} &middot; {{ $k->created_at?->format('d M Y H:i') }}
+                                        @if ($k->catatan_admin)
+                                            &middot; Catatan: {{ $k->catatan_admin }}
+                                        @endif
+                                    </p>
+                                </div>
+                                <x-badge :color="match($k->status) { 'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'gray' }" class="flex-none">
+                                    {{ $k->status }}
                                 </x-badge>
                             </div>
                         @endforeach

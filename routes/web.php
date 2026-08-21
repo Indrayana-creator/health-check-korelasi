@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AsetController;
 use App\Http\Controllers\AsetEditRequestController;
+use App\Http\Controllers\AsetKendalaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ImportController;
@@ -106,6 +107,15 @@ Route::middleware('auth')->group(function () {
     Route::get('/monitoring-kendala/export/excel', [MonitoringController::class, 'exportExcel'])->name('monitoring.export.excel');
     Route::get('/monitoring-kendala/export/pdf', [MonitoringController::class, 'exportPdf'])->name('monitoring.export.pdf');
     Route::post('/monitoring-kendala/{item}/tindak-lanjut', [MonitoringController::class, 'updateTindakLanjut'])->name('monitoring.updateTindakLanjut');
+
+    // Laporan Kerusakan Aset -- tab kedua di Monitoring Kendala, tapi
+    // sumbernya laporan manual dari Detail Aset (biasanya lewat scan QR di
+    // lapangan), bukan checklist Health Check. RBAC & route naming sengaja
+    // di bawah prefix "monitoring.*" biar nav sidebar "Monitoring Kendala"
+    // ikut ke-highlight pas buka tab ini (lihat pattern di layouts/app.blade.php).
+    Route::get('/monitoring-kendala/laporan-aset', [AsetKendalaController::class, 'index'])->name('monitoring.laporanAset.index');
+    Route::post('/aset/{aset}/kendala', [AsetKendalaController::class, 'store'])->name('monitoring.laporanAset.store');
+    Route::post('/aset-kendala/{kendala}/status', [AsetKendalaController::class, 'updateStatus'])->name('monitoring.laporanAset.updateStatus');
 
     // Permintaan Perangkat -- semua role, tapi di-scope EXACT MATCH uker_kode
     // sendiri buat non-admin (BUKAN subtree/turunan kayak Aset/HealthCheck,

@@ -223,7 +223,7 @@ class AsetController extends Controller
     {
         $this->authorize('view', $aset);
 
-        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
+        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
 
         return view('aset.show', compact('aset'));
     }

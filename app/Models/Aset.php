@@ -70,6 +70,11 @@ class Aset extends Model
         return $this->hasMany(AsetEditRequest::class);
     }
 
+    public function laporanKendala()
+    {
+        return $this->hasMany(AsetKendala::class)->latest();
+    }
+
     public function kondisiLogs()
     {
         // orderByDesc('id') sebagai tie-breaker -- beberapa perubahan bisa

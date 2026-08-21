@@ -10,6 +10,11 @@
             <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
         @endif
 
+        <x-page-tabs :tabs="[
+            ['label' => 'Checklist Not OK', 'href' => route('monitoring.index'), 'active' => true],
+            ['label' => 'Laporan Manual Aset', 'href' => route('monitoring.laporanAset.index'), 'active' => false],
+        ]" />
+
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 max-w-3xl">
                 @if ($isAdmin)
