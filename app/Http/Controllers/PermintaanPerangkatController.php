@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\PermintaanPerangkat;
+use App\Models\PermintaanPerangkatStatusLog;
 use App\Models\Uker;
 use App\Models\User;
 use App\Notifications\PermintaanPerangkatDiajukan;
@@ -26,7 +27,9 @@ class PermintaanPerangkatController extends Controller
     {
         $isAdmin = $request->user()->role === 'admin';
 
-        $query = PermintaanPerangkat::with(['uker', 'requester'])->latest();
+        // statusLogs dieager-load biar hariDiStatusIni()/sudahLama() (dipakai
+        // buat badge SLA di tabel) gak nembak query per baris (N+1).
+        $query = PermintaanPerangkat::with(['uker', 'requester', 'statusLogs'])->latest();
 
         if ($isAdmin) {
             if ($request->filled('uker_kode')) {
@@ -81,6 +84,15 @@ class PermintaanPerangkatController extends Controller
             'requested_by' => $request->user()->id,
         ]);
 
+        // Catatan pertama di riwayat status -- status_lama null nandain ini
+        // baru diajukan, sama pola kayak AsetKondisiLog.
+        PermintaanPerangkatStatusLog::create([
+            'permintaan_perangkat_id' => $permintaan->id,
+            'status_lama' => null,
+            'status_baru' => $permintaan->status,
+            'changed_by' => $request->user()->id,
+        ]);
+
         ActivityLog::catat('permintaan_perangkat', 'ajukan', 1, "Permintaan perangkat {$permintaan->no_nota_dinas} diajukan oleh {$request->user()->name}");
         User::where('role', 'admin')->get()->each->notify(new PermintaanPerangkatDiajukan($permintaan));
 
@@ -98,7 +110,22 @@ class PermintaanPerangkatController extends Controller
             'catatan_admin' => 'nullable|string',
         ]);
 
+        $statusLama = $permintaanPerangkat->status;
         $permintaanPerangkat->update($validated);
+
+        // Selalu dicatat, walau status-nya kebetulan gak berubah (misal admin
+        // cuma mau nambah/update catatan) -- beda sama AsetKondisiLog yang
+        // cuma log kalau kondisi BENERAN berubah, karena di sini catatan
+        // admin sendiri (bukan cuma status) udah cukup jadi alasan buat
+        // dicatat, dan kalau enggak, catatan lama bakal ketimpa tanpa jejak.
+        PermintaanPerangkatStatusLog::create([
+            'permintaan_perangkat_id' => $permintaanPerangkat->id,
+            'status_lama' => $statusLama,
+            'status_baru' => $validated['status'],
+            'catatan_admin' => $validated['catatan_admin'] ?? null,
+            'changed_by' => $request->user()->id,
+        ]);
+
         ActivityLog::catat(
             'permintaan_perangkat',
             'update_status',
@@ -127,7 +154,16 @@ class PermintaanPerangkatController extends Controller
 
         $permintaanList = PermintaanPerangkat::whereIn('id', $validated['ids'])->get();
         foreach ($permintaanList as $permintaan) {
+            $statusLama = $permintaan->status;
             $permintaan->update(['status' => $validated['status']]);
+
+            PermintaanPerangkatStatusLog::create([
+                'permintaan_perangkat_id' => $permintaan->id,
+                'status_lama' => $statusLama,
+                'status_baru' => $validated['status'],
+                'changed_by' => $request->user()->id,
+            ]);
+
             $permintaan->requester?->notify(new PermintaanPerangkatStatusDiupdate($permintaan));
         }
 

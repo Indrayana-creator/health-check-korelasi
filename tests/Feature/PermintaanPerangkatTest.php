@@ -344,3 +344,68 @@ test('bulk update status nolak kalau ids kosong atau status gak valid', function
         'status' => 'Ngasal',
     ])->assertSessionHasErrors('status');
 });
+
+test('ajukan permintaan baru otomatis nyatet log status pertama', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->post(route('permintaan-perangkat.store'), [
+        'no_nota_dinas' => 'ND-LOG-001', 'fungsi_requester' => 'RSF', 'jumlah' => 1, 'keterangan' => 'Test log',
+    ]);
+
+    $permintaan = PermintaanPerangkat::where('no_nota_dinas', 'ND-LOG-001')->first();
+    expect($permintaan->statusLogs)->toHaveCount(1);
+    expect($permintaan->statusLogs->first()->status_lama)->toBeNull();
+    expect($permintaan->statusLogs->first()->status_baru)->toBe('Pending IT');
+});
+
+test('update status nyatet riwayat, gak nimpa yang lama', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $permintaan = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT']);
+
+    $this->actingAs($admin)->post(route('permintaan-perangkat.updateStatus', $permintaan), [
+        'status' => 'Pending ESO', 'catatan_admin' => 'Udah diproses IT',
+    ]);
+    $this->actingAs($admin)->post(route('permintaan-perangkat.updateStatus', $permintaan), [
+        'status' => 'Pending LGA', 'catatan_admin' => 'Nunggu approval LGA',
+    ]);
+
+    $logs = $permintaan->fresh()->statusLogs;
+    expect($logs)->toHaveCount(2);
+    expect($logs->last()->status_lama)->toBe('Pending IT');
+    expect($logs->last()->status_baru)->toBe('Pending ESO');
+    expect($logs->first()->status_lama)->toBe('Pending ESO');
+    expect($logs->first()->status_baru)->toBe('Pending LGA');
+    expect($logs->first()->catatan_admin)->toBe('Nunggu approval LGA');
+});
+
+test('bulk update status nyatet riwayat buat tiap permintaan yang dipilih', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $p1 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT']);
+    $p2 = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT']);
+
+    $this->actingAs($admin)->post(route('permintaan-perangkat.bulkUpdateStatus'), [
+        'ids' => [$p1->id, $p2->id], 'status' => 'Pending ESO',
+    ]);
+
+    expect($p1->fresh()->statusLogs->first()->status_baru)->toBe('Pending ESO');
+    expect($p2->fresh()->statusLogs->first()->status_baru)->toBe('Pending ESO');
+});
+
+test('permintaan yang nyangkut lama di satu status ditandai sudahLama()', function () {
+    $uker = Uker::factory()->create();
+    $permintaanLama = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending ESO', 'created_at' => now()->subDays(10)]);
+    $permintaanBaru = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending ESO', 'created_at' => now()->subDays(2)]);
+
+    expect($permintaanLama->fresh()->sudahLama())->toBeTrue();
+    expect($permintaanBaru->fresh()->sudahLama())->toBeFalse();
+});
+
+test('permintaan yang statusnya Done Terkirim gak pernah dianggap sudahLama() walau udah lama', function () {
+    $uker = Uker::factory()->create();
+    $permintaan = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Done Terkirim', 'created_at' => now()->subDays(30)]);
+
+    expect($permintaan->fresh()->sudahLama())->toBeFalse();
+});

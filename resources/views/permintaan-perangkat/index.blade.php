@@ -124,7 +124,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($permintaanList as $p)
-                        <tr class="hover:bg-gray-50" x-data="{ open: false }">
+                        <tr class="hover:bg-gray-50" x-data="{ open: false, riwayatOpen: false }">
                             @if ($isAdmin)
                                 <td class="px-4 py-3">
                                     <input type="checkbox" class="rounded border-gray-300" value="{{ $p->id }}" x-model.number="selected">
@@ -140,11 +140,55 @@
                                 <x-badge :color="match($p->status) { 'Done Terkirim' => 'green', 'Pending LGA' => 'yellow', 'Pending ESO' => 'blue', default => 'gray' }">
                                     {{ $p->status }}
                                 </x-badge>
+                                @if ($p->sudahLama())
+                                    <x-badge color="red" class="ml-1">{{ $p->hariDiStatusIni() }} hari di status ini</x-badge>
+                                @endif
                                 @if ($p->catatan_admin)
                                     <p class="text-[11px] text-gray-400 mt-1 max-w-[180px]">{{ $p->catatan_admin }}</p>
                                 @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
+                                <x-icon-button type="button" variant="neutral" label="Lihat Riwayat" @click="riwayatOpen = true">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                                </x-icon-button>
+
+                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="riwayatOpen = false">
+                                    <div class="bg-white p-6 rounded-2xl max-w-lg w-full text-left">
+                                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Status &mdash; {{ $p->no_nota_dinas }}</h3>
+                                        <p class="text-xs text-gray-400 mb-3.5">{{ $p->uker?->nama }}</p>
+
+                                        @if ($p->statusLogs->isEmpty())
+                                            <p class="text-sm text-gray-400 py-6 text-center">Belum ada riwayat perubahan.</p>
+                                        @else
+                                            <div class="max-h-96 overflow-y-auto space-y-2.5">
+                                                @foreach ($p->statusLogs as $log)
+                                                    <div class="border border-gray-100 rounded-lg p-3 text-sm">
+                                                        <div class="flex items-center justify-between gap-2">
+                                                            <p class="font-semibold text-gray-700">
+                                                                @if ($log->status_lama)
+                                                                    {{ $log->status_lama }} <span class="text-gray-400">&rarr;</span>
+                                                                @else
+                                                                    <span class="text-gray-400 italic">Diajukan</span> <span class="text-gray-400">&rarr;</span>
+                                                                @endif
+                                                                {{ $log->status_baru }}
+                                                            </p>
+                                                            <span class="text-[11px] text-gray-400 whitespace-nowrap">{{ $log->created_at?->format('d M Y H:i') }}</span>
+                                                        </div>
+                                                        <p class="text-gray-400 text-xs mt-1">{{ $log->changedBy?->name ?? '-' }}</p>
+                                                        @if ($log->catatan_admin)
+                                                            <p class="text-gray-600 text-xs mt-1.5">{{ $log->catatan_admin }}</p>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
+                                        @endif
+
+                                        <div class="pt-3">
+                                            <x-button type="button" variant="secondary" @click="riwayatOpen = false">Tutup</x-button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 @if ($isAdmin)
                                     <x-icon-button type="button" variant="edit" label="Update Status" @click="open = true">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
