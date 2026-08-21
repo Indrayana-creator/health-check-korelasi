@@ -722,3 +722,26 @@ test('halaman detail aset nampilin riwayat perubahan kondisi & riwayat permintaa
     $response->assertSee('NORMAL');
     $response->assertSee('Salah ketik merek');
 });
+
+test('admin bisa generate QR code aset manapun', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('aset.qrCode', $aset));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'image/png');
+});
+
+test('user cuma bisa generate QR code aset di subtree sendiri', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $asetSendiri = Aset::factory()->create(['uker_kode' => $ukerSendiri->kode]);
+    $asetLain = Aset::factory()->create(['uker_kode' => $ukerLain->kode]);
+
+    $this->actingAs($user)->get(route('aset.qrCode', $asetSendiri))->assertOk();
+    $this->actingAs($user)->get(route('aset.qrCode', $asetLain))->assertForbidden();
+});

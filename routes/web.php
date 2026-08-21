@@ -50,6 +50,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/aset/sampah', [AsetController::class, 'trash'])->name('aset.trash');
     Route::post('/aset/{id}/restore', [AsetController::class, 'restore'])->name('aset.restore');
     Route::get('/aset/{aset}/kondisi-riwayat', [AsetController::class, 'kondisiRiwayat'])->name('aset.kondisiRiwayat');
+    Route::get('/aset/{aset}/qr', [AsetController::class, 'qrCode'])->name('aset.qrCode');
 
     Route::get('/healthcheck/bulk-upload', [HealthCheckController::class, 'bulkUploadForm'])->name('healthcheck.bulkUploadForm');
     Route::get('/healthcheck/template', [HealthCheckController::class, 'downloadTemplate'])->name('healthcheck.downloadTemplate');

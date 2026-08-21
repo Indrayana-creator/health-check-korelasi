@@ -12,6 +12,10 @@ use App\Models\User;
 use App\Notifications\AsetEditRequestDecided;
 use App\Notifications\AsetEditRequestSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
@@ -215,6 +219,29 @@ class AsetController extends Controller
         $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
 
         return view('aset.show', compact('aset'));
+    }
+
+    // QR code buat ditempel fisik di perangkat -- di-scan langsung buka
+    // halaman Detail aset ini. Sama otorisasinya kayak show() (RBAC subtree),
+    // biar gak ada yang bisa nebak-nebak generate QR aset yang bukan
+    // haknya lewat URL langsung.
+    public function qrCode(Request $request, Aset $aset)
+    {
+        $this->authorize('view', $aset);
+
+        $builder = new Builder(
+            writer: new PngWriter,
+            data: route('aset.show', $aset),
+            encoding: new Encoding('UTF-8'),
+            errorCorrectionLevel: ErrorCorrectionLevel::High,
+            size: 300,
+            margin: 10,
+            labelText: $aset->no_asset,
+        );
+
+        $result = $builder->build();
+
+        return response($result->getString())->header('Content-Type', $result->getMimeType());
     }
 
     public function create(Request $request)

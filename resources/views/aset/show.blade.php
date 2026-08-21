@@ -11,7 +11,7 @@
                 <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
             @endif
 
-            <div class="flex items-center justify-between flex-wrap gap-2">
+            <div class="flex items-center justify-between flex-wrap gap-2 print:hidden">
                 <x-badge :color="match($aset->kondisi) { 'NORMAL' => 'green', 'RUSAK', 'TIDAK LAYAK' => 'red', default => 'gray' }">
                     {{ $aset->kondisi ?? 'Belum Diisi' }}
                 </x-badge>
@@ -26,7 +26,28 @@
                 </div>
             </div>
 
-            <x-card padding="p-6">
+            <x-card padding="p-6" class="print:hidden">
+                <div class="flex items-center justify-between gap-4 flex-wrap">
+                    <div>
+                        <h3 class="font-extrabold text-sm text-gray-800 mb-1">QR Code Aset</h3>
+                        <p class="text-xs text-gray-400">Scan buat langsung buka halaman ini -- cocok ditempel fisik di perangkat.</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <img src="{{ route('aset.qrCode', $aset) }}" alt="QR Code {{ $aset->no_asset }}" class="w-24 h-24 border border-gray-100 rounded-lg">
+                        <x-button type="button" variant="secondary" size="sm" onclick="window.print()">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6v-8z"></path></svg>
+                            Print QR
+                        </x-button>
+                    </div>
+                </div>
+            </x-card>
+
+            <div class="hidden print:block text-center py-8">
+                <img src="{{ route('aset.qrCode', $aset) }}" alt="QR Code {{ $aset->no_asset }}" class="w-56 h-56 mx-auto">
+                <p class="font-mono text-sm mt-2">{{ $aset->no_asset }}</p>
+            </div>
+
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-4">Identitas Aset</h3>
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                     <div>
@@ -70,7 +91,7 @@
                 </div>
             </x-card>
 
-            <x-card padding="p-6">
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-1">Data Pemegang & Keamanan</h3>
                 <p class="text-xs text-gray-400 mb-4">
                     @if (in_array($aset->kodeAset?->kategori, \App\Models\Aset::KATEGORI_PEMEGANG_INDIVIDU))
@@ -131,12 +152,12 @@
                 </div>
             </x-card>
 
-            <x-card padding="p-6">
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-2">Keterangan</h3>
                 <p class="text-sm text-gray-600 whitespace-pre-line">{{ $aset->keterangan ?: '-' }}</p>
             </x-card>
 
-            <x-card padding="p-6">
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Perubahan Kondisi</h3>
                 @if ($aset->kondisiLogs->isEmpty())
                     <p class="text-gray-400 text-sm">Belum ada riwayat perubahan kondisi.</p>
@@ -162,7 +183,7 @@
                 @endif
             </x-card>
 
-            <x-card padding="p-6">
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Permintaan Edit</h3>
                 @if ($aset->editRequests->isEmpty())
                     <p class="text-gray-400 text-sm">Belum ada permintaan edit buat aset ini.</p>
