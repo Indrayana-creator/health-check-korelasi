@@ -7,6 +7,7 @@ use App\Models\Uker;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -130,6 +131,22 @@ class UserController extends Controller
         ActivityLog::catat('user', $aksi, 1, "User {$user->name} (PN {$user->pn}) di-".($user->is_active ? 'aktifkan' : 'nonaktifkan'));
 
         return back()->with('status', $user->is_active ? 'User diaktifkan kembali.' : 'User dinonaktifkan.');
+    }
+
+    // Jaring pengaman buat pembatasan "1 PN cuma 1 sesi aktif" (lihat
+    // LoginRequest::sesiLainAktif()) -- kalau device lama user gak jelas
+    // nasibnya (HP hilang, lupa logout, dst) dan dia gak bisa/gak sempat
+    // konfirmasi paksa-logout sendiri lewat alur /login/confirm, admin bisa
+    // hapus manual semua sesi aktif user itu dari sini, biar dia bisa login
+    // ulang di device baru tanpa nunggu SESSION_LIFETIME (120 menit) habis
+    // sendiri.
+    public function forceLogout(Request $request, User $user)
+    {
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        ActivityLog::catat('user', 'force_logout', 1, "Semua sesi aktif user {$user->name} (PN {$user->pn}) di-logout paksa oleh {$request->user()->name}");
+
+        return back()->with('status', "Semua sesi aktif {$user->name} berhasil di-logout.");
     }
 
     // ===================== EXPORT =====================

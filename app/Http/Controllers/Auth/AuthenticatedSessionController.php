@@ -7,6 +7,9 @@ use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class AuthenticatedSessionController extends Controller
@@ -26,6 +29,32 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
+        $request->session()->regenerate();
+
+        return redirect()->intended(route('dashboard', absolute: false));
+    }
+
+    // Lanjutan dari LoginRequest::authenticate() pas kedapatan sesi lain
+    // masih aktif -- token sekali-pakai udah nandain password bener di
+    // request SEBELUMNYA, jadi di sini gak perlu re-input password lagi.
+    // Begitu dikonfirmasi, semua sesi LAIN milik user itu dihapus dari
+    // tabel sessions (otomatis ke-logout di device lama begitu ada request
+    // berikutnya di sana), baru login diselesaikan di device ini.
+    public function confirmForceLogin(Request $request): RedirectResponse
+    {
+        $request->validate(['token' => 'required|string']);
+
+        $data = Cache::pull("login-confirm:{$request->input('token')}");
+
+        if (! $data) {
+            throw ValidationException::withMessages([
+                'pn' => 'Konfirmasi sudah kedaluwarsa, silakan login ulang.',
+            ]);
+        }
+
+        DB::table('sessions')->where('user_id', $data['user_id'])->delete();
+
+        Auth::loginUsingId($data['user_id'], $data['remember']);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

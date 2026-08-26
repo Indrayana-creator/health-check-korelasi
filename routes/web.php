@@ -133,6 +133,7 @@ Route::middleware('auth')->group(function () {
         Route::get('/users/export/pdf', [UserController::class, 'exportPdf'])->name('users.export.pdf');
         Route::resource('users', UserController::class)->except(['show']);
         Route::post('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggleActive');
+        Route::post('/users/{user}/force-logout', [UserController::class, 'forceLogout'])->name('users.forceLogout');
         Route::get('/rekap-cabang', [RekapController::class, 'index'])->name('rekap.cabang');
         Route::get('/rekap-cabang/export/excel', [RekapController::class, 'exportCabangExcel'])->name('rekap.cabang.export.excel');
         Route::get('/rekap-cabang/export/pdf', [RekapController::class, 'exportCabangPdf'])->name('rekap.cabang.export.pdf');

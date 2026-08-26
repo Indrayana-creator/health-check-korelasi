@@ -63,6 +63,19 @@
 
                     <x-auth-session-status class="mb-4" :status="session('status')" />
 
+                    @if (session('sesi_aktif_token'))
+                        <div class="p-4 bg-yellow-50 border border-yellow-200 rounded-xl">
+                            <p class="text-sm text-yellow-800 mb-3">
+                                Akun ini masih aktif di perangkat lain (aktivitas terakhir {{ session('sesi_aktif_sejak') }}). Lanjutkan login di sini? Sesi di perangkat lain akan otomatis logout.
+                            </p>
+                            <form method="POST" action="{{ route('login.confirm') }}" class="flex flex-wrap gap-2">
+                                @csrf
+                                <input type="hidden" name="token" value="{{ session('sesi_aktif_token') }}">
+                                <button type="submit" class="px-4 py-2 rounded-lg bg-yellow-600 text-white text-sm font-bold hover:bg-yellow-700">Lanjutkan &amp; Logout Sesi Lain</button>
+                                <a href="{{ route('login') }}" class="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50">Batal</a>
+                            </form>
+                        </div>
+                    @else
                     <form method="POST" action="{{ route('login') }}">
                         @csrf
 
@@ -101,6 +114,7 @@
                             </button>
                         </div>
                     </form>
+                    @endif
                 </div>
             </div>
         </div>

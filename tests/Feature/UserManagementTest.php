@@ -3,6 +3,7 @@
 use App\Models\Pekerja;
 use App\Models\Uker;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 test('guest tidak bisa akses kelola user', function () {
     $this->get(route('users.index'))->assertRedirect(route('login'));
@@ -151,6 +152,30 @@ test('admin bisa menonaktifkan dan mengaktifkan lagi user lain, tapi tidak bisa 
 
     $this->actingAs($admin)->post(route('users.toggleActive', $admin))->assertForbidden();
     expect($admin->fresh()->is_active)->toBeTrue();
+});
+
+test('admin bisa logout paksa semua sesi aktif user lain', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $lainnya = User::factory()->forUker($uker->kode)->create();
+
+    DB::table('sessions')->insert([
+        ['id' => 'sesi-1', 'user_id' => $lainnya->id, 'ip_address' => '10.0.0.1', 'user_agent' => 'A', 'payload' => 'x', 'last_activity' => now()->timestamp],
+        ['id' => 'sesi-2', 'user_id' => $lainnya->id, 'ip_address' => '10.0.0.2', 'user_agent' => 'B', 'payload' => 'x', 'last_activity' => now()->timestamp],
+    ]);
+
+    $response = $this->actingAs($admin)->post(route('users.forceLogout', $lainnya));
+
+    $response->assertRedirect();
+    expect(DB::table('sessions')->where('user_id', $lainnya->id)->count())->toBe(0);
+});
+
+test('non-admin tidak bisa akses logout paksa', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $lainnya = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->post(route('users.forceLogout', $lainnya))->assertForbidden();
 });
 
 test('user yang dinonaktifkan tidak bisa login', function () {

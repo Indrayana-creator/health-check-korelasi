@@ -96,6 +96,12 @@
                                     <x-icon-button variant="edit" label="Edit" :href="route('users.edit', $user)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </x-icon-button>
+                                    <form action="{{ route('users.forceLogout', $user) }}" method="POST" class="inline" onsubmit="return confirm('Logout paksa semua sesi aktif {{ $user->name }}? Dia akan otomatis ter-logout dari perangkat manapun yang sedang dipakai.')">
+                                        @csrf
+                                        <x-icon-button variant="neutral" label="Logout Paksa (Semua Sesi)" type="submit">
+                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+                                        </x-icon-button>
+                                    </form>
                                     <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline" onsubmit="return confirm('Hapus user ini?')">
                                         @csrf
                                         @method('DELETE')
