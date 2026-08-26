@@ -104,6 +104,50 @@
             </x-card>
         @endif
 
+        @if (count($trenKondisi) > 1)
+            <x-card>
+                <h3 class="font-extrabold text-sm text-gray-800 mb-1">Tren Perubahan Kondisi Aset</h3>
+                <p class="text-xs text-gray-400 mb-3">Jumlah transisi kondisi per bulan (dari Riwayat Perubahan Kondisi) -- bukan snapshot, tapi ARAH pergerakannya: makin banyak "Baru Rusak" dibanding "Diperbaiki" berarti tren memburuk.</p>
+                <div class="h-64">
+                    <canvas
+                        x-data="{
+                            init() {
+                                new Chart(this.$el, {
+                                    type: 'line',
+                                    data: {
+                                        labels: @js(collect($trenKondisi)->pluck('label')),
+                                        datasets: [
+                                            {
+                                                label: 'Baru Rusak',
+                                                data: @js(collect($trenKondisi)->pluck('baru_rusak')),
+                                                borderColor: '#EF4444',
+                                                backgroundColor: 'rgba(239, 68, 68, .12)',
+                                                fill: true,
+                                                tension: .3,
+                                            },
+                                            {
+                                                label: 'Diperbaiki',
+                                                data: @js(collect($trenKondisi)->pluck('diperbaiki')),
+                                                borderColor: '#22C55E',
+                                                backgroundColor: 'rgba(34, 197, 94, .12)',
+                                                fill: true,
+                                                tension: .3,
+                                            },
+                                        ],
+                                    },
+                                    options: {
+                                        maintainAspectRatio: false,
+                                        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+                                        plugins: { legend: { position: 'bottom' } },
+                                    },
+                                });
+                            }
+                        }"
+                    ></canvas>
+                </div>
+            </x-card>
+        @endif
+
         <x-compliance-legend />
 
         <x-table-scroll-hint />

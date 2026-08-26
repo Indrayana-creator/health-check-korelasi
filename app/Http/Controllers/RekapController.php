@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Aset;
+use App\Models\AsetKondisiLog;
 use App\Models\HealthCheckForm;
 use App\Models\PermintaanPerangkat;
 use App\Support\ComplianceScale;
@@ -327,10 +328,33 @@ class RekapController extends Controller
         return true;
     }
 
+    // Tren perubahan kondisi aset per bulan -- "baru_rusak" (transisi KE
+    // RUSAK/TIDAK LAYAK) vs "diperbaiki" (transisi KE NORMAL), diambil dari
+    // AsetKondisiLog (riwayat perubahan kondisi). BEDA dari distribusi kondisi
+    // di atas yang cuma snapshot SAAT INI -- ini ngukur ARAH pergerakannya
+    // dari waktu ke waktu, biar keliatan makin membaik atau memburuk.
+    protected function trenKondisiAset(): array
+    {
+        return AsetKondisiLog::orderBy('created_at')->get()
+            ->groupBy(fn ($log) => $log->created_at->format('Y-m'))
+            ->map(function ($logsBulan, $bulan) {
+                return [
+                    'bulan' => $bulan,
+                    'label' => Carbon::createFromFormat('Y-m', $bulan)->locale('id')->translatedFormat('M Y'),
+                    'baru_rusak' => $logsBulan->whereIn('kondisi_baru', ['RUSAK', 'TIDAK LAYAK'])->count(),
+                    'diperbaiki' => $logsBulan->where('kondisi_baru', 'NORMAL')->count(),
+                ];
+            })
+            ->sortBy('bulan')
+            ->values()
+            ->all();
+    }
+
     public function aset(Request $request)
     {
         $asetList = Aset::with('uker')->get();
         $rekap = $this->rekapAsetPerCabang();
+        $trenKondisi = $this->trenKondisiAset();
 
         $totalCabang = $rekap->count();
         $avgPersenSehat = $totalCabang > 0 ? round($rekap->avg('persen_sehat'), 1) : 0;
@@ -347,7 +371,7 @@ class RekapController extends Controller
             'Lainnya' => $asetList->whereNotIn('kondisi', ['NORMAL', 'RUSAK', 'TIDAK LAYAK'])->count(),
         ];
 
-        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'avgPersenLengkap', 'totalPerluPerhatian', 'distribusiKondisi'));
+        return view('rekap.aset', compact('rekap', 'totalCabang', 'avgPersenSehat', 'avgPersenLengkap', 'totalPerluPerhatian', 'distribusiKondisi', 'trenKondisi'));
     }
 
     // Rekap Permintaan Perangkat per MINGGU (Senin-Jumat), bisa navigasi

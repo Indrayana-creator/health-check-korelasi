@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Aset;
+use App\Models\AsetKondisiLog;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\KodeAset;
@@ -186,6 +187,30 @@ test('rekap aset ngitung persentase kelengkapan data per cabang', function () {
 
     // 2 dari 3 aset lengkap = 66.7%
     expect($rekap['persen_lengkap'])->toBe(66.7);
+});
+
+test('rekap aset ngitung tren perubahan kondisi per bulan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset1 = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    $aset2 = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    // created_at bukan mass-assignable (log ini insert-only, timestamp-nya
+    // seharusnya selalu "now" di kondisi normal) -- forceFill dipakai di sini
+    // biar bisa nyimulasiin data BULAN LALU buat tes tren lintas periode.
+    AsetKondisiLog::create(['aset_id' => $aset1->id, 'kondisi_lama' => 'NORMAL', 'kondisi_baru' => 'RUSAK', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->startOfMonth()])->save();
+    AsetKondisiLog::create(['aset_id' => $aset2->id, 'kondisi_lama' => 'RUSAK', 'kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->subMonth()->startOfMonth()])->save();
+
+    $response = $this->actingAs($admin)->get(route('rekap.aset'));
+
+    $response->assertOk();
+    $tren = $response->viewData('trenKondisi');
+    expect($tren)->toHaveCount(2);
+    expect(collect($tren)->firstWhere('bulan', now()->format('Y-m'))['baru_rusak'])->toBe(1);
+    expect(collect($tren)->firstWhere('bulan', now()->subMonth()->format('Y-m'))['diperbaiki'])->toBe(1);
 });
 
 // ===================== Export =====================
