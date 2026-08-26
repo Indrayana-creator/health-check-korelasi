@@ -106,6 +106,7 @@
             <table class="min-w-full divide-y divide-gray-100">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Foto</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kategori</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Item Bermasalah</th>
@@ -122,6 +123,15 @@
                             $melewatiSla = $item->status_tindak_lanjut === 'Sedang Diproses' && \App\Http\Controllers\MonitoringController::itemMelewatiSlaDiproses($item);
                         @endphp
                         <tr class="hover:bg-gray-50 {{ ($mendesak || $melewatiSla) ? 'border-l-2 border-l-red-400' : '' }}" x-data="{ open: false, riwayatOpen: false }">
+                            <td class="px-4 py-3">
+                                @if ($item->foto_url)
+                                    <a href="{{ $item->foto_url }}" target="_blank" rel="noopener">
+                                        <img src="{{ $item->foto_url }}" alt="Foto bukti" class="w-12 h-12 rounded-lg object-cover border border-gray-100">
+                                    </a>
+                                @else
+                                    <span class="text-gray-300 text-xs">-</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $item->form?->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $item->kategori }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700 max-w-xs">
@@ -230,7 +240,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-10 text-center">
+                            <td colspan="8" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M20 6L9 17l-5-5"></path></svg>
                                 <p class="text-gray-400 text-sm">Gak ada item bermasalah -- semua aman.</p>
                             </td>

@@ -5,6 +5,7 @@ use App\Models\HealthCheckItem;
 use App\Models\Uker;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -227,6 +228,82 @@ test('dokumentasi visual (kategori E) bisa disimpan dan tampil ulang', function 
     $this->actingAs($user)->get(route('healthcheck.edit', $form))
         ->assertOk()
         ->assertSee('https://contoh.com/foto-ruang-server.jpg', false);
+});
+
+test('item checklist bisa dilampirin foto bukti kondisi fisik', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+    $foto = UploadedFile::fake()->image('rak-server.jpg');
+
+    $response = $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [
+            ['id' => $item->id, 'status' => 'Not OK', 'catatan' => 'Rak terbuka tanpa pencatatan', 'foto' => $foto],
+        ],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    $response->assertRedirect(route('healthcheck.index'));
+    $item->refresh();
+    expect($item->foto_path)->not->toBeNull();
+    Storage::disk('public')->assertExists($item->foto_path);
+    expect($item->foto_url)->toContain($item->foto_path);
+});
+
+test('ganti foto item checklist ngehapus foto lama dari disk', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'Not OK', 'foto' => UploadedFile::fake()->image('foto-lama.jpg')]],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+    $fotoLama = $item->refresh()->foto_path;
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'Not OK', 'foto' => UploadedFile::fake()->image('foto-baru.jpg')]],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+    $item->refresh();
+
+    expect($item->foto_path)->not->toBe($fotoLama);
+    Storage::disk('public')->assertMissing($fotoLama);
+    Storage::disk('public')->assertExists($item->foto_path);
+});
+
+test('item Not OK dengan foto muncul di halaman Monitoring Kendala', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'Not OK', 'foto' => UploadedFile::fake()->image('bukti.jpg')]],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    $response = $this->actingAs($user)->get(route('monitoring.index'));
+
+    $response->assertOk();
+    $response->assertSee($item->fresh()->foto_url, false);
 });
 
 test('compliance persen tidak berubah baik dokumentasi visual diisi maupun tidak', function () {

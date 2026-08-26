@@ -13,6 +13,7 @@ use App\Notifications\HealthCheckSubmittedForApproval;
 use App\Support\PeriodeMingguan;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -168,6 +169,7 @@ class HealthCheckController extends Controller
             'items.*.id' => 'required|integer|exists:health_check_items,id',
             'items.*.status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
             'items.*.catatan' => 'nullable|string',
+            'items.*.foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',
             'foto_ruang_server_url' => 'nullable|string|max:2048',
@@ -188,7 +190,7 @@ class HealthCheckController extends Controller
         // proses approval datanya.
         if ($healthcheck->itemsBisaDiedit()) {
             $jumlahBaruBermasalah = 0;
-            foreach ($validated['items'] as $itemInput) {
+            foreach ($validated['items'] as $index => $itemInput) {
                 $item = HealthCheckItem::where('id', $itemInput['id'])
                     ->where('health_check_form_id', $healthcheck->id)
                     ->first();
@@ -197,9 +199,21 @@ class HealthCheckController extends Controller
                     $jumlahBaruBermasalah++;
                 }
 
+                $fotoPath = $item?->foto_path;
+                // Foto lama dihapus dari disk begitu diganti yang baru -- biar
+                // gak numpuk file yatim (foto_path di DB udah ketimpa, tapi
+                // filenya masih nyangkut di storage) tiap kali item diedit ulang.
+                if ($item && $request->hasFile("items.{$index}.foto")) {
+                    if ($fotoPath) {
+                        Storage::disk('public')->delete($fotoPath);
+                    }
+                    $fotoPath = $request->file("items.{$index}.foto")->store('healthcheck-item', 'public');
+                }
+
                 $item?->update([
                     'status' => $itemInput['status'],
                     'catatan' => $itemInput['catatan'] ?? null,
+                    'foto_path' => $fotoPath,
                 ]);
             }
 

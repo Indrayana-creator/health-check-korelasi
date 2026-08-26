@@ -3,7 +3,6 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Storage;
 
 // Laporan kerusakan yang dikirim LANGSUNG dari halaman Detail Aset (biasanya
 // abis scan QR di fisik perangkat), lengkap sama foto -- beda dari Monitoring
@@ -30,8 +29,13 @@ class AsetKendala extends Model
         return $this->belongsTo(User::class, 'reported_by');
     }
 
+    // asset(), bukan Storage::disk('public')->url() -- yang terakhir bikin
+    // URL dari APP_URL statis di config (biasanya "localhost"), gak ngikutin
+    // host request yang beneran dipakai buka app (mis. IP LAN pas diakses
+    // dari HP). asset() otomatis ngikutin host request kalau ASSET_URL gak
+    // di-set.
     public function getFotoUrlAttribute(): ?string
     {
-        return $this->foto_path ? Storage::disk('public')->url($this->foto_path) : null;
+        return $this->foto_path ? asset('storage/'.$this->foto_path) : null;
     }
 }

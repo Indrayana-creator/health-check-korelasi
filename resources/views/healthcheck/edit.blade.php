@@ -66,7 +66,7 @@
             @endif
             </div>
 
-            <form action="{{ route('healthcheck.update', $healthcheck) }}" method="POST" class="space-y-5">
+            <form action="{{ route('healthcheck.update', $healthcheck) }}" method="POST" class="space-y-5" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
@@ -217,6 +217,24 @@
                                                     x-show="status === 'Not OK'"
                                                     :readonly="!$editable"
                                                 />
+                                            </div>
+
+                                            {{-- Foto bukti kondisi fisik -- opsional, ganti foto lama kalau
+                                                 upload baru (dihandle di controller). --}}
+                                            <div class="flex items-center gap-2.5 mt-2.5">
+                                                @if ($item->foto_url)
+                                                    <a href="{{ $item->foto_url }}" target="_blank" rel="noopener">
+                                                        <img src="{{ $item->foto_url }}" alt="Foto bukti" class="w-10 h-10 rounded-lg object-cover border border-gray-100">
+                                                    </a>
+                                                @endif
+                                                @if ($editable)
+                                                    <input
+                                                        type="file"
+                                                        name="items[{{ $globalIndex }}][foto]"
+                                                        accept="image/*"
+                                                        class="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border file:border-gray-200 file:bg-white file:text-xs file:font-semibold file:text-gray-600 hover:file:bg-gray-50"
+                                                    >
+                                                @endif
                                             </div>
                                         </div>
                                         @php $globalIndex++; @endphp
