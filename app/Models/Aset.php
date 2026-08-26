@@ -86,6 +86,13 @@ class Aset extends Model
             ->orderByDesc('id');
     }
 
+    public function mutasiLogs()
+    {
+        return $this->hasMany(AsetMutasiLog::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     // Admin selalu bisa edit tanpa perlu izin. User biasa cuma bisa edit
     // kalau ada permintaan yang sudah Disetujui dan belum pernah dipakai.
     public function bisaDiedit(User $user): bool

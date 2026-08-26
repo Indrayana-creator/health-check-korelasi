@@ -219,6 +219,28 @@
             </x-card>
 
             <x-card padding="p-6" class="print:hidden">
+                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Mutasi Uker</h3>
+                @if ($aset->mutasiLogs->isEmpty())
+                    <p class="text-gray-400 text-sm">Belum pernah dipindah ke Uker lain.</p>
+                @else
+                    <div class="space-y-2.5">
+                        @foreach ($aset->mutasiLogs as $log)
+                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
+                                <div>
+                                    <p class="font-semibold text-gray-700">
+                                        {{ $log->ukerLama?->nama ?? '(tidak diketahui)' }}
+                                        <span class="mx-1 text-gray-400">&rarr;</span>
+                                        {{ $log->ukerBaru?->nama }}
+                                    </p>
+                                    <p class="text-gray-400 text-xs mt-0.5">{{ $log->changedBy?->name ?? '-' }} &middot; {{ $log->created_at?->format('d M Y H:i') }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-card>
+
+            <x-card padding="p-6" class="print:hidden">
                 <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Permintaan Edit</h3>
                 @if ($aset->editRequests->isEmpty())
                     <p class="text-gray-400 text-sm">Belum ada permintaan edit buat aset ini.</p>

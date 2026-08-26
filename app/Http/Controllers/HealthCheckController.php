@@ -445,7 +445,7 @@ class HealthCheckController extends Controller
         }
 
         if ($berhasil > 0) {
-            ActivityLog::catat('health_check', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}");
+            ActivityLog::catat('health_check', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}", $gagal ?: null);
         }
 
         $totalItemPerForm = collect(config('health_check_checklist'))->flatten()->count();

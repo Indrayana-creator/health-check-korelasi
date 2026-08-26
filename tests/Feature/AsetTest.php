@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
 use App\Models\AsetKondisiLog;
@@ -127,6 +128,50 @@ test('SN yang sama tetap boleh dipakai kalau aset lama sudah di-soft-delete', fu
 
     $response->assertRedirect(route('aset.index'));
     expect(Aset::where('sn', 'SN-BEKAS')->count())->toBe(1);
+});
+
+test('pindahin aset ke uker lain otomatis kecatat di riwayat mutasi', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerAsal = Uker::factory()->create();
+    $ukerTujuan = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $ukerAsal->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($ukerTujuan, $kodeAset));
+
+    $aset->refresh();
+    expect($aset->uker_kode)->toBe($ukerTujuan->kode);
+    expect($aset->mutasiLogs)->toHaveCount(1);
+    expect($aset->mutasiLogs->first()->uker_kode_lama)->toBe($ukerAsal->kode);
+    expect($aset->mutasiLogs->first()->uker_kode_baru)->toBe($ukerTujuan->kode);
+    expect($aset->mutasiLogs->first()->changed_by)->toBe($admin->id);
+});
+
+test('update aset tanpa ganti uker gak nambah riwayat mutasi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'merek' => 'Dell']);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($uker, $kodeAset, ['merek' => 'HP']));
+
+    expect($aset->fresh()->mutasiLogs)->toHaveCount(0);
+});
+
+test('riwayat mutasi uker tampil di halaman detail aset', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerAsal = Uker::factory()->create(['nama' => 'KC Asal']);
+    $ukerTujuan = Uker::factory()->create(['nama' => 'KC Tujuan']);
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $ukerAsal->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $this->actingAs($admin)->put(route('aset.update', $aset), asetPayload($ukerTujuan, $kodeAset));
+
+    $response = $this->actingAs($admin)->get(route('aset.show', $aset));
+
+    $response->assertOk();
+    $response->assertSee('KC Asal');
+    $response->assertSee('KC Tujuan');
 });
 
 test('update aset boleh simpan ulang SN miliknya sendiri tanpa dianggap duplikat', function () {
@@ -356,6 +401,39 @@ test('bulk upload aset berhasil menambahkan aset dari file valid', function () {
     $response->assertRedirect();
     $response->assertSessionHas('status');
     expect(Aset::where('sn', 'SN-BULK-001')->exists())->toBeTrue();
+});
+
+test('bulk upload aset dengan baris gagal kecatat detailnya di activity log', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create(['kategori' => 'PRINTER & SCANNER']);
+
+    $file = buatFileXlsx([
+        ['uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset', 'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus', 'keterangan'],
+        [$uker->kode, $kodeAset->kode, 'Epson', 'L3110', 'SN-BULK-OK', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+        [$uker->kode, 'KODE-GAK-ADA', 'Epson', 'L3110', 'SN-BULK-GAGAL', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+    ]);
+
+    $this->actingAs($admin)->post(route('aset.bulkUpload'), ['file' => $file]);
+
+    $log = ActivityLog::where('modul', 'aset')->where('aksi', 'upload_massal')->latest()->first();
+    expect($log)->not->toBeNull();
+    expect($log->jumlah_baris)->toBe(1);
+    expect($log->detail_gagal)->toBeArray();
+    expect($log->detail_gagal)->toHaveCount(1);
+    expect($log->detail_gagal[0])->toContain('KODE-GAK-ADA');
+});
+
+test('riwayat baris gagal upload massal tampil di halaman Log History', function () {
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin);
+    ActivityLog::catat('aset', 'upload_massal', 1, 'Upload massal dari file: test.xlsx', ['Baris 3: kode aset XX tidak ditemukan di master']);
+
+    $response = $this->get(route('log-history.index'));
+
+    $response->assertOk();
+    $response->assertSee('Lihat 1 baris gagal');
+    $response->assertSee('Baris 3: kode aset XX tidak ditemukan di master');
 });
 
 test('bulk upload aset ditolak kalau header file gak sesuai template', function () {

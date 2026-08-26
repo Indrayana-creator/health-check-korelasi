@@ -105,7 +105,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($logs as $log)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-gray-50" x-data="{ open: false }">
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $log->created_at->format('d M Y H:i') }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $log->user?->name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $log->modul)) }}</td>
@@ -113,7 +113,20 @@
                                 <x-badge :color="$aksiWarna($log->aksi)">{{ str_replace('_', ' ', $log->aksi) }}</x-badge>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $log->jumlah_baris }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-500">{{ $log->keterangan }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-500 max-w-sm">
+                                {{ $log->keterangan }}
+                                @if (! empty($log->detail_gagal))
+                                    <button type="button" @click="open = !open" class="block mt-1 text-xs font-semibold text-red-600 hover:underline">
+                                        <span x-show="!open">Lihat {{ count($log->detail_gagal) }} baris gagal</span>
+                                        <span x-show="open" x-cloak>Sembunyikan baris gagal</span>
+                                    </button>
+                                    <ul x-show="open" x-cloak class="mt-1.5 space-y-1 text-xs text-red-500 list-disc list-inside">
+                                        @foreach ($log->detail_gagal as $alasan)
+                                            <li>{{ $alasan }}</li>
+                                        @endforeach
+                                    </ul>
+                                @endif
+                            </td>
                         </tr>
                     @empty
                         <tr>

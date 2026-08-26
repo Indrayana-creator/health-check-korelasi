@@ -48,7 +48,7 @@ class LogHistoryController extends Controller
 
     protected function exportHeaders(): array
     {
-        return ['Waktu', 'User', 'Modul', 'Aksi', 'Jumlah Baris', 'Keterangan'];
+        return ['Waktu', 'User', 'Modul', 'Aksi', 'Jumlah Baris', 'Keterangan', 'Baris Gagal'];
     }
 
     protected function exportRow(ActivityLog $log): array
@@ -60,6 +60,7 @@ class LogHistoryController extends Controller
             $log->aksi,
             $log->jumlah_baris,
             $log->keterangan,
+            $log->detail_gagal ? implode(' | ', $log->detail_gagal) : null,
         ];
     }
 
@@ -73,7 +74,7 @@ class LogHistoryController extends Controller
 
         $headers = $this->exportHeaders();
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:G1')->getFont()->setBold(true);
 
         $row = 2;
         foreach ($logs as $log) {
@@ -81,7 +82,7 @@ class LogHistoryController extends Controller
             $row++;
         }
 
-        foreach (range('A', 'F') as $col) {
+        foreach (range('A', 'G') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 

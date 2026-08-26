@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
 use App\Models\AsetKondisiLog;
+use App\Models\AsetMutasiLog;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
@@ -223,7 +224,7 @@ class AsetController extends Controller
     {
         $this->authorize('view', $aset);
 
-        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
+        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'mutasiLogs.changedBy', 'mutasiLogs.ukerLama', 'mutasiLogs.ukerBaru', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
 
         return view('aset.show', compact('aset'));
     }
@@ -311,6 +312,7 @@ class AsetController extends Controller
         $this->authorize('assignToUker', [Aset::class, $validated['uker_kode']]);
 
         $kondisiLama = $aset->kondisi;
+        $ukerKodeLama = $aset->uker_kode;
 
         // ASET ID gak diregenerate saat edit, biar ID-nya tetap sama sepanjang umur aset
         $aset->update($validated);
@@ -321,6 +323,17 @@ class AsetController extends Controller
                 'aset_id' => $aset->id,
                 'kondisi_lama' => $kondisiLama,
                 'kondisi_baru' => $aset->kondisi,
+                'changed_by' => $request->user()->id,
+            ]);
+        }
+
+        // Riwayat mutasi -- dicatat begitu aset dipindah ke Uker lain, biar
+        // ketauan cabang mana aja yang pernah kepegang aset ini & kapan.
+        if ($ukerKodeLama !== $aset->uker_kode) {
+            AsetMutasiLog::create([
+                'aset_id' => $aset->id,
+                'uker_kode_lama' => $ukerKodeLama,
+                'uker_kode_baru' => $aset->uker_kode,
                 'changed_by' => $request->user()->id,
             ]);
         }
@@ -669,7 +682,7 @@ class AsetController extends Controller
         }
 
         if ($berhasil > 0) {
-            ActivityLog::catat('aset', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}");
+            ActivityLog::catat('aset', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}", $gagal ?: null);
         }
 
         return back()->with('status', "Upload massal selesai: {$berhasil} aset berhasil ditambahkan.")
