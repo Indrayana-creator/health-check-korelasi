@@ -16,7 +16,7 @@ class AsetPolicy
     {
         return $user->role === 'admin' || in_array($aset->uker_kode, Uker::descendantKodes($user->uker_kode))
             ? Response::allow()
-            : Response::deny('Anda tidak punya akses ke aset ini.');
+            : Response::deny('Maaf, aset ini bukan wewenang cabang Anda -- di luar cabang sendiri atau unit di bawahnya.');
     }
 
     public function update(User $user, Aset $aset): Response

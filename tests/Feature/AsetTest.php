@@ -809,6 +809,20 @@ test('user cuma bisa lihat detail aset di subtree sendiri', function () {
     $this->actingAs($user)->get(route('aset.show', $asetLain))->assertForbidden();
 });
 
+test('halaman 403 nampilin pesan wewenang cabang & tombol kembali ke dashboard', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $asetLain = Aset::factory()->create(['uker_kode' => $ukerLain->kode]);
+
+    $response = $this->actingAs($user)->get(route('aset.show', $asetLain));
+
+    $response->assertForbidden();
+    $response->assertSee('Bukan Wewenang Anda');
+    $response->assertSee('bukan wewenang cabang Anda');
+    $response->assertSee(route('dashboard'), false);
+});
+
 test('halaman detail aset nampilin riwayat perubahan kondisi & riwayat permintaan edit', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
