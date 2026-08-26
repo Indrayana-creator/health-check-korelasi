@@ -193,6 +193,51 @@ test('tab Ranking Terendah TIDAK muncul buat non-admin, panel Belum Isi HC/Belum
     $response->assertDontSee('Ranking Terendah');
 });
 
+// ===================== Cabang Terbaik Bulan Ini =====================
+
+test('cabang terbaik bulan ini ranking 3 cabang tertinggi dari compliance bulan berjalan', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerA = Uker::factory()->create(['uker_spv' => 'Cabang A']);
+    $ukerB = Uker::factory()->create(['uker_spv' => 'Cabang B']);
+    $ukerC = Uker::factory()->create(['uker_spv' => 'Cabang C']);
+    $ukerD = Uker::factory()->create(['uker_spv' => 'Cabang D']);
+
+    $formA = HealthCheckForm::factory()->create(['uker_kode' => $ukerA->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(10)->create(['health_check_form_id' => $formA->id, 'status' => 'OK']);
+
+    $formB = HealthCheckForm::factory()->create(['uker_kode' => $ukerB->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(5)->create(['health_check_form_id' => $formB->id, 'status' => 'OK']);
+    HealthCheckItem::factory()->count(5)->create(['health_check_form_id' => $formB->id, 'status' => 'Not OK']);
+
+    $formC = HealthCheckForm::factory()->create(['uker_kode' => $ukerC->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formC->id, 'status' => 'OK']);
+    HealthCheckItem::factory()->count(8)->create(['health_check_form_id' => $formC->id, 'status' => 'Not OK']);
+
+    // Cabang D cuma ada form BULAN LALU -- gak boleh ikut keitung di ranking bulan ini
+    $formD = HealthCheckForm::factory()->create(['uker_kode' => $ukerD->kode, 'tanggal_pemeriksaan' => now()->subMonth()]);
+    HealthCheckItem::factory()->count(10)->create(['health_check_form_id' => $formD->id, 'status' => 'OK']);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    $ranking = $response->viewData('cabangTerbaikBulanIni');
+    expect($ranking)->toHaveCount(3);
+    expect($ranking[0]['cabang'])->toBe('Cabang A');
+    expect($ranking[0]['persen'])->toBe(100.0);
+    expect($ranking->pluck('cabang'))->not->toContain('Cabang D');
+});
+
+test('user biasa gak dapet data cabang terbaik bulan ini (khusus admin)', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($user)->get(route('dashboard'));
+
+    $response->assertOk();
+    expect($response->viewData('cabangTerbaikBulanIni'))->toBeEmpty();
+    $response->assertDontSee('Cabang Terbaik');
+});
+
 // ===================== Aktivitas Terbaru (dipersempit ke event actionable) =====================
 
 test('aktivitas terbaru TIDAK nampilin aset baru ditambahkan atau form HC baru dibuat (rutin, gak actionable)', function () {

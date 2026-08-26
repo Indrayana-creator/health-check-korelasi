@@ -313,6 +313,39 @@ class DashboardController extends Controller
                 ->get();
         }
 
+        // ===== 2b. Cabang Terbaik Bulan Ini (khusus admin) =====
+        // Beda dari $rankingCabang di atas (yang nunjukin FORM per-form
+        // paling rendah, buat dikejar) -- ini roll-up per CABANG (uker_spv,
+        // sama pola kayak RekapController::rekapPerCabang()) dari compliance
+        // BULAN INI aja, buat ngasih apresiasi/gamifikasi ke cabang yang lagi
+        // paling rajin & rapi, bukan buat nyari yang bermasalah.
+        $cabangTerbaikBulanIni = collect();
+        if ($isAdmin) {
+            $awalBulan = now()->copy()->startOfMonth();
+            $akhirBulan = now()->copy()->endOfMonth();
+
+            $cabangTerbaikBulanIni = HealthCheckForm::with(['uker', 'items'])
+                ->whereBetween('tanggal_pemeriksaan', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
+                ->get()
+                ->groupBy(fn ($form) => $form->uker?->uker_spv ?? 'Tidak diketahui')
+                ->map(function ($formsDalamCabang, $namaCabang) {
+                    $totalItem = $formsDalamCabang->sum(fn ($f) => $f->items->count());
+                    $totalOk = $formsDalamCabang->sum(fn ($f) => $f->items->where('status', 'OK')->count());
+
+                    return [
+                        'cabang' => $namaCabang,
+                        'persen' => $totalItem > 0 ? round($totalOk / $totalItem * 100, 1) : 0,
+                        'jumlah_uker_lapor' => $formsDalamCabang->pluck('uker_kode')->unique()->count(),
+                    ];
+                })
+                // Cabang tanpa item yang beneran keperiksa (0%) gak layak
+                // masuk "terbaik", walau kebetulan ikut nge-generate form.
+                ->filter(fn ($c) => $c['persen'] > 0)
+                ->sortByDesc('persen')
+                ->take(3)
+                ->values();
+        }
+
         // "Belum Isi HC" & "Belum Ada Aset" -- berlaku buat SEMUA role, cuma
         // cakupan uker-nya beda: admin dari semua uker, non-admin cuma dari
         // subtree sendiri (Uker::descendantKodes(), reuse yang sama dipakai
@@ -406,7 +439,7 @@ class DashboardController extends Controller
 
         return view('dashboard', compact(
             'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'asetBaruMingguIni', 'formBaruMingguIni', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
-            'rankingCabang', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
+            'rankingCabang', 'cabangTerbaikBulanIni', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }
 }

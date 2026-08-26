@@ -366,6 +366,7 @@
                         <div class="flex gap-1 bg-gray-100 p-1 rounded-[10px]">
                             @if ($isAdmin)
                                 <button type="button" @click="tab = 'ranking'" :class="tab === 'ranking' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Ranking Terendah</button>
+                                <button type="button" @click="tab = 'terbaik'" :class="tab === 'terbaik' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Cabang Terbaik</button>
                             @endif
                             <button type="button" @click="tab = 'belum-isi'" :class="tab === 'belum-isi' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Belum Isi HC</button>
                             <button type="button" @click="tab = 'belum-aset'" :class="tab === 'belum-aset' ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500'" class="px-3.5 py-1.5 rounded-lg text-xs font-bold transition">Belum Ada Aset</button>
@@ -389,6 +390,32 @@
                                                 <x-badge :color="\App\Support\ComplianceScale::badgeColor($r['persen'])">
                                                     {{ $r['persen'] }}%
                                                 </x-badge>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+
+                            <div x-show="tab === 'terbaik'" x-cloak>
+                                <p class="text-xs text-gray-500 mb-3">Rata-rata compliance Health Check bulan ini per cabang (uker_spv), minimal 1 item sudah diperiksa.</p>
+                                @if ($cabangTerbaikBulanIni->isEmpty())
+                                    <p class="text-sm text-gray-400">Belum ada data health check bulan ini.</p>
+                                @else
+                                    <div class="flex flex-col">
+                                        @foreach ($cabangTerbaikBulanIni as $i => $c)
+                                            @php
+                                                $medali = ['🥇', '🥈', '🥉'][$i] ?? '';
+                                                $warnaMedali = ['text-yellow-500', 'text-gray-400', 'text-orange-400'][$i] ?? 'text-gray-400';
+                                            @endphp
+                                            <div class="flex items-center justify-between text-sm border-b border-gray-100 py-2.5 last:border-0">
+                                                <div class="flex items-center gap-2.5">
+                                                    <span class="text-lg leading-none {{ $warnaMedali }}">{{ $medali }}</span>
+                                                    <div>
+                                                        <p class="font-semibold text-gray-700">{{ $c['cabang'] }}</p>
+                                                        <p class="text-gray-400 text-xs">{{ $c['jumlah_uker_lapor'] }} uker lapor bulan ini</p>
+                                                    </div>
+                                                </div>
+                                                <x-badge color="green">{{ $c['persen'] }}%</x-badge>
                                             </div>
                                         @endforeach
                                     </div>
