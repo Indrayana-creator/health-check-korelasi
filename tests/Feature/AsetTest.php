@@ -130,6 +130,29 @@ test('SN yang sama tetap boleh dipakai kalau aset lama sudah di-soft-delete', fu
     expect(Aset::where('sn', 'SN-BEKAS')->count())->toBe(1);
 });
 
+test('filter perlu_dicek_ulang cuma nampilin aset yang kondisinya belum diverifikasi >6 bulan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    $asetLama = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'no_asset' => 'ASET-LAMA']);
+    $asetLama->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->subDays(200)])->save();
+
+    $asetBaru = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'no_asset' => 'ASET-BARU']);
+    $asetBaru->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->subDays(5)])->save();
+
+    $asetTanpaLog = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'no_asset' => 'ASET-TANPA-LOG']);
+
+    $response = $this->actingAs($admin)->get(route('aset.index', ['perlu_dicek_ulang' => 1]));
+
+    $response->assertOk();
+    $response->assertSee('ASET-LAMA');
+    $response->assertSee('ASET-TANPA-LOG');
+    $response->assertDontSee('ASET-BARU');
+});
+
 test('pindahin aset ke uker lain otomatis kecatat di riwayat mutasi', function () {
     $admin = User::factory()->admin()->create();
     $ukerAsal = Uker::factory()->create();

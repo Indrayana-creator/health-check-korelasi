@@ -101,7 +101,7 @@
                 </x-select>
                 <div class="flex gap-2">
                     <x-button type="submit" size="sm">Terapkan</x-button>
-                    @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori'))
+                    @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori') || request('perlu_dicek_ulang'))
                         <x-button variant="secondary" size="sm" :href="route('aset.index')">Reset</x-button>
                     @endif
                 </div>
@@ -179,7 +179,7 @@
                         <tr>
                             <td colspan="9" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8"></path></svg>
-                                @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori'))
+                                @if (request('q') || request('uker_kode') || request('kondisi') || request('kategori') || request('perlu_dicek_ulang'))
                                     <p class="text-gray-400 text-sm mb-3">Gak ada aset yang cocok dengan filter ini.</p>
                                     <x-button variant="secondary" size="sm" :href="route('aset.index')">Reset Filter</x-button>
                                 @else

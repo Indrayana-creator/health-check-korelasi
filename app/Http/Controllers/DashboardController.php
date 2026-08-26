@@ -228,6 +228,28 @@ class DashboardController extends Controller
         }
 
         $totalAset = $asetQuery->count();
+
+        // Aset yang kondisinya belum pernah diverifikasi ulang lebih dari
+        // AMBANG_HARI_ASET_STALE hari -- termasuk yang belum PUNYA riwayat
+        // kondisi sama sekali (khas aset hasil bulk upload lama). Dicek
+        // SETELAH $asetQuery discope di atas biar konsisten sama batasan
+        // RBAC yang sama (admin: semua, non-admin: subtree sendiri).
+        $asetPerluDicekUlang = (clone $asetQuery)
+            ->whereDoesntHave(
+                'kondisiLogs',
+                fn ($q) => $q->where('created_at', '>=', now()->subDays(AsetController::AMBANG_HARI_ASET_STALE))
+            )
+            ->count();
+        if ($asetPerluDicekUlang > 0) {
+            $aksiPerlu->push([
+                'label' => $isAdmin
+                    ? 'Aset belum pernah dicek ulang kondisinya (>6 bulan)'
+                    : 'Aset di uker Anda belum pernah dicek ulang kondisinya (>6 bulan)',
+                'jumlah' => $asetPerluDicekUlang,
+                'href' => route('aset.index', ['perlu_dicek_ulang' => 1]),
+                'icon' => 'M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z',
+            ]);
+        }
         $formList = $formQuery->get();
         $totalFormHc = $formList->count();
 

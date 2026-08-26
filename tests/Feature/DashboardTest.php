@@ -459,6 +459,32 @@ test('widget Perlu Tindakan Anda misahin angka Kendala Melewati SLA dari Belum D
     expect($slaEntry['href'])->toBe(route('monitoring.index', ['melewati_sla' => 1]));
 });
 
+test('widget Perlu Tindakan Anda nampilin aset yang belum pernah dicek ulang lebih dari 6 bulan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    // Punya kondisiLog, tapi udah lebih dari 180 hari -- HARUS kehitung
+    $asetLama = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    $asetLama->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->subDays(200)])->save();
+
+    // Baru dicek minggu lalu -- HARUS gak kehitung
+    $asetBaru = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    $asetBaru->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id])
+        ->forceFill(['created_at' => now()->subDays(5)])->save();
+
+    // Gak punya kondisiLog sama sekali (khas hasil bulk upload lama) -- HARUS kehitung
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $entry = $response->viewData('aksiPerlu')->firstWhere('label', 'Aset belum pernah dicek ulang kondisinya (>6 bulan)');
+    expect($entry)->not->toBeNull();
+    expect($entry['jumlah'])->toBe(2);
+    expect($entry['href'])->toBe(route('aset.index', ['perlu_dicek_ulang' => 1]));
+});
+
 test('dashboard nunjukin jumlah aset & form health check yang baru ditambahkan 7 hari terakhir', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();

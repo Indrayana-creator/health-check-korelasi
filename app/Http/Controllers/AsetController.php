@@ -179,6 +179,19 @@ class AsetController extends Controller
             }
         }
 
+        if ($request->boolean('perlu_dicek_ulang')) {
+            // whereDoesntHave dengan constraint tanggal -- otomatis nyakup DUA
+            // kasus sekaligus: aset yang kondisiLogs-nya SEMUA lebih tua dari
+            // ambang, MAUPUN yang belum punya kondisiLogs sama sekali (banyak
+            // terjadi di aset hasil bulk upload lama, yang gak nge-generate
+            // baseline log kayak input manual/form). Dipakai jalan pintas dari
+            // widget "Perlu Tindakan Anda" di Dashboard.
+            $query->whereDoesntHave(
+                'kondisiLogs',
+                fn ($q) => $q->where('created_at', '>=', now()->subDays(self::AMBANG_HARI_ASET_STALE))
+            );
+        }
+
         return $query;
     }
 
@@ -193,6 +206,12 @@ class AsetController extends Controller
     // dari benchmark nyata (~585 QR ~7-8 detik dengan GD), jadi masih jauh di
     // bawah titik yang bikin masalah buat 1 cabang gede sekalipun.
     protected const MAKS_QR_SHEET = 1000;
+
+    // Ambang batas (hari) sejak kondisi aset TERAKHIR kali dicatat/diverifikasi
+    // sebelum dianggap "belum pernah dicek ulang" -- 180 hari (~6 bulan) dipilih
+    // biar cukup longgar buat aset yang emang jarang bermasalah, tapi tetap
+    // nangkep aset yang udah lama banget gak disentuh siapa-siapa.
+    public const AMBANG_HARI_ASET_STALE = 180;
 
     public function index(Request $request)
     {
