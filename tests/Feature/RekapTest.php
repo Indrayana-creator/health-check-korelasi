@@ -5,6 +5,7 @@ use App\Models\AsetKondisiLog;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\KodeAset;
+use App\Models\PermintaanPerangkat;
 use App\Models\Uker;
 use App\Models\User;
 use Illuminate\Support\Carbon;
@@ -251,6 +252,78 @@ test('export rekap aset Excel & PDF berhasil', function () {
         ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
 
     $this->actingAs($admin)->get(route('rekap.aset.export.pdf'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/pdf');
+});
+
+// ===================== Kartu Skor Cabang =====================
+
+test('user biasa tidak bisa akses kartu skor cabang', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('rekap.skorCabang'))->assertForbidden();
+});
+
+test('kartu skor cabang menggabungkan compliance HC, persen sehat, persen lengkap, & SLA permintaan jadi satu skor', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create(['uker_spv' => 'Cabang Skor']);
+    $kodeAset = KodeAset::factory()->create(['kategori' => 'HARDISK']);
+
+    // HC: 4 OK dari 5 item, form bulan ini -- compliance 80%
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->toDateString()]);
+    HealthCheckItem::factory()->count(4)->create(['health_check_form_id' => $form->id, 'status' => 'OK']);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+
+    // Aset: 4 NORMAL dari 5 aset -- sehat 80%, semua kategori non-individu jadi otomatis lengkap 100%
+    Aset::factory()->count(4)->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'RUSAK']);
+
+    // Permintaan Perangkat: 4 tepat waktu dari 5 yang masih terbuka -- SLA 80%
+    PermintaanPerangkat::factory()->count(4)->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT', 'created_at' => now()->subDays(2)]);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'status' => 'Pending IT', 'created_at' => now()->subDays(10)]);
+
+    $response = $this->actingAs($admin)->get(route('rekap.skorCabang'));
+
+    $response->assertOk();
+    $entry = $response->viewData('skor')->firstWhere('cabang', 'Cabang Skor');
+
+    expect($entry)->not->toBeNull();
+    expect($entry['compliance_hc'])->toBe(80.0);
+    expect($entry['persen_sehat'])->toBe(80.0);
+    expect($entry['persen_lengkap'])->toBe(100.0);
+    expect($entry['sla_permintaan'])->toBe(80.0);
+    expect($entry['skor_gabungan'])->toBe(85.0);
+});
+
+test('kartu skor cabang diurutkan dari skor tertinggi', function () {
+    $admin = User::factory()->admin()->create();
+    $kodeAset = KodeAset::factory()->create(['kategori' => 'HARDISK']);
+
+    $ukerBagus = Uker::factory()->create(['uker_spv' => 'Cabang Bagus']);
+    Aset::factory()->count(5)->create(['uker_kode' => $ukerBagus->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $ukerJelek = Uker::factory()->create(['uker_spv' => 'Cabang Jelek']);
+    Aset::factory()->count(5)->create(['uker_kode' => $ukerJelek->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'RUSAK']);
+
+    $response = $this->actingAs($admin)->get(route('rekap.skorCabang'));
+
+    $skor = $response->viewData('skor');
+    expect($skor->first()['cabang'])->toBe('Cabang Bagus');
+    expect($skor->last()['cabang'])->toBe('Cabang Jelek');
+});
+
+test('export kartu skor cabang Excel & PDF berhasil', function () {
+    $admin = User::factory()->admin()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $uker = Uker::factory()->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL']);
+
+    $this->actingAs($admin)->get(route('rekap.skorCabang.export.excel'))
+        ->assertOk()
+        ->assertHeader('content-type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+
+    $this->actingAs($admin)->get(route('rekap.skorCabang.export.pdf'))
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });

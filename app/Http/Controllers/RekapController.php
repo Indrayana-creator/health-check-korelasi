@@ -480,4 +480,130 @@ class RekapController extends Controller
 
         return $pdf->download('rekap-permintaan-perangkat-'.now()->format('Ymd-His').'.pdf');
     }
+
+    // ===================== KARTU SKOR CABANG =====================
+    // Gabungan 4 metrik yang masing-masing UDAH dihitung di rekap terpisah
+    // (compliance HC bulan ini, % Aset Sehat, % Data Lengkap, % Permintaan
+    // Perangkat tepat waktu) jadi SATU skor komposit per cabang, biar gak
+    // perlu buka 3 halaman rekap buat nilai 1 cabang. Diurutkan DESC (skor
+    // tertinggi duluan) -- beda dari rekap lain yang sengaja ASC (paling
+    // butuh perhatian duluan), karena halaman ini niatnya kartu skor/
+    // ranking "siapa paling baik", bukan daftar tindak lanjut.
+    public function skorCabang(Request $request)
+    {
+        $skor = $this->hitungSkorCabang();
+
+        return view('rekap.skor-cabang', compact('skor'));
+    }
+
+    protected function hitungSkorCabang()
+    {
+        $hcMap = $this->rekapCabangMingguDanBulan()['bulan']->keyBy('cabang');
+        $asetMap = $this->rekapAsetPerCabang()->keyBy('cabang');
+        $slaMap = $this->slaPermintaanPerCabang()->keyBy('cabang');
+
+        $semuaNamaCabang = $hcMap->keys()->merge($asetMap->keys())->merge($slaMap->keys())->unique()->values();
+
+        return $semuaNamaCabang->map(function ($nama) use ($hcMap, $asetMap, $slaMap) {
+            $hc = $hcMap->get($nama);
+            $aset = $asetMap->get($nama);
+            $sla = $slaMap->get($nama);
+
+            $komponen = array_filter([
+                $hc['persen'] ?? null,
+                $aset['persen_sehat'] ?? null,
+                $aset['persen_lengkap'] ?? null,
+                $sla['persen_tepat_waktu'] ?? null,
+            ], fn ($v) => $v !== null);
+
+            return [
+                'cabang' => $nama,
+                'compliance_hc' => $hc['persen'] ?? null,
+                'persen_sehat' => $aset['persen_sehat'] ?? null,
+                'persen_lengkap' => $aset['persen_lengkap'] ?? null,
+                'sla_permintaan' => $sla['persen_tepat_waktu'] ?? null,
+                'skor_gabungan' => count($komponen) > 0 ? round(array_sum($komponen) / count($komponen), 1) : 0,
+            ];
+        })->sortByDesc('skor_gabungan')->values();
+    }
+
+    // % permintaan perangkat yang MASIH TERBUKA (belum "Done Terkirim") dan
+    // gak kena SLA (reuse PermintaanPerangkat::sudahLama(), ambang sama
+    // persis kayak badge di halaman Permintaan Perangkat) -- cabang tanpa
+    // permintaan terbuka dianggap 100% (gak ada utang SLA sama sekali).
+    protected function slaPermintaanPerCabang()
+    {
+        return PermintaanPerangkat::with(['uker', 'statusLogs'])->get()
+            ->groupBy(fn ($p) => $p->uker?->uker_spv ?? 'Tidak diketahui')
+            ->map(function ($group, $namaCabang) {
+                $terbuka = $group->where('status', '!=', 'Done Terkirim');
+                $totalTerbuka = $terbuka->count();
+                $tepatWaktu = $totalTerbuka > 0 ? $terbuka->filter(fn ($p) => ! $p->sudahLama())->count() : 0;
+
+                return [
+                    'cabang' => $namaCabang,
+                    'persen_tepat_waktu' => $totalTerbuka > 0 ? round($tepatWaktu / $totalTerbuka * 100, 1) : 100.0,
+                    'total_terbuka' => $totalTerbuka,
+                ];
+            })
+            ->values();
+    }
+
+    // ===================== EXPORT: Kartu Skor Cabang =====================
+
+    protected function skorCabangHeaders(): array
+    {
+        return ['Cabang', 'Compliance HC (%)', 'Aset Sehat (%)', 'Data Lengkap (%)', 'SLA Permintaan Perangkat (%)', 'Skor Gabungan'];
+    }
+
+    protected function skorCabangRow(array $s): array
+    {
+        return [
+            $s['cabang'], $s['compliance_hc'], $s['persen_sehat'], $s['persen_lengkap'], $s['sla_permintaan'], $s['skor_gabungan'],
+        ];
+    }
+
+    public function exportSkorCabangExcel(Request $request)
+    {
+        $skor = $this->hitungSkorCabang();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Kartu Skor Cabang');
+
+        $headers = $this->skorCabangHeaders();
+        $sheet->fromArray($headers, null, 'A1');
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
+
+        $row = 2;
+        foreach ($skor as $s) {
+            $sheet->fromArray($this->skorCabangRow($s), null, "A{$row}");
+            $row++;
+        }
+
+        foreach (range('A', 'F') as $col) {
+            $sheet->getColumnDimension($col)->setAutoSize(true);
+        }
+
+        $filename = 'kartu-skor-cabang-'.now()->format('Ymd-His').'.xlsx';
+        $writer = new Xlsx($spreadsheet);
+
+        return response()->streamDownload(function () use ($writer) {
+            $writer->save('php://output');
+        }, $filename, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        ]);
+    }
+
+    public function exportSkorCabangPdf(Request $request)
+    {
+        $skor = $this->hitungSkorCabang();
+        $headers = $this->skorCabangHeaders();
+        $rows = $skor->map(fn ($s) => $this->skorCabangRow($s));
+        $judul = 'Kartu Skor Cabang';
+
+        $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');
+
+        return $pdf->download('kartu-skor-cabang-'.now()->format('Ymd-His').'.pdf');
+    }
 }

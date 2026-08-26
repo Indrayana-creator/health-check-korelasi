@@ -143,6 +143,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/rekap-permintaan-perangkat', [RekapController::class, 'permintaanPerangkat'])->name('rekap.permintaanPerangkat');
         Route::get('/rekap-permintaan-perangkat/export/excel', [RekapController::class, 'exportPermintaanExcel'])->name('rekap.permintaanPerangkat.export.excel');
         Route::get('/rekap-permintaan-perangkat/export/pdf', [RekapController::class, 'exportPermintaanPdf'])->name('rekap.permintaanPerangkat.export.pdf');
+        Route::get('/rekap-skor-cabang', [RekapController::class, 'skorCabang'])->name('rekap.skorCabang');
+        Route::get('/rekap-skor-cabang/export/excel', [RekapController::class, 'exportSkorCabangExcel'])->name('rekap.skorCabang.export.excel');
+        Route::get('/rekap-skor-cabang/export/pdf', [RekapController::class, 'exportSkorCabangPdf'])->name('rekap.skorCabang.export.pdf');
         Route::post('/permintaan-perangkat/{permintaanPerangkat}/status', [PermintaanPerangkatController::class, 'updateStatus'])->name('permintaan-perangkat.updateStatus');
         Route::post('/permintaan-perangkat/bulk-update-status', [PermintaanPerangkatController::class, 'bulkUpdateStatus'])->name('permintaan-perangkat.bulkUpdateStatus');
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');

@@ -11,6 +11,7 @@
             ['label' => 'Rekap Health Check', 'href' => route('rekap.cabang'), 'active' => false],
             ['label' => 'Rekap Aset', 'href' => route('rekap.aset'), 'active' => false],
             ['label' => 'Rekap Permintaan Perangkat', 'href' => route('rekap.permintaanPerangkat'), 'active' => true],
+            ['label' => 'Kartu Skor Cabang', 'href' => route('rekap.skorCabang'), 'active' => false],
             ['label' => 'Struktur Organisasi', 'href' => route('uker-tree.index'), 'active' => false],
         ]" />
 
