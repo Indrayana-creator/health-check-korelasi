@@ -75,7 +75,11 @@
             @endif
             </div>
 
-            <form action="{{ route('healthcheck.update', $healthcheck) }}" method="POST" class="space-y-5" enctype="multipart/form-data">
+            <form
+                action="{{ route('healthcheck.update', $healthcheck) }}" method="POST" class="space-y-5" enctype="multipart/form-data"
+                x-data="{ menyimpan: false }"
+                @submit="menyimpan = true"
+            >
                 @csrf
                 @method('PUT')
 
@@ -301,7 +305,36 @@
                                     @php $fotoTersimpan = $healthcheck->fotoUntukField($field); @endphp
                                     <div
                                         class="border-b border-gray-100 pb-5 last:border-0 last:pb-0"
-                                        x-data="{ previews: [] }"
+                                        x-data="{
+                                            fotos: [],
+                                            sisaKuota: {{ max(0, \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI - $fotoTersimpan->count()) }},
+                                            async tambah(fileList) {
+                                                const sisa = this.sisaKuota - this.fotos.length;
+                                                if (sisa <= 0) {
+                                                    alert('Maksimal {{ \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI }} foto per kategori. Hapus salah satu dulu kalau mau tambah lagi.');
+                                                    return;
+                                                }
+                                                for (const f of Array.from(fileList).slice(0, sisa)) {
+                                                    const kompres = await window.kompresFoto(f);
+                                                    this.fotos.push({ file: kompres, url: URL.createObjectURL(kompres) });
+                                                }
+                                                this.sinkron();
+                                            },
+                                            hapusPreview(i) {
+                                                URL.revokeObjectURL(this.fotos[i].url);
+                                                this.fotos.splice(i, 1);
+                                                this.sinkron();
+                                            },
+                                            // Input file asli TIDAK diklik user langsung (2 tombol Ambil Foto/
+                                            // Upload dari Galeri itu input TERPISAH & gak ikut disubmit) --
+                                            // isinya disinkronkan dari array fotos lewat DataTransfer tiap kali
+                                            // foto ditambah/dihapus, biar bisa batalin 1 foto sebelum Simpan.
+                                            sinkron() {
+                                                const dt = new DataTransfer();
+                                                this.fotos.forEach((f) => dt.items.add(f.file));
+                                                this.$refs.inputAsli.files = dt.files;
+                                            },
+                                        }"
                                     >
                                         <p class="text-sm font-semibold text-gray-700 mb-1">{{ $loop->iteration }}. {{ $meta['label'] }}</p>
                                         <p class="text-xs text-gray-400 mb-1">{{ $meta['instruksi'] }}</p>
@@ -329,23 +362,34 @@
                                         @endif
 
                                         {{-- Preview foto BARU yang baru dipilih/difoto -- client-side, belum
-                                             ke-upload/tersimpan, biar user bisa lihat dulu sebelum "Simpan". --}}
-                                        <template x-if="previews.length">
+                                             ke-upload/tersimpan, biar user bisa lihat dulu sebelum "Simpan".
+                                             Bisa dibatalin satu-satu (tombol x) sebelum sempat disimpan. --}}
+                                        <template x-if="fotos.length">
                                             <div class="flex flex-wrap gap-3 mb-2">
-                                                <template x-for="(src, i) in previews" :key="i">
-                                                    <img :src="src" alt="Preview foto baru" class="w-24 h-24 object-cover rounded-lg border-2 border-cakrawala">
+                                                <template x-for="(f, i) in fotos" :key="i">
+                                                    <div class="relative">
+                                                        <img :src="f.url" alt="Preview foto baru" class="w-24 h-24 object-cover rounded-lg border-2 border-cakrawala">
+                                                        <button
+                                                            type="button"
+                                                            @click="hapusPreview(i)"
+                                                            class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center shadow-sm hover:bg-red-50"
+                                                            title="Batalkan foto ini"
+                                                        >
+                                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="w-3.5 h-3.5 text-gray-500"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                                                        </button>
+                                                    </div>
                                                 </template>
                                             </div>
                                         </template>
-                                        <p class="text-[11px] text-cakrawala font-semibold mb-2" x-show="previews.length" x-cloak x-text="previews.length + ' foto baru dipilih (belum disimpan)'"></p>
+                                        <p class="text-[11px] text-cakrawala font-semibold mb-2" x-show="fotos.length" x-cloak x-text="fotos.length + ' foto baru dipilih (belum disimpan)'"></p>
 
                                         @if ($editable)
-                                            {{-- Dipisah jadi 2 tombol tegas -- "Ambil Foto" (paksa buka kamera
-                                                 langsung via capture, gak nawarin galeri) dan "Upload dari
-                                                 Galeri" (buka file/galeri biasa, bisa pilih banyak sekaligus).
-                                                 Dua-duanya share nama field yang sama ({{ $field }}[]), jadi
-                                                 file dari keduanya kekirim bareng pas submit -- previews-nya
-                                                 DITAMBAHIN (bukan ditimpa) tiap kali salah satu dipakai. --}}
+                                            {{-- 2 tombol terpisah -- "Ambil Foto" (paksa buka kamera langsung
+                                                 via capture) dan "Upload dari Galeri" (buka file/galeri biasa,
+                                                 bisa pilih banyak sekaligus). Input di sini TERPISAH dari yang
+                                                 beneran disubmit (x-ref="inputAsli") -- tiap file yang dipilih
+                                                 dikompres dulu (window.kompresFoto) baru masuk ke situ, biar
+                                                 upload ringan walau originalnya gede. --}}
                                             <div class="flex flex-wrap gap-2">
                                                 <label
                                                     for="dokvisual-{{ $field }}-kamera"
@@ -357,10 +401,9 @@
                                                 <input
                                                     id="dokvisual-{{ $field }}-kamera"
                                                     type="file"
-                                                    name="{{ $field }}[]"
                                                     accept="image/*"
                                                     capture="environment"
-                                                    @change="previews = [...previews, ...Array.from($event.target.files).map(f => URL.createObjectURL(f))]"
+                                                    @change="await tambah($event.target.files); $event.target.value = ''"
                                                     class="hidden"
                                                 >
 
@@ -374,14 +417,16 @@
                                                 <input
                                                     id="dokvisual-{{ $field }}-galeri"
                                                     type="file"
-                                                    name="{{ $field }}[]"
                                                     multiple
                                                     accept="image/*"
-                                                    @change="previews = [...previews, ...Array.from($event.target.files).map(f => URL.createObjectURL(f))]"
+                                                    @change="await tambah($event.target.files); $event.target.value = ''"
                                                     class="hidden"
                                                 >
                                             </div>
-                                            <p class="text-[11px] text-gray-400 mt-1.5">Bisa pilih/foto lebih dari 1 sekaligus. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
+                                            {{-- Input yang beneran disubmit -- isinya disinkronkan dari JS
+                                                 (sinkron()), bukan diisi langsung sama user. --}}
+                                            <input type="file" name="{{ $field }}[]" x-ref="inputAsli" multiple class="hidden">
+                                            <p class="text-[11px] text-gray-400 mt-1.5">Maks {{ \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI }} foto per kategori, otomatis dikompres. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
                                         @endif
                                     </div>
                                 @endforeach
@@ -414,7 +459,13 @@
                         <span class="text-xs font-bold text-gray-600 whitespace-nowrap">{{ $overallSelesai }}/{{ $overallTotal }} diperiksa</span>
                     </div>
                     <div class="flex gap-2">
-                        <x-button type="submit" class="px-6 py-2.5">Simpan</x-button>
+                        <x-button type="submit" class="px-6 py-2.5" x-bind:disabled="menyimpan">
+                            <span x-show="!menyimpan">Simpan</span>
+                            <span x-show="menyimpan" x-cloak class="inline-flex items-center gap-1.5">
+                                <svg viewBox="0 0 24 24" fill="none" class="w-4 h-4 animate-spin"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"></circle><path d="M22 12a10 10 0 00-10-10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path></svg>
+                                Menyimpan...
+                            </span>
+                        </x-button>
                         <x-button variant="secondary" :href="route('healthcheck.index')" class="px-5 py-2.5">Kembali</x-button>
                     </div>
                 </div>

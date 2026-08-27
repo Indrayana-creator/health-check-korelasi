@@ -46,6 +46,11 @@ class HealthCheckForm extends Model
         ],
     ];
 
+    // Batas jumlah foto per kategori dokumentasi visual -- dicek di client
+    // (JS, biar user langsung tau tanpa nunggu submit) MAUPUN di server
+    // (HealthCheckController::update(), gak bisa diandalkan cuma dari client).
+    public const MAKS_FOTO_DOKUMENTASI_PER_KATEGORI = 5;
+
     protected $casts = [
         'approved_at' => 'datetime',
         'tanggal_pemeriksaan' => 'date',

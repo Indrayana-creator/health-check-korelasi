@@ -351,9 +351,22 @@ class HealthCheckController extends Controller
 
             // Foto baru ditambahkan (bukan nimpa) -- 1 kategori boleh punya
             // banyak foto sekaligus, jadi tiap file yang diupload jadi baris
-            // baru di health_check_dokumentasi_fotos.
+            // baru di health_check_dokumentasi_fotos. Dibatasi MAKS_FOTO_
+            // DOKUMENTASI_PER_KATEGORI -- client-side JS udah nyegah lebih
+            // dulu, ini jaring pengaman server (gak bisa diandalkan cuma dari
+            // client). Dihitung count FRESH dari DB (bukan relasi ter-cache),
+            // biar akurat setelah penghapusan di atas.
             foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
-                foreach ($request->file($field, []) as $file) {
+                $filesBaru = $request->file($field, []);
+                if (empty($filesBaru)) {
+                    continue;
+                }
+
+                $sudahAda = HealthCheckDokumentasiFoto::where('health_check_form_id', $healthcheck->id)
+                    ->where('field', $field)->count();
+                $slotSisa = max(0, HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI - $sudahAda);
+
+                foreach (array_slice($filesBaru, 0, $slotSisa) as $file) {
                     $healthcheck->dokumentasiFotos()->create([
                         'field' => $field,
                         'path' => $file->store('healthcheck-dokumentasi', 'public'),

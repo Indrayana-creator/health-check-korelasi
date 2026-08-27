@@ -336,6 +336,26 @@ test('dokumentasi visual: foto bisa dihapus lewat hapus_foto_dokumentasi', funct
     Storage::disk('public')->assertExists($pathSisa);
 });
 
+test('dokumentasi visual: upload dibatasi maks 5 foto per kategori, kelebihan dipotong', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'OK']],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => collect(range(1, 6))->map(fn ($i) => UploadedFile::fake()->image("foto-{$i}.jpg"))->all(),
+    ]);
+
+    expect($form->refresh()->fotoUntukField('foto_ruang_server_url'))->toHaveCount(HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI);
+});
+
 test('dokumentasi visual: gak bisa hapus foto milik form Health Check lain', function () {
     Storage::fake('public');
 
