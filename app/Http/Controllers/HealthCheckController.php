@@ -198,7 +198,12 @@ class HealthCheckController extends Controller
     public function qrRuanganCetak(Request $request)
     {
         $validated = $this->validasiRuangan($request);
-        $uker = Uker::findOrFail($validated['uker_kode']);
+        // where('kode', ...), BUKAN findOrFail() -- itu nyari lewat primary
+        // key (id), padahal uker_kode yang dikirim dari form itu kolom
+        // "kode" (business key), beda dari id. Salah pakai findOrFail()
+        // sebelumnya bikin QR ke-generate buat uker yang salah (id yang
+        // kebetulan sama angkanya sama kode uker yang dipilih).
+        $uker = Uker::where('kode', $validated['uker_kode'])->firstOrFail();
 
         return view('healthcheck.qr-ruangan-cetak', [
             'uker' => $uker,

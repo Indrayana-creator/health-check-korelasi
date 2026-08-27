@@ -685,3 +685,19 @@ test('generate gambar QR ruangan menghasilkan PNG', function () {
     $response->assertOk();
     $response->assertHeader('Content-Type', 'image/png');
 });
+
+test('halaman cetak QR ruangan nampilin uker sesuai KODE yang dipilih, bukan id', function () {
+    $admin = User::factory()->admin()->create();
+    // Bikin uker lain duluan biar id & kode-nya jelas beda (regresi bug:
+    // sebelumnya pakai findOrFail() yang nyari lewat id, bukan where('kode').
+    Uker::factory()->create(['nama' => 'KC Lainnya']);
+    $ukerTarget = Uker::factory()->create(['kode' => 12345, 'nama' => 'KC Target Benar']);
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.qrRuanganCetak', [
+        'uker_kode' => $ukerTarget->kode, 'kategori' => 'A - Ruang Server/Jaringan',
+    ]));
+
+    $response->assertOk();
+    $response->assertSee('KC Target Benar');
+    $response->assertDontSee('KC Lainnya');
+});
