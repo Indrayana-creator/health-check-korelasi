@@ -12,6 +12,10 @@ use App\Notifications\HealthCheckItemFlaggedNotOk;
 use App\Notifications\HealthCheckSubmittedForApproval;
 use App\Support\PeriodeMingguan;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Endroid\QrCode\Builder\Builder;
+use Endroid\QrCode\Encoding\Encoding;
+use Endroid\QrCode\ErrorCorrectionLevel;
+use Endroid\QrCode\Writer\PngWriter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -138,17 +142,112 @@ class HealthCheckController extends Controller
                     ->where(fn ($query) => $query->where('uker_kode', $request->input('uker_kode'))->whereNull('deleted_at')),
             ],
             'pic_pn' => 'nullable|string|max:50|exists:pekerja,pn',
+            // Cuma dipakai buat nentuin tab kategori mana yang otomatis kebuka
+            // begitu form baru selesai dibuat -- dari alur scan QR Ruangan
+            // yang form-nya belum ada buat periode ini, BUKAN kolom asli di
+            // tabel health_check_forms.
+            'kategori_tujuan' => ['nullable', 'string', Rule::in(array_keys(config('health_check_checklist')))],
         ], [
             'periode.unique' => 'Form health check untuk uker dan periode ini sudah ada.',
         ]);
 
         $this->authorize('assignToUker', [HealthCheckForm::class, $validated['uker_kode']]);
 
+        $kategoriTujuan = $validated['kategori_tujuan'] ?? null;
+        unset($validated['kategori_tujuan']);
+
         $form = HealthCheckForm::create($validated);
         $this->generateItemsUntukForm($form);
         ActivityLog::catat('health_check', 'tambah', 1, "Form health check {$form->periode} dibuat untuk uker {$form->uker_kode}");
 
-        return redirect()->route('healthcheck.edit', $form)->with('status', 'Form health check dibuat. Silakan isi status tiap item pemeriksaan.');
+        return redirect()->route('healthcheck.edit', array_filter(['healthcheck' => $form->id, 'kategori' => $kategoriTujuan]))
+            ->with('status', 'Form health check dibuat. Silakan isi status tiap item pemeriksaan.');
+    }
+
+    // ===================== QR RUANGAN =====================
+    // QR ditempel fisik di ruang server/panel listrik/dst -- begitu discan,
+    // langsung diarahkan ke form Health Check periode berjalan buat uker itu,
+    // TERBUKA di tab kategori yang relevan (mis. ruang server -> kategori A),
+    // gak perlu cari form manual dulu. Beda dari QR Aset yang publik (siapa
+    // aja boleh scan buat LIHAT), ini tetap wajib login karena ujungnya
+    // ngedit data Health Check -- otorisasinya reuse assignToUker yang sama
+    // dipakai store().
+
+    public function qrRuanganForm(Request $request)
+    {
+        $ukerList = $request->user()->role === 'admin'
+            ? Uker::orderBy('nama')->get()
+            : Uker::whereIn('kode', Uker::descendantKodes($request->user()->uker_kode))->orderBy('nama')->get();
+        $kategoriList = array_keys(config('health_check_checklist'));
+
+        return view('healthcheck.qr-ruangan-form', compact('ukerList', 'kategoriList'));
+    }
+
+    protected function validasiRuangan(Request $request): array
+    {
+        $validated = $request->validate([
+            'uker_kode' => 'required|integer|exists:ukers,kode',
+            'kategori' => ['required', 'string', Rule::in(array_keys(config('health_check_checklist')))],
+        ]);
+
+        $this->authorize('assignToUker', [HealthCheckForm::class, $validated['uker_kode']]);
+
+        return $validated;
+    }
+
+    public function qrRuanganCetak(Request $request)
+    {
+        $validated = $this->validasiRuangan($request);
+        $uker = Uker::findOrFail($validated['uker_kode']);
+
+        return view('healthcheck.qr-ruangan-cetak', [
+            'uker' => $uker,
+            'kategori' => $validated['kategori'],
+        ]);
+    }
+
+    public function qrRuanganImage(Request $request)
+    {
+        $validated = $this->validasiRuangan($request);
+
+        $builder = new Builder(
+            writer: new PngWriter,
+            data: route('healthcheck.scanRuangan', $validated),
+            encoding: new Encoding('UTF-8'),
+            errorCorrectionLevel: ErrorCorrectionLevel::High,
+            size: 300,
+            margin: 10,
+            labelText: $validated['kategori'],
+        );
+
+        $result = $builder->build();
+
+        return response($result->getString())->header('Content-Type', $result->getMimeType());
+    }
+
+    // Ini yang beneran kebuka pas QR discan.
+    public function scanRuangan(Request $request)
+    {
+        $validated = $this->validasiRuangan($request);
+
+        // Form yang relevan: yang masih BISA DIEDIT (Draft/Ditolak) paling
+        // baru buat uker ini -- kalau gak ada berarti belum ada form buat
+        // periode berjalan, arahkan buat bikin baru dulu (uker_kode & tujuan
+        // kategori ikut dibawa, biar abis dibuat langsung lompat ke tab yang
+        // benar juga).
+        $form = HealthCheckForm::where('uker_kode', $validated['uker_kode'])
+            ->latest('tanggal_pemeriksaan')
+            ->get()
+            ->first(fn ($f) => $f->itemsBisaDiedit());
+
+        if (! $form) {
+            return redirect()->route('healthcheck.create', [
+                'uker_kode' => $validated['uker_kode'],
+                'kategori_tujuan' => $validated['kategori'],
+            ])->with('status', 'Belum ada form Health Check yang bisa diisi buat periode ini -- buat form baru dulu, nanti otomatis diarahkan ke kategori "'.$validated['kategori'].'".');
+        }
+
+        return redirect()->route('healthcheck.edit', ['healthcheck' => $form->id, 'kategori' => $validated['kategori']]);
     }
 
     public function edit(Request $request, HealthCheckForm $healthcheck)

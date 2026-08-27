@@ -39,6 +39,10 @@
                     <x-dropdown-link :href="route('healthcheck.export.pdf', request()->query())">PDF</x-dropdown-link>
                 </x-slot>
             </x-dropdown>
+            <x-button variant="secondary" :href="route('healthcheck.qrRuanganForm')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 3h6v6H3zM15 3h6v6h-6zM3 15h6v6H3zM15 15h2v2h-2zM19 15h2v2h-2zM15 19h2v2h-2zM19 19h2v2h-2z"></path></svg>
+                Cetak QR Ruangan
+            </x-button>
             <x-button variant="secondary" :href="route('healthcheck.trash')">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
                 Sampah

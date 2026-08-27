@@ -118,6 +118,17 @@
                             break;
                         }
                     }
+
+                    // Jalan pintas dari scan QR Ruangan -- kalau ?kategori=
+                    // cocok sama salah satu kategori form ini, buka LANGSUNG
+                    // ke tab itu, ketimbang tab "belum lengkap" default di atas.
+                    if (request()->filled('kategori')) {
+                        $indexKategoriTujuan = $itemsByKategori->keys()->search(request('kategori'));
+                        if ($indexKategoriTujuan !== false) {
+                            $tabAwal = $indexKategoriTujuan;
+                        }
+                    }
+
                     $overallTotal = array_sum(array_column($kategoriProgress, 'total'));
                     $overallSelesai = array_sum(array_column($kategoriProgress, 'selesai'));
                     $overallPct = $overallTotal > 0 ? round($overallSelesai / $overallTotal * 100) : 0;

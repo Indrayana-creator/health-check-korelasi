@@ -588,3 +588,100 @@ test('sort field yang gak ada di whitelist buat health check diabaikan, gak biki
 
     $response->assertOk();
 });
+
+// ===================== QR Ruangan =====================
+
+test('scan QR ruangan langsung buka form editable yang ada, ke tab kategori yang sesuai', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->toDateString(), 'status_approval' => 'Draft',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.scanRuangan', [
+        'uker_kode' => $uker->kode, 'kategori' => 'B - CCTV & Storage',
+    ]));
+
+    $response->assertRedirect(route('healthcheck.edit', ['healthcheck' => $form->id, 'kategori' => 'B - CCTV & Storage']));
+});
+
+test('scan QR ruangan diarahkan ke buat form baru kalau belum ada form yang bisa diedit', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.scanRuangan', [
+        'uker_kode' => $uker->kode, 'kategori' => 'A - Ruang Server/Jaringan',
+    ]));
+
+    $response->assertRedirect(route('healthcheck.create', [
+        'uker_kode' => $uker->kode, 'kategori_tujuan' => 'A - Ruang Server/Jaringan',
+    ]));
+});
+
+test('scan QR ruangan diarahkan bikin form baru kalau form yang ada udah terkunci tanggal', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->subDay(), 'status_approval' => 'Draft',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.scanRuangan', [
+        'uker_kode' => $uker->kode, 'kategori' => 'A - Ruang Server/Jaringan',
+    ]));
+
+    $response->assertRedirect(route('healthcheck.create', [
+        'uker_kode' => $uker->kode, 'kategori_tujuan' => 'A - Ruang Server/Jaringan',
+    ]));
+});
+
+test('scan QR ruangan ditolak kalau uker di luar wewenang', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+
+    $this->actingAs($user)->get(route('healthcheck.scanRuangan', [
+        'uker_kode' => $ukerLain->kode, 'kategori' => 'A - Ruang Server/Jaringan',
+    ]))->assertForbidden();
+});
+
+test('form health check baru dari kategori_tujuan otomatis diarahkan ke tab yang benar', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($user)->post(route('healthcheck.store'), [
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+        'periode' => 'Minggu Ini',
+        'kategori_tujuan' => 'C - Jaringan',
+    ]);
+
+    $form = HealthCheckForm::where('uker_kode', $uker->kode)->first();
+    $response->assertRedirect(route('healthcheck.edit', ['healthcheck' => $form->id, 'kategori' => 'C - Jaringan']));
+});
+
+test('halaman edit health check buka tab sesuai query kategori', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->toDateString()]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'kategori' => 'A - Ruang Server/Jaringan']);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'kategori' => 'C - Jaringan']);
+
+    // Kategori "C - Jaringan" adalah index ke-2 (A=0, B=1(gak ada di form ini), ...)
+    // -- di form ini cuma ada A & C, jadi urutan grouping-nya A=0, C=1.
+    $response = $this->actingAs($admin)->get(route('healthcheck.edit', ['healthcheck' => $form->id, 'kategori' => 'C - Jaringan']));
+
+    $response->assertOk();
+    $response->assertSee('tab: 1', false);
+});
+
+test('generate gambar QR ruangan menghasilkan PNG', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.qrRuanganImage', [
+        'uker_kode' => $uker->kode, 'kategori' => 'A - Ruang Server/Jaringan',
+    ]));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'image/png');
+});

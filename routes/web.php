@@ -70,6 +70,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/healthcheck/export/pdf', [HealthCheckController::class, 'exportPdf'])->name('healthcheck.export.pdf');
     Route::get('/healthcheck/sampah', [HealthCheckController::class, 'trash'])->name('healthcheck.trash');
     Route::post('/healthcheck/{id}/restore', [HealthCheckController::class, 'restore'])->name('healthcheck.restore');
+    Route::get('/healthcheck/qr-ruangan', [HealthCheckController::class, 'qrRuanganForm'])->name('healthcheck.qrRuanganForm');
+    Route::get('/healthcheck/qr-ruangan/cetak', [HealthCheckController::class, 'qrRuanganCetak'])->name('healthcheck.qrRuanganCetak');
+    Route::get('/healthcheck/qr-ruangan/image', [HealthCheckController::class, 'qrRuanganImage'])->name('healthcheck.qrRuanganImage');
+    Route::get('/healthcheck/scan-ruangan', [HealthCheckController::class, 'scanRuangan'])->name('healthcheck.scanRuangan');
 
     // Data aset (admin lihat semua, user/uker cuma lihat punya sendiri)
     Route::resource('aset', AsetController::class);

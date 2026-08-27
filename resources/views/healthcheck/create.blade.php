@@ -17,8 +17,15 @@
                     Setelah disimpan, {{ collect(config('health_check_checklist'))->flatten()->count() }} item pemeriksaan resmi akan otomatis dibuat dengan status awal "Belum Diperiksa", dan Anda akan diarahkan ke halaman pengisian.
                 </p>
 
-                <form action="{{ route('healthcheck.store') }}" method="POST" class="space-y-4" x-data="{ ukerKodeTerpilih: '{{ old('uker_kode') }}' }">
+                @if (request('kategori_tujuan'))
+                    <div class="mb-4 p-3 bg-cakrawala/5 border border-cakrawala/20 rounded-xl text-xs text-cakrawala">
+                        Habis dibuat, Anda otomatis diarahkan ke tab kategori "{{ request('kategori_tujuan') }}" (dari scan QR Ruangan).
+                    </div>
+                @endif
+
+                <form action="{{ route('healthcheck.store') }}" method="POST" class="space-y-4" x-data="{ ukerKodeTerpilih: '{{ old('uker_kode', request('uker_kode')) }}' }">
                     @csrf
+                    <input type="hidden" name="kategori_tujuan" value="{{ old('kategori_tujuan', request('kategori_tujuan')) }}">
 
                     <div>
                         <x-uker-combobox
