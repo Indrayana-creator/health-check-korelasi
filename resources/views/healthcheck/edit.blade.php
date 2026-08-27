@@ -307,14 +307,8 @@
                                         class="border-b border-gray-100 pb-5 last:border-0 last:pb-0"
                                         x-data="{
                                             fotos: [],
-                                            sisaKuota: {{ max(0, \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI - $fotoTersimpan->count()) }},
                                             async tambah(fileList) {
-                                                const sisa = this.sisaKuota - this.fotos.length;
-                                                if (sisa <= 0) {
-                                                    alert('Maksimal {{ \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI }} foto per kategori. Hapus salah satu dulu kalau mau tambah lagi.');
-                                                    return;
-                                                }
-                                                for (const f of Array.from(fileList).slice(0, sisa)) {
+                                                for (const f of Array.from(fileList)) {
                                                     const kompres = await window.kompresFoto(f);
                                                     this.fotos.push({ file: kompres, url: URL.createObjectURL(kompres) });
                                                 }
@@ -426,7 +420,7 @@
                                             {{-- Input yang beneran disubmit -- isinya disinkronkan dari JS
                                                  (sinkron()), bukan diisi langsung sama user. --}}
                                             <input type="file" name="{{ $field }}[]" x-ref="inputAsli" multiple class="hidden">
-                                            <p class="text-[11px] text-gray-400 mt-1.5">Maks {{ \App\Models\HealthCheckForm::MAKS_FOTO_DOKUMENTASI_PER_KATEGORI }} foto per kategori, otomatis dikompres. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
+                                            <p class="text-[11px] text-gray-400 mt-1.5">Bisa pilih/foto lebih dari 1 sekaligus, otomatis dikompres. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
                                         @endif
                                     </div>
                                 @endforeach
