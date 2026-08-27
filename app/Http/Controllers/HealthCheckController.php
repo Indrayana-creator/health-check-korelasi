@@ -282,11 +282,11 @@ class HealthCheckController extends Controller
             // sekarang harus foto/upload langsung, dan BOLEH lebih dari 1 foto
             // per kategori (array file), plus bisa dihapus satu-satu.
             'foto_ruang_server_url' => 'nullable|array',
-            'foto_ruang_server_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:4096',
+            'foto_ruang_server_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
             'foto_storage_cctv_url' => 'nullable|array',
-            'foto_storage_cctv_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:4096',
+            'foto_storage_cctv_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
             'foto_panel_ups_url' => 'nullable|array',
-            'foto_panel_ups_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:4096',
+            'foto_panel_ups_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
             'hapus_foto_dokumentasi' => 'nullable|array',
             'hapus_foto_dokumentasi.*' => 'integer|exists:health_check_dokumentasi_fotos,id',
         ]);
