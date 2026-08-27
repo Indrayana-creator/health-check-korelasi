@@ -14,9 +14,7 @@
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
         ]" />
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <p class="text-sm text-gray-500 max-w-3xl">
             Master data pekerja (PN, nama, uker) yang dipakai buat validasi PN saat bikin akun User & isi PIC di form

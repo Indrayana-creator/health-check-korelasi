@@ -208,8 +208,19 @@
         }"
         x-effect="renderCharts($store.ukerDetail.data)"
     >
-        <div x-show="$store.ukerDetail.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.ukerDetail.tutup()">
-            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div
+            x-show="$store.ukerDetail.open" x-cloak
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            @click.self="$store.ukerDetail.tutup()"
+            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        >
+            <div
+                x-show="$store.ukerDetail.open"
+                class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+                x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+            >
                 <div class="flex justify-between items-start mb-4">
                     <h3 class="font-extrabold text-lg text-gray-800" x-text="$store.ukerDetail.data?.nama ?? 'Memuat...'"></h3>
                     <button @click="$store.ukerDetail.tutup()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
@@ -305,8 +316,19 @@
         }"
         x-effect="renderChart($store.complianceDetail.data)"
     >
-        <div x-show="$store.complianceDetail.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.complianceDetail.tutup()">
-            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div
+            x-show="$store.complianceDetail.open" x-cloak
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            @click.self="$store.complianceDetail.tutup()"
+            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        >
+            <div
+                x-show="$store.complianceDetail.open"
+                class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+                x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+            >
                 <div class="flex justify-between items-start mb-4">
                     <div>
                         <h3 class="font-extrabold text-lg text-gray-800" x-text="$store.complianceDetail.data?.nama ?? 'Memuat...'"></h3>

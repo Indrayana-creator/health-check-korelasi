@@ -6,25 +6,25 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]" x-data="{ ajukanOpen: false, selected: [] }">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">
-                {{ session('status') }}
-                @if (session('linkLacak'))
-                    <div class="mt-2 flex items-center gap-2 flex-wrap" x-data="{ copied: false }">
-                        <span class="text-xs text-green-700">Link cek status (bisa dibagikan, gak perlu login):</span>
-                        <a href="{{ session('linkLacak') }}" target="_blank" class="text-xs font-mono text-cakrawala hover:underline break-all">{{ session('linkLacak') }}</a>
-                        <button
-                            type="button"
-                            @click="navigator.clipboard.writeText('{{ session('linkLacak') }}'); copied = true; setTimeout(() => copied = false, 2000)"
-                            class="px-2 py-1 rounded-md border border-green-300 text-[11px] font-semibold text-green-700 hover:bg-green-100"
-                        >
-                            <span x-show="!copied">Salin Link</span>
-                            <span x-show="copied" x-cloak>Tersalin!</span>
-                        </button>
-                    </div>
-                @endif
-            </div>
-        @endif
+        {{-- auto-hide dimatikan -- ada link + tombol salin yang mungkin masih
+             mau dipakai user, jangan sampai ke-hide sendiri sebelum sempat disalin. --}}
+        <x-flash-status :auto-hide="false">
+            {{ session('status') }}
+            @if (session('linkLacak'))
+                <div class="mt-2 flex items-center gap-2 flex-wrap" x-data="{ copied: false }">
+                    <span class="text-xs text-green-700">Link cek status (bisa dibagikan, gak perlu login):</span>
+                    <a href="{{ session('linkLacak') }}" target="_blank" class="text-xs font-mono text-cakrawala hover:underline break-all">{{ session('linkLacak') }}</a>
+                    <button
+                        type="button"
+                        @click="navigator.clipboard.writeText('{{ session('linkLacak') }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                        class="px-2 py-1 rounded-md border border-green-300 text-[11px] font-semibold text-green-700 hover:bg-green-100"
+                    >
+                        <span x-show="!copied">Salin Link</span>
+                        <span x-show="copied" x-cloak>Tersalin!</span>
+                    </button>
+                </div>
+            @endif
+        </x-flash-status>
 
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 max-w-3xl">
@@ -177,8 +177,19 @@
                                     <svg x-show="copiedLacak" x-cloak viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-green-600"><path d="M20 6L9 17l-5-5"></path></svg>
                                 </x-icon-button>
 
-                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="riwayatOpen = false">
-                                    <div class="bg-white p-6 rounded-2xl max-w-lg w-full text-left">
+                                <div
+                                    x-show="riwayatOpen" x-cloak
+                                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                                    @click.self="riwayatOpen = false"
+                                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                >
+                                    <div
+                                        x-show="riwayatOpen"
+                                        class="bg-white p-6 rounded-2xl max-w-lg w-full text-left"
+                                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                    >
                                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Status &mdash; {{ $p->no_nota_dinas }}</h3>
                                         <p class="text-xs text-gray-400 mb-3.5">{{ $p->uker?->nama }}</p>
 
@@ -219,8 +230,19 @@
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </x-icon-button>
 
-                                    <div x-show="open" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="open = false">
-                                        <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                    <div
+                                        x-show="open" x-cloak
+                                        class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                                        @click.self="open = false"
+                                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                    >
+                                        <div
+                                            x-show="open"
+                                            class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                                            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                        >
                                             <h3 class="font-extrabold text-sm text-gray-800 mb-1">Update Status Permintaan</h3>
                                             <p class="text-xs text-gray-400 mb-3.5">{{ $p->no_nota_dinas }} &middot; {{ $p->uker?->nama }}</p>
                                             <form action="{{ route('permintaan-perangkat.updateStatus', $p) }}" method="POST" class="space-y-3">
@@ -268,8 +290,19 @@
         </div>
 
         @unless ($isAdmin)
-            <div x-show="ajukanOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="ajukanOpen = false">
-                <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+            <div
+                x-show="ajukanOpen" x-cloak
+                class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                @click.self="ajukanOpen = false"
+                x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+            >
+                <div
+                    x-show="ajukanOpen"
+                    class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                >
                     <h3 class="font-extrabold text-sm text-gray-800 mb-3.5">Ajukan Permintaan Perangkat</h3>
                     <form action="{{ route('permintaan-perangkat.store') }}" method="POST" class="space-y-3">
                         @csrf

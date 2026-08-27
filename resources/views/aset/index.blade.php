@@ -8,11 +8,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]" x-data="{ density: 'comfortable' }">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">
-                {{ session('status') }}
-            </div>
-        @endif
+        <x-flash-status />
 
         <div class="flex flex-wrap gap-2 items-center">
             <x-button :href="route('aset.create')">
@@ -227,8 +223,19 @@
         });
     </script>
 
-    <div x-show="$store.riwayatKondisi.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.riwayatKondisi.tutup()">
-        <div class="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6">
+    <div
+        x-show="$store.riwayatKondisi.open" x-cloak
+        class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+        @click.self="$store.riwayatKondisi.tutup()"
+        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+    >
+        <div
+            x-show="$store.riwayatKondisi.open"
+            class="bg-white rounded-2xl max-w-lg w-full max-h-[80vh] overflow-y-auto p-6"
+            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+        >
             <div class="flex justify-between items-start mb-4">
                 <div>
                     <h3 class="font-extrabold text-lg text-gray-800">Riwayat Kondisi</h3>

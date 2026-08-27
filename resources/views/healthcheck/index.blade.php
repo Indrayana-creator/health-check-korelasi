@@ -6,9 +6,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <div class="flex flex-wrap gap-2 items-center">
             <x-button :href="route('healthcheck.create')">
@@ -160,8 +158,19 @@
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M18 6L6 18M6 6l12 12"></path></svg>
                                         </x-icon-button>
 
-                                        <div x-show="tolakOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="tolakOpen = false">
-                                            <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                        <div
+                                            x-show="tolakOpen" x-cloak
+                                            class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                                            @click.self="tolakOpen = false"
+                                            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                        >
+                                            <div
+                                                x-show="tolakOpen"
+                                                class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                                                x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                            >
                                                 <h3 class="font-extrabold text-sm text-gray-800 mb-1">Tolak Form Health Check</h3>
                                                 <p class="text-xs text-gray-400 mb-3.5">{{ $form->uker?->nama }} &middot; {{ $form->periode }}</p>
                                                 <form action="{{ route('healthcheck.reject', $form) }}" method="POST" class="space-y-3">

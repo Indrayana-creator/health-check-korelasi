@@ -6,9 +6,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <div class="flex flex-wrap items-center justify-between gap-3">
             <p class="text-sm text-gray-500 max-w-3xl">

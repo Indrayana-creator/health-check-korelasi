@@ -8,9 +8,7 @@
     <div class="p-7">
         <div class="max-w-4xl mx-auto space-y-5">
 
-            @if (session('status'))
-                <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-            @endif
+            <x-flash-status />
 
             {{-- Status approval + tombol aksi workflow --}}
             <div @if ($healthcheck->status_approval === 'Menunggu Approval' && auth()->user()->role === 'admin') x-data="{ openReject: false }" @endif>
@@ -50,8 +48,19 @@
 
             {{-- Modal kecil buat alasan tolak --}}
             @if ($healthcheck->status_approval === 'Menunggu Approval' && auth()->user()->role === 'admin')
-                <div x-show="openReject" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="openReject = false">
-                    <div class="bg-white p-6 rounded-2xl max-w-md w-full">
+                <div
+                    x-show="openReject" x-cloak
+                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                    @click.self="openReject = false"
+                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                >
+                    <div
+                        x-show="openReject"
+                        class="bg-white p-6 rounded-2xl max-w-md w-full"
+                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                    >
                         <h3 class="font-extrabold text-sm text-gray-800 mb-3">Alasan Penolakan</h3>
                         <form action="{{ route('healthcheck.reject', $healthcheck) }}" method="POST">
                             @csrf
@@ -169,7 +178,11 @@
                                     <span :class="tab === {{ $loop->index }} ? 'text-cakrawala' : 'text-gray-600'" class="text-xs font-bold">{{ $kategori }}</span>
                                     <div class="flex items-center gap-2">
                                         <div class="flex-1 h-[5px] rounded-full bg-gray-200">
-                                            <div class="h-[5px] rounded-full {{ $lengkap ? 'bg-green-500' : 'bg-cakrawala' }}" style="width: {{ $pct }}%"></div>
+                                            <div
+                                                x-data="{ w: 0 }" x-init="setTimeout(() => w = {{ $pct }}, 50)"
+                                                class="h-[5px] rounded-full transition-all duration-700 ease-out {{ $lengkap ? 'bg-green-500' : 'bg-cakrawala' }}"
+                                                :style="'width: ' + w + '%'"
+                                            ></div>
                                         </div>
                                         <span :class="tab === {{ $loop->index }} ? 'text-cakrawala' : 'text-gray-500'" class="text-[10.5px] font-bold whitespace-nowrap">{{ $p['selesai'] }}/{{ $p['total'] }}</span>
                                     </div>
@@ -185,7 +198,12 @@
                                 <span :class="tab === {{ $tabDokumentasiVisual }} ? 'text-cakrawala' : 'text-gray-600'" class="text-xs font-bold">E - Dokumentasi Visual</span>
                                 <div class="flex items-center gap-2">
                                     <div class="flex-1 h-[5px] rounded-full bg-gray-200">
-                                        <div class="h-[5px] rounded-full {{ $fotoTerisi === $fotoTotal ? 'bg-green-500' : 'bg-cakrawala' }}" style="width: {{ $fotoTotal > 0 ? round($fotoTerisi / $fotoTotal * 100) : 0 }}%"></div>
+                                        @php $pctDokumentasi = $fotoTotal > 0 ? round($fotoTerisi / $fotoTotal * 100) : 0; @endphp
+                                        <div
+                                            x-data="{ w: 0 }" x-init="setTimeout(() => w = {{ $pctDokumentasi }}, 50)"
+                                            class="h-[5px] rounded-full transition-all duration-700 ease-out {{ $fotoTerisi === $fotoTotal ? 'bg-green-500' : 'bg-cakrawala' }}"
+                                            :style="'width: ' + w + '%'"
+                                        ></div>
                                     </div>
                                     <span :class="tab === {{ $tabDokumentasiVisual }} ? 'text-cakrawala' : 'text-gray-500'" class="text-[10.5px] font-bold whitespace-nowrap">{{ $fotoTerisi }}/{{ $fotoTotal }}</span>
                                 </div>
@@ -314,7 +332,11 @@
                 <div class="sticky bottom-0 bg-gray-50/95 backdrop-blur-sm -mx-7 px-7 py-4 border-t border-gray-200 flex items-center justify-between gap-4 flex-wrap">
                     <div class="flex items-center gap-3 flex-1 min-w-[220px] max-w-md">
                         <div class="flex-1 h-2 rounded-full bg-gray-200">
-                            <div class="h-2 rounded-full bg-gradient-to-r from-nusantara to-cakrawala" style="width: {{ $overallPct }}%"></div>
+                            <div
+                                x-data="{ w: 0 }" x-init="setTimeout(() => w = {{ $overallPct }}, 50)"
+                                class="h-2 rounded-full bg-gradient-to-r from-nusantara to-cakrawala transition-all duration-700 ease-out"
+                                :style="'width: ' + w + '%'"
+                            ></div>
                         </div>
                         <span class="text-xs font-bold text-gray-600 whitespace-nowrap">{{ $overallSelesai }}/{{ $overallTotal }} diperiksa</span>
                     </div>

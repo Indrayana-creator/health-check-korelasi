@@ -7,9 +7,7 @@
     <div class="p-7">
         <div class="max-w-3xl mx-auto space-y-5" x-data="{ laporOpen: false }">
 
-            @if (session('status'))
-                <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-            @endif
+            <x-flash-status />
 
             <div class="flex items-center justify-between flex-wrap gap-2 print:hidden">
                 <x-badge :color="match($aset->kondisi) { 'NORMAL' => 'green', 'RUSAK', 'TIDAK LAYAK' => 'red', default => 'gray' }">
@@ -59,8 +57,19 @@
                     </x-button>
                 </div>
 
-                <div x-show="laporOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="laporOpen = false">
-                    <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                <div
+                    x-show="laporOpen" x-cloak
+                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                    @click.self="laporOpen = false"
+                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                >
+                    <div
+                        x-show="laporOpen"
+                        class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                    >
                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Lapor Kerusakan</h3>
                         <p class="text-xs text-gray-400 mb-3.5">{{ $aset->no_asset }} &middot; {{ $aset->uker?->nama }}</p>
                         <form action="{{ route('monitoring.laporanAset.store', $aset) }}" method="POST" enctype="multipart/form-data" class="space-y-3">

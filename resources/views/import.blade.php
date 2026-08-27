@@ -6,9 +6,7 @@
 <body style="font-family: sans-serif; max-width: 600px; margin: 40px auto;">
     <h2>Import Data Master</h2>
 
-    @if (session('status'))
-        <p style="background: #d4edda; padding: 10px; border-radius: 6px;">{{ session('status') }}</p>
-    @endif
+    <x-flash-status />
     @if ($errors->any())
         <p style="background: #f8d7da; padding: 10px; border-radius: 6px;">{{ $errors->first() }}</p>
     @endif

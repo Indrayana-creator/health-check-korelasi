@@ -6,9 +6,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <x-page-tabs :tabs="[
             ['label' => 'Checklist Not OK', 'href' => route('monitoring.index'), 'active' => false],
@@ -116,8 +114,19 @@
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                 </x-icon-button>
 
-                                <div x-show="open" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="open = false">
-                                    <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                <div
+                                    x-show="open" x-cloak
+                                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                                    @click.self="open = false"
+                                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                >
+                                    <div
+                                        x-show="open"
+                                        class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                    >
                                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Update Status Laporan</h3>
                                         <p class="text-xs text-gray-400 mb-3.5">{{ $k->aset?->no_asset }} &middot; {{ $k->aset?->uker?->nama }}</p>
                                         <form action="{{ route('monitoring.laporanAset.updateStatus', $k) }}" method="POST" class="space-y-3">

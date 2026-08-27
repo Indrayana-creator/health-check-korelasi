@@ -56,9 +56,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         {{-- 0. Perlu Tindakan Anda -- satu titik kumpul buat semua hal yang
              butuh diproses (sebelumnya tersebar: HC menunggu approval,
@@ -94,7 +92,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M3 8l9-5 9 5-9 5-9-5zM3 8v8l9 5 9-5V8M12 13v8"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Aset</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalAset, 0, ',', '.') }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight"><x-animated-number :value="$totalAset" /></p>
                 @if ($asetBaruMingguIni > 0)
                     <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-2.5 h-2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
@@ -107,7 +105,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M5 6h14a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Total Form Health Check</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ number_format($totalFormHc, 0, ',', '.') }}</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight"><x-animated-number :value="$totalFormHc" /></p>
                 @if ($formBaruMingguIni > 0)
                     <p class="text-[11px] font-semibold text-green-600 mt-1 flex items-center gap-1">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-2.5 h-2.5"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
@@ -120,7 +118,7 @@
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-[18px] h-[18px]"><path d="M9 12l2 2 4-4M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
                 </div>
                 <p class="text-xs font-semibold text-gray-500 mb-0.5">Rata-rata Compliance</p>
-                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight">{{ $rataCompliance }}%</p>
+                <p class="text-[28px] font-extrabold text-gray-800 tracking-tight"><x-animated-number :value="$rataCompliance" :decimals="1" suffix="%" /></p>
             </x-card>
         </div>
 
@@ -275,8 +273,19 @@
 
         {{-- Modal drill-down "Kesehatan Checklist per Kategori" -- muncul saat
              segmen doughnut mana pun diklik (lihat Alpine.store('itemDetail')). --}}
-        <div x-show="$store.itemDetail.open" x-cloak class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="$store.itemDetail.tutup()">
-            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6">
+        <div
+            x-show="$store.itemDetail.open" x-cloak
+            class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            @click.self="$store.itemDetail.tutup()"
+            x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+            x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+        >
+            <div
+                x-show="$store.itemDetail.open"
+                class="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto p-6"
+                x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+            >
                 <div class="flex justify-between items-start mb-1">
                     <div>
                         <h3 class="font-extrabold text-lg text-gray-800" x-text="$store.itemDetail.kategori"></h3>
@@ -482,7 +491,12 @@
                                         <span class="text-gray-500">{{ number_format($d->jumlah, 0, ',', '.') }}</span>
                                     </div>
                                     <div class="w-full bg-gray-100 rounded-full h-[7px]">
-                                        <div class="bg-gradient-to-r from-nusantara to-cakrawala h-[7px] rounded-full" style="width: {{ $maxJumlah ? ($d->jumlah / $maxJumlah * 100) : 0 }}%"></div>
+                                        @php $pctDistribusi = $maxJumlah ? ($d->jumlah / $maxJumlah * 100) : 0; @endphp
+                                        <div
+                                            x-data="{ w: 0 }" x-init="setTimeout(() => w = {{ $pctDistribusi }}, 50)"
+                                            class="bg-gradient-to-r from-nusantara to-cakrawala h-[7px] rounded-full transition-all duration-700 ease-out"
+                                            :style="'width: ' + w + '%'"
+                                        ></div>
                                     </div>
                                 </div>
                             @endforeach

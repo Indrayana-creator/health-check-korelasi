@@ -6,9 +6,7 @@
 
     <div class="p-7 space-y-4 max-w-[1360px]">
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <x-page-tabs :tabs="[
             ['label' => 'Checklist Not OK', 'href' => route('monitoring.index'), 'active' => true],
@@ -166,8 +164,19 @@
                                     </x-icon-button>
                                 </div>
 
-                                <div x-show="open" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="open = false">
-                                    <div class="bg-white p-6 rounded-2xl max-w-md w-full text-left">
+                                <div
+                                    x-show="open" x-cloak
+                                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4"
+                                    @click.self="open = false"
+                                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                >
+                                    <div
+                                        x-show="open"
+                                        class="bg-white p-6 rounded-2xl max-w-md w-full text-left"
+                                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                    >
                                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Update Tindak Lanjut</h3>
                                         <p class="text-xs text-gray-400 mb-3.5">{{ $item->item_pemeriksaan }} &middot; {{ $item->form?->uker?->nama }}</p>
                                         <form action="{{ route('monitoring.updateTindakLanjut', $item) }}" method="POST" class="space-y-3">
@@ -195,8 +204,19 @@
                                     </div>
                                 </div>
 
-                                <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 whitespace-normal" @click.self="riwayatOpen = false">
-                                    <div class="bg-white p-6 rounded-2xl max-w-4xl w-full text-left">
+                                <div
+                                    x-show="riwayatOpen" x-cloak
+                                    class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4 whitespace-normal"
+                                    @click.self="riwayatOpen = false"
+                                    x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100"
+                                    x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
+                                >
+                                    <div
+                                        x-show="riwayatOpen"
+                                        class="bg-white p-6 rounded-2xl max-w-4xl w-full text-left"
+                                        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100"
+                                        x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
+                                    >
                                         <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Tindak Lanjut &mdash; {{ $item->item_pemeriksaan }}</h3>
                                         <p class="text-xs text-gray-400 mb-3.5">{{ $item->form?->uker?->nama }}</p>
 

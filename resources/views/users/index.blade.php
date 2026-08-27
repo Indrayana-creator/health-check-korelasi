@@ -14,9 +14,7 @@
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
         ]" />
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <x-card padding="p-5">

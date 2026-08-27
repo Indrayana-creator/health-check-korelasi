@@ -14,9 +14,7 @@
                 </div>
             @endif
 
-            @if (session('status'))
-                <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-            @endif
+            <x-flash-status />
 
             @if (!$bisaDiedit)
                 <x-card padding="p-4" class="!bg-yellow-50 !border-yellow-300">

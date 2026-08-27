@@ -14,9 +14,7 @@
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
         ]" />
 
-        @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-        @endif
+        <x-flash-status />
 
         <div class="flex flex-wrap gap-2 items-end">
             <x-button :href="route('ukers.create')">

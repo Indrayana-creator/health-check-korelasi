@@ -7,9 +7,7 @@
         <div class="max-w-2xl mx-auto">
             <x-card padding="p-6">
 
-                @if (session('status'))
-                    <div class="mb-4 p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
-                @endif
+                <x-flash-status class="mb-4" />
                 @if (session('gagal') && count(session('gagal')) > 0)
                     <div class="mb-4 p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-xl text-sm">
                         <p class="font-bold mb-1">Baris yang tidak ditemukan:</p>
