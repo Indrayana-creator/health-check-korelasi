@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class PermintaanPerangkat extends Model
 {
@@ -22,7 +23,7 @@ class PermintaanPerangkat extends Model
     protected $table = 'permintaan_perangkat';
 
     protected $fillable = [
-        'no_nota_dinas', 'tanggal_request', 'fungsi_requester', 'jumlah', 'keterangan',
+        'kode_lacak', 'no_nota_dinas', 'tanggal_request', 'fungsi_requester', 'jumlah', 'keterangan',
         'status', 'catatan_admin', 'uker_kode', 'requested_by',
     ];
 
@@ -33,6 +34,25 @@ class PermintaanPerangkat extends Model
     protected $attributes = [
         'status' => 'Pending IT',
     ];
+
+    // Kode lacak digenerate OTOMATIS begitu record dibuat -- gak pernah
+    // diinput manual dari form manapun, biar formatnya selalu konsisten &
+    // dijamin unik.
+    protected static function booted(): void
+    {
+        static::creating(function (self $p) {
+            $p->kode_lacak ??= self::generateKodeLacak();
+        });
+    }
+
+    public static function generateKodeLacak(): string
+    {
+        do {
+            $kode = 'PP-'.Str::upper(Str::random(8));
+        } while (self::where('kode_lacak', $kode)->exists());
+
+        return $kode;
+    }
 
     public function uker()
     {

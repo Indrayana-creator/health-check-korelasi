@@ -27,6 +27,13 @@ Route::get('/', function () {
     return redirect()->route(auth()->check() ? 'dashboard' : 'login');
 });
 
+// Cek status publik -- SENGAJA di luar middleware 'auth', biar bisa dibuka
+// siapa aja yang punya link (kayak cek resi kurir), gak perlu login. Dicari
+// lewat kode_lacak acak (bukan id), throttle ringan jaga-jaga dari abuse.
+Route::get('/lacak-permintaan/{kodeLacak}', [PermintaanPerangkatController::class, 'lacak'])
+    ->middleware('throttle:30,1')
+    ->name('permintaan-perangkat.lacak');
+
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 // /api/* -- satu-satunya prefix yang bikin exception (termasuk gagal
 // validasi) di-render sebagai JSON (lihat bootstrap/app.php shouldRenderJsonWhen),

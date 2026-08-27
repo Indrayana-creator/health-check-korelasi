@@ -70,6 +70,55 @@ test('user cabang bisa mengajukan permintaan baru, uker_kode otomatis dari akun 
     expect($permintaan->requested_by)->toBe($user->id);
     expect($permintaan->status)->toBe('Pending IT');
     expect($permintaan->tanggal_request->toDateString())->toBe(now()->toDateString());
+
+    // Kode lacak otomatis kegenerate & link-nya di-flash ke session buat
+    // ditampilin ke user abis submit.
+    expect($permintaan->kode_lacak)->not->toBeNull();
+    expect($permintaan->kode_lacak)->toStartWith('PP-');
+    $response->assertSessionHas('linkLacak', route('permintaan-perangkat.lacak', $permintaan->kode_lacak));
+});
+
+// ===================== Cek Status Publik (Lacak) =====================
+
+test('halaman lacak bisa dibuka TANPA login, pakai kode_lacak', function () {
+    $uker = Uker::factory()->create(['nama' => 'KC Contoh']);
+    $permintaan = PermintaanPerangkat::factory()->create([
+        'uker_kode' => $uker->kode, 'no_nota_dinas' => 'ND-LACAK-001', 'status' => 'Pending ESO',
+    ]);
+
+    $response = $this->get(route('permintaan-perangkat.lacak', $permintaan->kode_lacak));
+
+    $response->assertOk();
+    $response->assertSee('ND-LACAK-001');
+    $response->assertSee('Pending ESO');
+    $response->assertSee('KC Contoh');
+});
+
+test('halaman lacak 404 kalau kode_lacak gak ketemu', function () {
+    $this->get(route('permintaan-perangkat.lacak', 'PP-NGARANG1'))->assertNotFound();
+});
+
+test('halaman lacak nampilin riwayat status tapi gak nampilin nama user yang update', function () {
+    $uker = Uker::factory()->create();
+    $admin = User::factory()->admin()->create(['name' => 'Admin Rahasia']);
+    $permintaan = PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode]);
+    $permintaan->statusLogs()->create([
+        'status_lama' => 'Pending IT', 'status_baru' => 'Pending ESO',
+        'catatan_admin' => 'Sudah diteruskan ke ESO', 'changed_by' => $admin->id,
+    ]);
+
+    $response = $this->get(route('permintaan-perangkat.lacak', $permintaan->kode_lacak));
+
+    $response->assertOk();
+    $response->assertSee('Sudah diteruskan ke ESO');
+    $response->assertDontSee('Admin Rahasia');
+});
+
+test('setiap permintaan dapat kode_lacak yang unik', function () {
+    $uker = Uker::factory()->create();
+    $daftar = PermintaanPerangkat::factory()->count(5)->create(['uker_kode' => $uker->kode]);
+
+    expect($daftar->pluck('kode_lacak')->unique())->toHaveCount(5);
 });
 
 test('admin TIDAK bisa mengajukan permintaan perangkat, cuma cabang', function () {

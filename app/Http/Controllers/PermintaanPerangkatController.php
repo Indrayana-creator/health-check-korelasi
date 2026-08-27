@@ -96,7 +96,25 @@ class PermintaanPerangkatController extends Controller
         ActivityLog::catat('permintaan_perangkat', 'ajukan', 1, "Permintaan perangkat {$permintaan->no_nota_dinas} diajukan oleh {$request->user()->name}");
         User::where('role', 'admin')->get()->each->notify(new PermintaanPerangkatDiajukan($permintaan));
 
-        return redirect()->route('permintaan-perangkat.index')->with('status', 'Permintaan perangkat berhasil diajukan.');
+        return redirect()->route('permintaan-perangkat.index')->with('status', 'Permintaan perangkat berhasil diajukan.')
+            ->with('linkLacak', route('permintaan-perangkat.lacak', $permintaan->kode_lacak));
+    }
+
+    // Halaman cek status PUBLIK -- sengaja TANPA middleware auth, biar bisa
+    // dibuka siapa aja yang punya link (kayak cek resi kurir), gak perlu
+    // login/nunggu WA admin buat tau statusnya. Dicari lewat kode_lacak yang
+    // acak (bukan id), biar gak bisa ditebak/di-enumerasi buat ngintip
+    // permintaan cabang lain.
+    public function lacak(string $kodeLacak)
+    {
+        // changedBy SENGAJA gak di-eager-load/ditampilin di halaman publik ini
+        // -- siapa yang update status itu info internal, gak relevan buat
+        // requester yang cuma mau tau progress-nya sampai mana.
+        $permintaan = PermintaanPerangkat::with(['uker', 'statusLogs'])
+            ->where('kode_lacak', $kodeLacak)
+            ->firstOrFail();
+
+        return view('permintaan-perangkat.lacak', compact('permintaan'));
     }
 
     public function updateStatus(Request $request, PermintaanPerangkat $permintaanPerangkat)

@@ -7,7 +7,23 @@
     <div class="p-7 space-y-4 max-w-[1360px]" x-data="{ ajukanOpen: false, selected: [] }">
 
         @if (session('status'))
-            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">{{ session('status') }}</div>
+            <div class="p-4 bg-green-50 border border-green-200 text-green-800 rounded-xl text-sm">
+                {{ session('status') }}
+                @if (session('linkLacak'))
+                    <div class="mt-2 flex items-center gap-2 flex-wrap" x-data="{ copied: false }">
+                        <span class="text-xs text-green-700">Link cek status (bisa dibagikan, gak perlu login):</span>
+                        <a href="{{ session('linkLacak') }}" target="_blank" class="text-xs font-mono text-cakrawala hover:underline break-all">{{ session('linkLacak') }}</a>
+                        <button
+                            type="button"
+                            @click="navigator.clipboard.writeText('{{ session('linkLacak') }}'); copied = true; setTimeout(() => copied = false, 2000)"
+                            class="px-2 py-1 rounded-md border border-green-300 text-[11px] font-semibold text-green-700 hover:bg-green-100"
+                        >
+                            <span x-show="!copied">Salin Link</span>
+                            <span x-show="copied" x-cloak>Tersalin!</span>
+                        </button>
+                    </div>
+                @endif
+            </div>
         @endif
 
         <div class="flex flex-wrap items-center justify-between gap-3">
@@ -124,7 +140,7 @@
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($permintaanList as $p)
-                        <tr class="hover:bg-gray-50" x-data="{ open: false, riwayatOpen: false }">
+                        <tr class="hover:bg-gray-50" x-data="{ open: false, riwayatOpen: false, copiedLacak: false }">
                             @if ($isAdmin)
                                 <td class="px-4 py-3">
                                     <input type="checkbox" class="rounded border-gray-300" value="{{ $p->id }}" x-model.number="selected">
@@ -150,6 +166,15 @@
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 <x-icon-button type="button" variant="neutral" label="Lihat Riwayat" @click="riwayatOpen = true">
                                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 8v4l3 3M12 22a10 10 0 100-20 10 10 0 000 20z"></path></svg>
+                                </x-icon-button>
+                                <x-icon-button
+                                    type="button"
+                                    variant="neutral"
+                                    label="Salin Link Lacak (bisa dibuka tanpa login)"
+                                    @click="navigator.clipboard.writeText('{{ route('permintaan-perangkat.lacak', $p->kode_lacak) }}'); copiedLacak = true; setTimeout(() => copiedLacak = false, 2000)"
+                                >
+                                    <svg x-show="!copiedLacak" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M9 12h6m-6 4h6m2 4H7a2 2 0 01-2-2V6a2 2 0 012-2h5.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V18a2 2 0 01-2 2z"></path></svg>
+                                    <svg x-show="copiedLacak" x-cloak viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5 text-green-600"><path d="M20 6L9 17l-5-5"></path></svg>
                                 </x-icon-button>
 
                                 <div x-show="riwayatOpen" x-cloak class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4" @click.self="riwayatOpen = false">
