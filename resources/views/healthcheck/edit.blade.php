@@ -293,7 +293,7 @@
                         <x-card padding="p-6">
                             <h3 class="font-extrabold text-sm text-gray-800 mb-1">E - Dokumentasi Visual</h3>
                             <p class="text-xs text-gray-400 mb-4">
-                                Link/URL foto bukti pemeriksaan, opsional -- tidak ikut hitungan compliance % (compliance tetap murni dari kategori checklist item, bukan dari sini).
+                                Upload foto bukti pemeriksaan (kamera langsung atau galeri), opsional -- tidak ikut hitungan compliance % (compliance tetap murni dari kategori checklist item, bukan dari sini).
                             </p>
 
                             <div class="flex flex-col gap-5">
@@ -302,14 +302,23 @@
                                         <p class="text-sm font-semibold text-gray-700 mb-1">{{ $loop->iteration }}. {{ $meta['label'] }}</p>
                                         <p class="text-xs text-gray-400 mb-1">{{ $meta['instruksi'] }}</p>
                                         <p class="text-xs text-gray-400 mb-2.5">Kondisi ideal: {{ $meta['kondisi_ideal'] }}</p>
-                                        <x-text-input
-                                            type="text"
-                                            name="{{ $field }}"
-                                            value="{{ $healthcheck->{$field} }}"
-                                            placeholder="https://... (link foto/screenshot)"
-                                            class="block w-full"
-                                            :readonly="!$editable"
-                                        />
+
+                                        @if ($healthcheck->{$field})
+                                            <a href="{{ $healthcheck->{$field} }}" target="_blank" rel="noopener" class="inline-block mb-2.5">
+                                                <img src="{{ $healthcheck->{$field} }}" alt="{{ $meta['label'] }}" class="w-32 h-32 object-cover rounded-lg border border-gray-100">
+                                            </a>
+                                        @endif
+
+                                        @if ($editable)
+                                            <input
+                                                type="file"
+                                                name="{{ $field }}"
+                                                accept="image/*"
+                                                capture="environment"
+                                                class="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border file:border-gray-200 file:bg-white file:text-xs file:font-semibold file:text-gray-600 hover:file:bg-gray-50"
+                                            >
+                                            <p class="text-[11px] text-gray-400 mt-1">Foto langsung dari kamera, atau pilih dari galeri/file. Kosongkan kalau gak mau ganti foto yang sudah ada.</p>
+                                        @endif
                                     </div>
                                 @endforeach
                             </div>

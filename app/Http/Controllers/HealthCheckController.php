@@ -276,9 +276,11 @@ class HealthCheckController extends Controller
             'items.*.foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',
-            'foto_ruang_server_url' => 'nullable|string|max:2048',
-            'foto_storage_cctv_url' => 'nullable|string|max:2048',
-            'foto_panel_ups_url' => 'nullable|string|max:2048',
+            // Revisi Pak Indra -- dulu link URL (paste teks), sekarang harus
+            // foto/upload langsung (image file, gak lagi terima teks bebas).
+            'foto_ruang_server_url' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'foto_storage_cctv_url' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            'foto_panel_ups_url' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
         ]);
 
         $dataUpdate = [
@@ -325,9 +327,20 @@ class HealthCheckController extends Controller
                 User::where('role', 'admin')->get()->each->notify(new HealthCheckItemFlaggedNotOk($healthcheck, $jumlahBaruBermasalah));
             }
 
-            $dataUpdate['foto_ruang_server_url'] = $validated['foto_ruang_server_url'] ?? null;
-            $dataUpdate['foto_storage_cctv_url'] = $validated['foto_storage_cctv_url'] ?? null;
-            $dataUpdate['foto_panel_ups_url'] = $validated['foto_panel_ups_url'] ?? null;
+            // Cuma diproses kalau ada FILE BARU diupload -- beda dari input teks
+            // dulu (yang selalu resubmit value lama), file input kosong kalau
+            // gak ada file baru dipilih, jadi kalau langsung ditimpa null di sini
+            // foto yang udah ada bakal ke-hapus percuma tiap kali form disimpan
+            // ulang tanpa ganti foto. Foto lama dihapus dari disk begitu diganti.
+            foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
+                if ($request->hasFile($field)) {
+                    $lama = $healthcheck->getRawOriginal($field);
+                    if ($lama) {
+                        Storage::disk('public')->delete($lama);
+                    }
+                    $dataUpdate[$field] = $request->file($field)->store('healthcheck-dokumentasi', 'public');
+                }
+            }
         }
 
         $healthcheck->update($dataUpdate);

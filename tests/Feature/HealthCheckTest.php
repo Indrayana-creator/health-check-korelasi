@@ -199,7 +199,9 @@ test('item checklist terkunci kalau tanggal pemeriksaan sudah lewat, tapi status
     expect($form->fresh()->status_tindak_lanjut)->toBe('Sedang Diproses');
 });
 
-test('dokumentasi visual (kategori E) bisa disimpan dan tampil ulang', function () {
+test('dokumentasi visual (kategori E) bisa diupload sebagai foto dan tampil ulang', function () {
+    Storage::fake('public');
+
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
     $form = HealthCheckForm::factory()->create([
@@ -213,21 +215,80 @@ test('dokumentasi visual (kategori E) bisa disimpan dan tampil ulang', function 
             ['id' => $item->id, 'status' => 'OK'],
         ],
         'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
-        'foto_ruang_server_url' => 'https://contoh.com/foto-ruang-server.jpg',
-        'foto_storage_cctv_url' => 'https://contoh.com/foto-storage-cctv.jpg',
-        'foto_panel_ups_url' => 'https://contoh.com/foto-panel-ups.jpg',
+        'foto_ruang_server_url' => UploadedFile::fake()->image('ruang-server.jpg'),
+        'foto_storage_cctv_url' => UploadedFile::fake()->image('storage-cctv.jpg'),
+        'foto_panel_ups_url' => UploadedFile::fake()->image('panel-ups.jpg'),
     ]);
 
     $response->assertRedirect(route('healthcheck.index'));
     $form->refresh();
-    expect($form->foto_ruang_server_url)->toBe('https://contoh.com/foto-ruang-server.jpg');
-    expect($form->foto_storage_cctv_url)->toBe('https://contoh.com/foto-storage-cctv.jpg');
-    expect($form->foto_panel_ups_url)->toBe('https://contoh.com/foto-panel-ups.jpg');
+    expect($form->getRawOriginal('foto_ruang_server_url'))->not->toBeNull();
+    expect($form->getRawOriginal('foto_storage_cctv_url'))->not->toBeNull();
+    expect($form->getRawOriginal('foto_panel_ups_url'))->not->toBeNull();
+    Storage::disk('public')->assertExists($form->getRawOriginal('foto_ruang_server_url'));
     expect($form->jumlahFotoDokumentasiTerisi())->toBe(3);
 
     $this->actingAs($user)->get(route('healthcheck.edit', $form))
         ->assertOk()
-        ->assertSee('https://contoh.com/foto-ruang-server.jpg', false);
+        ->assertSee($form->foto_ruang_server_url, false);
+});
+
+test('dokumentasi visual: resubmit tanpa upload foto baru gak ngapus foto yang udah ada', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'OK']],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => UploadedFile::fake()->image('ruang-server.jpg'),
+    ]);
+    $pathAwal = $form->refresh()->getRawOriginal('foto_ruang_server_url');
+
+    // Submit ulang TANPA ikutkan file apapun -- foto yang udah ada harus tetap ada.
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'OK', 'catatan' => 'Update catatan aja']],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+    ]);
+
+    expect($form->refresh()->getRawOriginal('foto_ruang_server_url'))->toBe($pathAwal);
+    Storage::disk('public')->assertExists($pathAwal);
+});
+
+test('dokumentasi visual: upload foto baru ganti & hapus foto lama dari disk', function () {
+    Storage::fake('public');
+
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $form = HealthCheckForm::factory()->create([
+        'uker_kode' => $uker->kode,
+        'tanggal_pemeriksaan' => now()->toDateString(),
+    ]);
+    $item = HealthCheckItem::factory()->create(['health_check_form_id' => $form->id]);
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'OK']],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => UploadedFile::fake()->image('foto-lama.jpg'),
+    ]);
+    $pathLama = $form->refresh()->getRawOriginal('foto_ruang_server_url');
+
+    $this->actingAs($user)->put(route('healthcheck.update', $form), [
+        'items' => [['id' => $item->id, 'status' => 'OK']],
+        'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
+        'foto_ruang_server_url' => UploadedFile::fake()->image('foto-baru.jpg'),
+    ]);
+    $form->refresh();
+
+    expect($form->getRawOriginal('foto_ruang_server_url'))->not->toBe($pathLama);
+    Storage::disk('public')->assertMissing($pathLama);
+    Storage::disk('public')->assertExists($form->getRawOriginal('foto_ruang_server_url'));
 });
 
 test('item checklist bisa dilampirin foto bukti kondisi fisik', function () {
@@ -343,6 +404,8 @@ test('compliance persen tidak berubah baik dokumentasi visual diisi maupun tidak
 });
 
 test('dokumentasi visual ikut terkunci kalau tanggal pemeriksaan sudah lewat', function () {
+    Storage::fake('public');
+
     $uker = Uker::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
     $form = HealthCheckForm::factory()->create([
@@ -356,11 +419,11 @@ test('dokumentasi visual ikut terkunci kalau tanggal pemeriksaan sudah lewat', f
             ['id' => $item->id, 'status' => 'OK'],
         ],
         'status_tindak_lanjut' => 'Belum Ditindaklanjuti',
-        'foto_ruang_server_url' => 'https://contoh.com/tidak-boleh-tersimpan.jpg',
+        'foto_ruang_server_url' => UploadedFile::fake()->image('tidak-boleh-tersimpan.jpg'),
     ]);
 
     $response->assertRedirect(route('healthcheck.index'));
-    expect($form->fresh()->foto_ruang_server_url)->toBeNull();
+    expect($form->fresh()->getRawOriginal('foto_ruang_server_url'))->toBeNull();
 });
 
 test('update tanpa status_tindak_lanjut ditolak validasi', function () {

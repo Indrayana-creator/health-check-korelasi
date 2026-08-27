@@ -103,4 +103,34 @@ class HealthCheckForm extends Model
             ->filter(fn ($field) => filled($this->{$field}))
             ->count();
     }
+
+    // Revisi Pak Indra -- Dokumentasi Visual sebelumnya cuma nerima link URL
+    // (user paste link foto dari luar), sekarang harus foto/upload LANGSUNG
+    // dari app. Kolom foto_..._url tetap dipakai (gak di-rename, hindari
+    // migration mubazir) tapi isinya sekarang PATH di storage lokal, bukan
+    // URL asli -- makanya butuh accessor biar ->foto_ruang_server_url dkk
+    // tetap ngasih URL yang bisa langsung ditampilin (kayak pola foto_url di
+    // AsetKendala/HealthCheckItem), transparan buat semua kode lain yang
+    // udah baca field ini (blade, jumlahFotoDokumentasiTerisi(), dst).
+    public function getFotoRuangServerUrlAttribute(): ?string
+    {
+        return $this->dokumentasiVisualUrl('foto_ruang_server_url');
+    }
+
+    public function getFotoStorageCctvUrlAttribute(): ?string
+    {
+        return $this->dokumentasiVisualUrl('foto_storage_cctv_url');
+    }
+
+    public function getFotoPanelUpsUrlAttribute(): ?string
+    {
+        return $this->dokumentasiVisualUrl('foto_panel_ups_url');
+    }
+
+    protected function dokumentasiVisualUrl(string $field): ?string
+    {
+        $path = $this->getRawOriginal($field);
+
+        return $path ? asset('storage/'.$path) : null;
+    }
 }
