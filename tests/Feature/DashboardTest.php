@@ -59,6 +59,32 @@ test('kesehatan per kategori cuma ngitung dari form TERBARU per uker, form lama 
     expect($kategoriA['label'])->toBe('PERLU PERHATIAN'); // 75% < 80%
 });
 
+test('kesehatan per kategori TOTAL ngitung SEMUA form (bukan cuma terbaru), beda dari versi minggu berjalan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $formLama = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->subWeeks(2)]);
+    HealthCheckItem::factory()->count(4)->create(['health_check_form_id' => $formLama->id, 'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'Not OK']);
+
+    $formBaru = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+    HealthCheckItem::factory()->count(3)->create(['health_check_form_id' => $formBaru->id, 'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'OK']);
+    HealthCheckItem::factory()->count(1)->create(['health_check_form_id' => $formBaru->id, 'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'Not OK']);
+
+    $response = $this->actingAs($admin)->get(route('dashboard'));
+
+    $response->assertOk();
+    $kategoriATotal = $response->viewData('kesehatanPerKategoriTotal')->firstWhere('kategori', 'A - Ruang Server/Jaringan');
+    // Total dari KEDUA form: 3 OK, 5 Not OK (4 dari form lama + 1 dari form baru).
+    expect($kategoriATotal['breakdown']['OK'])->toBe(3);
+    expect($kategoriATotal['breakdown']['Not OK'])->toBe(5);
+
+    // Versi "terbaru" tetap cuma dari form baru (3 OK, 1 Not OK) -- dua-duanya
+    // harus tersedia BERBARENGAN & beda angka, gak saling menimpa.
+    $kategoriATerbaru = $response->viewData('kesehatanPerKategori')->firstWhere('kategori', 'A - Ruang Server/Jaringan');
+    expect($kategoriATerbaru['breakdown']['OK'])->toBe(3);
+    expect($kategoriATerbaru['breakdown']['Not OK'])->toBe(1);
+});
+
 test('kesehatan per kategori di-scope RBAC: user cuma lihat uker sendiri + turunan, admin lihat semua', function () {
     $admin = User::factory()->admin()->create();
     $ukerSendiri = Uker::factory()->create();
@@ -347,6 +373,30 @@ test('itemDetail nampilin item checklist sesuai kategori & status yang diminta, 
     $items = collect($response->json('items'));
     expect($items)->toHaveCount(1);
     expect($items->first()['item_pemeriksaan'])->toBe('Item form baru');
+});
+
+test('itemDetail mode=total nampilin item dari SEMUA form, termasuk yang udah bukan form terbaru', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $formLama = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()->subDays(10)]);
+    $formBaru = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formLama->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'OK', 'item_pemeriksaan' => 'Item form lama',
+    ]);
+    HealthCheckItem::factory()->create([
+        'health_check_form_id' => $formBaru->id, 'kategori' => 'A - Ruang Server/Jaringan',
+        'status' => 'OK', 'item_pemeriksaan' => 'Item form baru',
+    ]);
+
+    $response = $this->actingAs($admin)->getJson(route('dashboard.itemDetail', [
+        'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'OK', 'mode' => 'total',
+    ]));
+
+    $response->assertOk();
+    $teks = collect($response->json('items'))->pluck('item_pemeriksaan');
+    expect($teks)->toContain('Item form lama', 'Item form baru');
 });
 
 test('itemDetail user biasa cuma lihat item dari uker sendiri + turunannya', function () {

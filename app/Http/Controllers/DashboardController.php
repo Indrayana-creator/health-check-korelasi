@@ -37,17 +37,67 @@ class DashboardController extends Controller
             ->map(fn ($forms) => $forms->sortByDesc('tanggal_pemeriksaan')->first());
     }
 
+    // Versi "Total" -- SELURUH histori form (bukan cuma yang terbaru per
+    // uker), scoping RBAC-nya sama persis. Dipakai buat chart "Total (Seluruh
+    // Histori)" yang sengaja dipisah dari "Form Terbaru/Minggu Berjalan" di
+    // atas, biar dua sudut pandang (progres minggu ini vs rekam jejak
+    // keseluruhan) sama-sama kelihatan, gak nyampur jadi satu angka yang
+    // membingungkan.
+    protected function semuaFormScoped(Request $request)
+    {
+        $isAdmin = $request->user()->role === 'admin';
+        $formQuery = HealthCheckForm::query()->with('items.form.uker');
+        if (! $isAdmin) {
+            $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);
+            $formQuery->whereIn('uker_kode', $ukerBolehDiakses);
+        }
+
+        return $formQuery->get();
+    }
+
+    // Breakdown status per kategori checklist (A-D + F) dari sekumpulan item
+    // -- diekstrak jadi 1 method biar dipakai bareng buat versi "form terbaru"
+    // maupun "total seluruh histori", tanpa duplikasi logic hitungnya.
+    protected function hitungKesehatanPerKategori($semuaItem)
+    {
+        return collect(config('health_check_checklist'))->keys()->map(function ($kategori) use ($semuaItem) {
+            $items = $semuaItem->where('kategori', $kategori);
+            $total = $items->count();
+            $ok = $items->where('status', 'OK')->count();
+            $persen = $total > 0 ? round($ok / $total * 100, 1) : 0;
+
+            return [
+                'kategori' => $kategori,
+                'persen' => $persen,
+                'label' => ComplianceScale::label($persen),
+                'warna' => ComplianceScale::badgeColor($persen),
+                'breakdown' => [
+                    'OK' => $items->where('status', 'OK')->count(),
+                    'Not OK' => $items->where('status', 'Not OK')->count(),
+                    'N/A' => $items->where('status', 'N/A')->count(),
+                    'Belum Diperiksa' => $items->where('status', 'Belum Diperiksa')->count(),
+                ],
+            ];
+        })->values();
+    }
+
     // Data buat modal drill-down chart per kategori di Dashboard -- daftar
-    // item checklist (dari form terbaru tiap uker, sama kayak chart-nya)
-    // yang match kategori + status yang diklik.
+    // item checklist yang match kategori + status yang diklik. "mode" nentuin
+    // sumbernya: 'terbaru' (default, form terbaru tiap uker) atau 'total'
+    // (seluruh histori) -- HARUS konsisten sama chart mana yang diklik.
     public function itemDetail(Request $request)
     {
         $validated = $request->validate([
             'kategori' => 'required|string',
             'status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
+            'mode' => 'nullable|in:terbaru,total',
         ]);
 
-        $items = $this->formTerbaruPerUkerScoped($request)
+        $formList = ($validated['mode'] ?? 'terbaru') === 'total'
+            ? $this->semuaFormScoped($request)
+            : $this->formTerbaruPerUkerScoped($request);
+
+        $items = $formList
             ->flatMap(fn ($f) => $f->items)
             ->where('kategori', $validated['kategori'])
             ->where('status', $validated['status'])
@@ -274,26 +324,14 @@ class DashboardController extends Controller
         $formTerbaruPerUker = $this->formTerbaruPerUkerScoped($request);
 
         $semuaItemTerbaru = $formTerbaruPerUker->flatMap(fn ($f) => $f->items);
+        $kesehatanPerKategori = $this->hitungKesehatanPerKategori($semuaItemTerbaru);
 
-        $kesehatanPerKategori = collect(config('health_check_checklist'))->keys()->map(function ($kategori) use ($semuaItemTerbaru) {
-            $items = $semuaItemTerbaru->where('kategori', $kategori);
-            $total = $items->count();
-            $ok = $items->where('status', 'OK')->count();
-            $persen = $total > 0 ? round($ok / $total * 100, 1) : 0;
-
-            return [
-                'kategori' => $kategori,
-                'persen' => $persen,
-                'label' => ComplianceScale::label($persen),
-                'warna' => ComplianceScale::badgeColor($persen),
-                'breakdown' => [
-                    'OK' => $items->where('status', 'OK')->count(),
-                    'Not OK' => $items->where('status', 'Not OK')->count(),
-                    'N/A' => $items->where('status', 'N/A')->count(),
-                    'Belum Diperiksa' => $items->where('status', 'Belum Diperiksa')->count(),
-                ],
-            ];
-        })->values();
+        // ===== 1b-total. Versi "Total (Seluruh Histori)" -- SENGAJA dipisah
+        // dari versi "form terbaru" di atas, bukan digabung jadi satu angka.
+        // $formList di sini udah ALL histori form (dari perhitungan rataCompliance
+        // di atas), scoping RBAC-nya sama, jadi tinggal reuse.
+        $semuaItemTotal = $formList->flatMap(fn ($f) => $f->items);
+        $kesehatanPerKategoriTotal = $this->hitungKesehatanPerKategori($semuaItemTotal);
 
         // Kategori E "Dokumentasi Visual" -- TERPISAH, cuma link foto (bukan
         // checklist OK/Not OK), gak pernah ikut dihitung ke compliance manapun.
@@ -460,7 +498,7 @@ class DashboardController extends Controller
         }
 
         return view('dashboard', compact(
-            'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'asetBaruMingguIni', 'formBaruMingguIni', 'kesehatanPerKategori', 'totalFormTerbaru', 'formLengkapDokumentasi',
+            'aksiPerlu', 'totalAset', 'totalFormHc', 'rataCompliance', 'asetBaruMingguIni', 'formBaruMingguIni', 'kesehatanPerKategori', 'kesehatanPerKategoriTotal', 'totalFormTerbaru', 'formLengkapDokumentasi',
             'rankingCabang', 'cabangTerbaikBulanIni', 'ukerBelumMengisi', 'ukerBelumAdaAset', 'editRequestsMenunggu', 'editRequestsSaya', 'distribusiPerangkat', 'aktivitasTerbaru', 'isAdmin', 'tree', 'totalKendalaAktif'
         ));
     }

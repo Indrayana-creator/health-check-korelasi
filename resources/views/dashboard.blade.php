@@ -18,14 +18,16 @@
                 data: null,
                 kategori: null,
                 status: null,
-                async buka(kategori, status) {
+                mode: 'terbaru',
+                async buka(kategori, status, mode = 'terbaru') {
                     this.open = true;
                     this.loading = true;
                     this.data = null;
                     this.kategori = kategori;
                     this.status = status;
+                    this.mode = mode;
                     try {
-                        const res = await fetch(`{{ route('dashboard.itemDetail') }}?kategori=${encodeURIComponent(kategori)}&status=${encodeURIComponent(status)}`);
+                        const res = await fetch(`{{ route('dashboard.itemDetail') }}?kategori=${encodeURIComponent(kategori)}&status=${encodeURIComponent(status)}&mode=${encodeURIComponent(mode)}`);
                         const json = await res.json();
                         this.data = json.items;
                     } catch (e) {
@@ -154,8 +156,8 @@
              config('health_check_checklist') secara dinamis; Kategori E
              (Dokumentasi Visual) terpisah total, gak ikut compliance manapun. --}}
         <x-card>
-            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori</h3>
-            <p class="text-xs text-gray-400 mb-3">Dari form Health Check terbaru tiap uker (bukan seluruh histori), sesuai cakupan akses Anda.</p>
+            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori <span class="font-normal text-gray-400">&middot; Minggu Berjalan</span></h3>
+            <p class="text-xs text-gray-400 mb-3">Dari form Health Check TERBARU tiap uker (bukan seluruh histori) -- biar uker yang rajin isi tiap minggu gak "menang banyak" dibanding yang baru isi sekali. Sesuai cakupan akses Anda.</p>
 
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 <x-compliance-legend />
@@ -196,7 +198,7 @@
                                                     onClick: (evt, elements, chart) => {
                                                         if (!elements.length) return;
                                                         const status = chart.data.labels[elements[0].index];
-                                                        Alpine.store('itemDetail').buka(kategori, status);
+                                                        Alpine.store('itemDetail').buka(kategori, status, 'terbaru');
                                                     },
                                                     onHover: (evt, elements) => {
                                                         evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
@@ -271,6 +273,64 @@
             </div>
         </x-card>
 
+        {{-- 1b-total. Versi "Total (Seluruh Histori)" -- SENGAJA dipisah jadi
+             card sendiri, bukan digabung sama versi "Minggu Berjalan" di atas.
+             Sumbernya SEMUA form yang pernah dibuat (termasuk yang udah "kalah"
+             sama form lebih baru di uker yang sama), biar tetap kelihatan rekam
+             jejak keseluruhan walau minggu ini baru mulai isi lagi dari nol. --}}
+        <x-card>
+            <h3 class="font-extrabold text-sm text-gray-800 mb-1">Kesehatan Checklist per Kategori <span class="font-normal text-gray-400">&middot; Total (Seluruh Histori)</span></h3>
+            <p class="text-xs text-gray-400 mb-3">Dari SEMUA form Health Check yang pernah dibuat (bukan cuma yang terbaru), sesuai cakupan akses Anda.</p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                @foreach ($kesehatanPerKategoriTotal as $k)
+                    <div class="border border-gray-200 rounded-xl p-4">
+                        <p class="text-xs font-bold text-gray-700 mb-2 leading-snug">{{ $k['kategori'] }}</p>
+                        @if (array_sum($k['breakdown']) > 0)
+                            <div class="h-32 mb-2">
+                                <canvas
+                                    x-data="{
+                                        init() {
+                                            const kategori = @js($k['kategori']);
+                                            new Chart(this.$el, {
+                                                type: 'doughnut',
+                                                data: {
+                                                    labels: @js(array_keys($k['breakdown'])),
+                                                    datasets: [{
+                                                        data: @js(array_values($k['breakdown'])),
+                                                        backgroundColor: ['#22C55E', '#EF4444', '#F59E0B', '#94A3B8'],
+                                                        borderWidth: 0,
+                                                    }],
+                                                },
+                                                options: {
+                                                    maintainAspectRatio: false,
+                                                    plugins: { legend: { display: false } },
+                                                    onClick: (evt, elements, chart) => {
+                                                        if (!elements.length) return;
+                                                        const status = chart.data.labels[elements[0].index];
+                                                        Alpine.store('itemDetail').buka(kategori, status, 'total');
+                                                    },
+                                                    onHover: (evt, elements) => {
+                                                        evt.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+                                                    },
+                                                },
+                                            });
+                                        }
+                                    }"
+                                ></canvas>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <x-badge :color="$k['warna']">{{ $k['label'] }}</x-badge>
+                                <span class="text-sm font-extrabold text-gray-800">{{ $k['persen'] }}%</span>
+                            </div>
+                        @else
+                            <p class="text-xs text-gray-400 h-32 flex items-center justify-center text-center">Belum ada data.</p>
+                        @endif
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+
         {{-- Modal drill-down "Kesehatan Checklist per Kategori" -- muncul saat
              segmen doughnut mana pun diklik (lihat Alpine.store('itemDetail')). --}}
         <div
@@ -289,7 +349,10 @@
                 <div class="flex justify-between items-start mb-1">
                     <div>
                         <h3 class="font-extrabold text-lg text-gray-800" x-text="$store.itemDetail.kategori"></h3>
-                        <p class="text-xs text-gray-400 mt-0.5">Status: <span class="font-semibold" x-text="$store.itemDetail.status"></span></p>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            Status: <span class="font-semibold" x-text="$store.itemDetail.status"></span>
+                            &middot; <span x-text="$store.itemDetail.mode === 'total' ? 'Seluruh Histori' : 'Minggu Berjalan'"></span>
+                        </p>
                     </div>
                     <button @click="$store.itemDetail.tutup()" class="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
                 </div>
