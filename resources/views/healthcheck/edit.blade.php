@@ -340,28 +340,47 @@
                                         <p class="text-[11px] text-cakrawala font-semibold mb-2" x-show="previews.length" x-cloak x-text="previews.length + ' foto baru dipilih (belum disimpan)'"></p>
 
                                         @if ($editable)
-                                            {{-- Tombol jelas & besar (bukan cuma link "Choose File" bawaan
-                                                 browser yang kecil/gampang keliatan gak penting) -- di HP, tap
-                                                 ini munculin pilihan "Kamera" atau "Galeri" dari OS (atribut
-                                                 capture), bukan cuma buka file manager. multiple biar bisa
-                                                 pilih/foto lebih dari 1 sekaligus. --}}
-                                            <label
-                                                for="dokvisual-{{ $field }}"
-                                                class="inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap transition bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 text-sm cursor-pointer"
-                                            >
-                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                                Tambah Foto
-                                            </label>
-                                            <input
-                                                id="dokvisual-{{ $field }}"
-                                                type="file"
-                                                name="{{ $field }}[]"
-                                                multiple
-                                                accept="image/*"
-                                                capture="environment"
-                                                @change="previews = Array.from($event.target.files).map(f => URL.createObjectURL(f))"
-                                                class="hidden"
-                                            >
+                                            {{-- Dipisah jadi 2 tombol tegas -- "Ambil Foto" (paksa buka kamera
+                                                 langsung via capture, gak nawarin galeri) dan "Upload dari
+                                                 Galeri" (buka file/galeri biasa, bisa pilih banyak sekaligus).
+                                                 Dua-duanya share nama field yang sama ({{ $field }}[]), jadi
+                                                 file dari keduanya kekirim bareng pas submit -- previews-nya
+                                                 DITAMBAHIN (bukan ditimpa) tiap kali salah satu dipakai. --}}
+                                            <div class="flex flex-wrap gap-2">
+                                                <label
+                                                    for="dokvisual-{{ $field }}-kamera"
+                                                    class="inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap transition bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 text-sm cursor-pointer"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                                    Ambil Foto
+                                                </label>
+                                                <input
+                                                    id="dokvisual-{{ $field }}-kamera"
+                                                    type="file"
+                                                    name="{{ $field }}[]"
+                                                    accept="image/*"
+                                                    capture="environment"
+                                                    @change="previews = [...previews, ...Array.from($event.target.files).map(f => URL.createObjectURL(f))]"
+                                                    class="hidden"
+                                                >
+
+                                                <label
+                                                    for="dokvisual-{{ $field }}-galeri"
+                                                    class="inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap transition bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 text-sm cursor-pointer"
+                                                >
+                                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14M4 4h16a1 1 0 011 1v14a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z"></path><circle cx="9" cy="9" r="1.5"></circle></svg>
+                                                    Upload dari Galeri
+                                                </label>
+                                                <input
+                                                    id="dokvisual-{{ $field }}-galeri"
+                                                    type="file"
+                                                    name="{{ $field }}[]"
+                                                    multiple
+                                                    accept="image/*"
+                                                    @change="previews = [...previews, ...Array.from($event.target.files).map(f => URL.createObjectURL(f))]"
+                                                    class="hidden"
+                                                >
+                                            </div>
                                             <p class="text-[11px] text-gray-400 mt-1.5">Bisa pilih/foto lebih dari 1 sekaligus. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
                                         @endif
                                     </div>
