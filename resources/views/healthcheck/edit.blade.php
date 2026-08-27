@@ -298,16 +298,34 @@
 
                             <div class="flex flex-col gap-5">
                                 @foreach (\App\Models\HealthCheckForm::FIELD_DOKUMENTASI_VISUAL as $field => $meta)
-                                    <div class="border-b border-gray-100 pb-5 last:border-0 last:pb-0">
+                                    <div
+                                        class="border-b border-gray-100 pb-5 last:border-0 last:pb-0"
+                                        x-data="{ preview: null }"
+                                    >
                                         <p class="text-sm font-semibold text-gray-700 mb-1">{{ $loop->iteration }}. {{ $meta['label'] }}</p>
                                         <p class="text-xs text-gray-400 mb-1">{{ $meta['instruksi'] }}</p>
                                         <p class="text-xs text-gray-400 mb-2.5">Kondisi ideal: {{ $meta['kondisi_ideal'] }}</p>
 
+                                        {{-- Foto tersimpan (dari server) -- disembunyiin begitu ada preview foto
+                                             baru yang belum disimpan, biar gak ketuker mana yang lagi ditampilin. --}}
                                         @if ($healthcheck->{$field})
-                                            <a href="{{ $healthcheck->{$field} }}" target="_blank" rel="noopener" class="inline-block mb-2.5">
+                                            <a
+                                                href="{{ $healthcheck->{$field} }}" target="_blank" rel="noopener"
+                                                class="inline-block mb-2.5" x-show="!preview"
+                                            >
                                                 <img src="{{ $healthcheck->{$field} }}" alt="{{ $meta['label'] }}" class="w-32 h-32 object-cover rounded-lg border border-gray-100">
                                             </a>
                                         @endif
+
+                                        {{-- Preview foto yang BARU DIPILIH/DIFOTO -- langsung tampil di
+                                             browser (client-side, belum ke-upload/tersimpan), biar user bisa
+                                             lihat dulu hasilnya sebelum tekan Simpan. --}}
+                                        <template x-if="preview">
+                                            <div class="mb-2.5">
+                                                <img :src="preview" alt="Preview foto baru" class="w-32 h-32 object-cover rounded-lg border-2 border-cakrawala">
+                                                <p class="text-[11px] text-cakrawala font-semibold mt-1">Foto baru (belum disimpan)</p>
+                                            </div>
+                                        </template>
 
                                         @if ($editable)
                                             <input
@@ -315,6 +333,7 @@
                                                 name="{{ $field }}"
                                                 accept="image/*"
                                                 capture="environment"
+                                                @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null"
                                                 class="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border file:border-gray-200 file:bg-white file:text-xs file:font-semibold file:text-gray-600 hover:file:bg-gray-50"
                                             >
                                             <p class="text-[11px] text-gray-400 mt-1">Foto langsung dari kamera, atau pilih dari galeri/file. Kosongkan kalau gak mau ganti foto yang sudah ada.</p>
