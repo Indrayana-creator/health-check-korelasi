@@ -14,7 +14,6 @@ class HealthCheckForm extends Model
         'uker_kode', 'pic_pn', 'tanggal_pemeriksaan', 'periode',
         'status_tindak_lanjut', 'catatan_tindak_lanjut',
         'status_approval', 'catatan_approval', 'approved_by_pn', 'approved_at',
-        'foto_ruang_server_url', 'foto_storage_cctv_url', 'foto_panel_ups_url',
     ];
 
     public const DAFTAR_STATUS_TINDAK_LANJUT = [
@@ -96,41 +95,31 @@ class HealthCheckForm extends Model
         return round($ok / $total * 100, 1);
     }
 
-    // Jumlah foto dokumentasi visual (Kategori E) yang sudah diisi, dari 0-3.
+    // Revisi Pak Indra -- Dokumentasi Visual awalnya 1 kolom scalar per
+    // kategori (foto_ruang_server_url dkk), jadi cuma bisa 1 foto per
+    // kategori & gak bisa dihapus tanpa nimpa pakai foto baru. Ditarik jadi
+    // relasi one-to-many (health_check_dokumentasi_fotos) biar 1 kategori
+    // bisa punya BANYAK foto sekaligus, dan tiap foto bisa dihapus satu-satu.
+    public function dokumentasiFotos()
+    {
+        return $this->hasMany(HealthCheckDokumentasiFoto::class)->orderBy('id');
+    }
+
+    // Semua foto buat 1 field/kategori dokumentasi tertentu (mis.
+    // 'foto_ruang_server_url') -- dipakai di view buat nampilin galeri per
+    // kategori tanpa query berulang (asalkan dokumentasiFotos udah di-load).
+    public function fotoUntukField(string $field)
+    {
+        return $this->dokumentasiFotos->where('field', $field)->values();
+    }
+
+    // Jumlah KATEGORI dokumentasi visual yang udah punya minimal 1 foto,
+    // dari 0-3 (bukan jumlah foto -- 1 kategori mau punya 5 foto tetap
+    // dihitung 1 "terisi").
     public function jumlahFotoDokumentasiTerisi(): int
     {
         return collect(array_keys(self::FIELD_DOKUMENTASI_VISUAL))
-            ->filter(fn ($field) => filled($this->{$field}))
+            ->filter(fn ($field) => $this->fotoUntukField($field)->isNotEmpty())
             ->count();
-    }
-
-    // Revisi Pak Indra -- Dokumentasi Visual sebelumnya cuma nerima link URL
-    // (user paste link foto dari luar), sekarang harus foto/upload LANGSUNG
-    // dari app. Kolom foto_..._url tetap dipakai (gak di-rename, hindari
-    // migration mubazir) tapi isinya sekarang PATH di storage lokal, bukan
-    // URL asli -- makanya butuh accessor biar ->foto_ruang_server_url dkk
-    // tetap ngasih URL yang bisa langsung ditampilin (kayak pola foto_url di
-    // AsetKendala/HealthCheckItem), transparan buat semua kode lain yang
-    // udah baca field ini (blade, jumlahFotoDokumentasiTerisi(), dst).
-    public function getFotoRuangServerUrlAttribute(): ?string
-    {
-        return $this->dokumentasiVisualUrl('foto_ruang_server_url');
-    }
-
-    public function getFotoStorageCctvUrlAttribute(): ?string
-    {
-        return $this->dokumentasiVisualUrl('foto_storage_cctv_url');
-    }
-
-    public function getFotoPanelUpsUrlAttribute(): ?string
-    {
-        return $this->dokumentasiVisualUrl('foto_panel_ups_url');
-    }
-
-    protected function dokumentasiVisualUrl(string $field): ?string
-    {
-        $path = $this->getRawOriginal($field);
-
-        return $path ? asset('storage/'.$path) : null;
     }
 }

@@ -133,10 +133,10 @@ test('dokumentasi visual (kategori E) dihitung terpisah dan gak masuk compliance
     $formLengkap = HealthCheckForm::factory()->create([
         'uker_kode' => $uker->kode,
         'tanggal_pemeriksaan' => now(),
-        'foto_ruang_server_url' => 'https://contoh.com/a.jpg',
-        'foto_storage_cctv_url' => 'https://contoh.com/b.jpg',
-        'foto_panel_ups_url' => 'https://contoh.com/c.jpg',
     ]);
+    foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
+        $formLengkap->dokumentasiFotos()->create(['field' => $field, 'path' => "dummy/{$field}.jpg", 'uploaded_by' => $admin->id]);
+    }
     HealthCheckItem::factory()->count(2)->create(['health_check_form_id' => $formLengkap->id, 'kategori' => 'A - Ruang Server/Jaringan', 'status' => 'OK']);
 
     $ukerLain = Uker::factory()->create();

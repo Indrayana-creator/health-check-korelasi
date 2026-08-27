@@ -27,7 +27,9 @@ class DashboardController extends Controller
     protected function formTerbaruPerUkerScoped(Request $request)
     {
         $isAdmin = $request->user()->role === 'admin';
-        $formQuery = HealthCheckForm::query()->with('items.form.uker');
+        // dokumentasiFotos di-eager-load juga -- dipakai jumlahFotoDokumentasiTerisi()
+        // buat progress "X dari Y form lengkap 3/3 foto", biar gak N+1 per form.
+        $formQuery = HealthCheckForm::query()->with(['items.form.uker', 'dokumentasiFotos']);
         if (! $isAdmin) {
             $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);
             $formQuery->whereIn('uker_kode', $ukerBolehDiakses);

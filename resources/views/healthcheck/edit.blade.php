@@ -298,57 +298,71 @@
 
                             <div class="flex flex-col gap-5">
                                 @foreach (\App\Models\HealthCheckForm::FIELD_DOKUMENTASI_VISUAL as $field => $meta)
+                                    @php $fotoTersimpan = $healthcheck->fotoUntukField($field); @endphp
                                     <div
                                         class="border-b border-gray-100 pb-5 last:border-0 last:pb-0"
-                                        x-data="{ preview: null }"
+                                        x-data="{ previews: [] }"
                                     >
                                         <p class="text-sm font-semibold text-gray-700 mb-1">{{ $loop->iteration }}. {{ $meta['label'] }}</p>
                                         <p class="text-xs text-gray-400 mb-1">{{ $meta['instruksi'] }}</p>
                                         <p class="text-xs text-gray-400 mb-2.5">Kondisi ideal: {{ $meta['kondisi_ideal'] }}</p>
 
-                                        {{-- Foto tersimpan (dari server) -- disembunyiin begitu ada preview foto
-                                             baru yang belum disimpan, biar gak ketuker mana yang lagi ditampilin. --}}
-                                        @if ($healthcheck->{$field})
-                                            <a
-                                                href="{{ $healthcheck->{$field} }}" target="_blank" rel="noopener"
-                                                class="inline-block mb-2.5" x-show="!preview"
-                                            >
-                                                <img src="{{ $healthcheck->{$field} }}" alt="{{ $meta['label'] }}" class="w-32 h-32 object-cover rounded-lg border border-gray-100">
-                                            </a>
+                                        {{-- Galeri foto yang UDAH TERSIMPAN -- boleh lebih dari 1, tiap foto
+                                             punya checkbox hapus sendiri (dicentang = foto itu ke-hapus pas
+                                             "Simpan" ditekan, bukan langsung hilang saat itu juga). --}}
+                                        @if ($fotoTersimpan->isNotEmpty())
+                                            <div class="flex flex-wrap gap-3 mb-3">
+                                                @foreach ($fotoTersimpan as $foto)
+                                                    <div class="relative" x-data="{ hapus: false }">
+                                                        <a href="{{ $foto->url }}" target="_blank" rel="noopener">
+                                                            <img src="{{ $foto->url }}" alt="{{ $meta['label'] }}" class="w-24 h-24 object-cover rounded-lg border border-gray-100" :class="hapus && 'opacity-30'">
+                                                        </a>
+                                                        @if ($editable)
+                                                            <label class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-white border border-gray-200 flex items-center justify-center cursor-pointer shadow-sm hover:bg-red-50" title="Hapus foto ini">
+                                                                <input type="checkbox" name="hapus_foto_dokumentasi[]" value="{{ $foto->id }}" x-model="hapus" class="hidden">
+                                                                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" class="w-3.5 h-3.5" :class="hapus ? 'text-red-600' : 'text-gray-500'" stroke="currentColor"><path d="M18 6L6 18M6 6l12 12"></path></svg>
+                                                            </label>
+                                                        @endif
+                                                    </div>
+                                                @endforeach
+                                            </div>
                                         @endif
 
-                                        {{-- Preview foto yang BARU DIPILIH/DIFOTO -- langsung tampil di
-                                             browser (client-side, belum ke-upload/tersimpan), biar user bisa
-                                             lihat dulu hasilnya sebelum tekan Simpan. --}}
-                                        <template x-if="preview">
-                                            <div class="mb-2.5">
-                                                <img :src="preview" alt="Preview foto baru" class="w-32 h-32 object-cover rounded-lg border-2 border-cakrawala">
-                                                <p class="text-[11px] text-cakrawala font-semibold mt-1">Foto baru (belum disimpan)</p>
+                                        {{-- Preview foto BARU yang baru dipilih/difoto -- client-side, belum
+                                             ke-upload/tersimpan, biar user bisa lihat dulu sebelum "Simpan". --}}
+                                        <template x-if="previews.length">
+                                            <div class="flex flex-wrap gap-3 mb-2">
+                                                <template x-for="(src, i) in previews" :key="i">
+                                                    <img :src="src" alt="Preview foto baru" class="w-24 h-24 object-cover rounded-lg border-2 border-cakrawala">
+                                                </template>
                                             </div>
                                         </template>
+                                        <p class="text-[11px] text-cakrawala font-semibold mb-2" x-show="previews.length" x-cloak x-text="previews.length + ' foto baru dipilih (belum disimpan)'"></p>
 
                                         @if ($editable)
                                             {{-- Tombol jelas & besar (bukan cuma link "Choose File" bawaan
                                                  browser yang kecil/gampang keliatan gak penting) -- di HP, tap
                                                  ini munculin pilihan "Kamera" atau "Galeri" dari OS (atribut
-                                                 capture), bukan cuma buka file manager. --}}
+                                                 capture), bukan cuma buka file manager. multiple biar bisa
+                                                 pilih/foto lebih dari 1 sekaligus. --}}
                                             <label
                                                 for="dokvisual-{{ $field }}"
                                                 class="inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap transition bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 text-sm cursor-pointer"
                                             >
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
-                                                Ambil Foto / Upload
+                                                Tambah Foto
                                             </label>
                                             <input
                                                 id="dokvisual-{{ $field }}"
                                                 type="file"
-                                                name="{{ $field }}"
+                                                name="{{ $field }}[]"
+                                                multiple
                                                 accept="image/*"
                                                 capture="environment"
-                                                @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null"
+                                                @change="previews = Array.from($event.target.files).map(f => URL.createObjectURL(f))"
                                                 class="hidden"
                                             >
-                                            <p class="text-[11px] text-gray-400 mt-1.5">Kosongkan/jangan pilih foto baru kalau gak mau ganti foto yang sudah ada.</p>
+                                            <p class="text-[11px] text-gray-400 mt-1.5">Bisa pilih/foto lebih dari 1 sekaligus. Foto yang sudah ada tetap aman kecuali dicentang hapus di atas.</p>
                                         @endif
                                     </div>
                                 @endforeach
