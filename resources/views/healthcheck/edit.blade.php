@@ -328,15 +328,27 @@
                                         </template>
 
                                         @if ($editable)
+                                            {{-- Tombol jelas & besar (bukan cuma link "Choose File" bawaan
+                                                 browser yang kecil/gampang keliatan gak penting) -- di HP, tap
+                                                 ini munculin pilihan "Kamera" atau "Galeri" dari OS (atribut
+                                                 capture), bukan cuma buka file manager. --}}
+                                            <label
+                                                for="dokvisual-{{ $field }}"
+                                                class="inline-flex items-center justify-center gap-1.5 rounded-lg font-semibold whitespace-nowrap transition bg-white text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 text-sm cursor-pointer"
+                                            >
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-4 h-4"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>
+                                                Ambil Foto / Upload
+                                            </label>
                                             <input
+                                                id="dokvisual-{{ $field }}"
                                                 type="file"
                                                 name="{{ $field }}"
                                                 accept="image/*"
                                                 capture="environment"
                                                 @change="preview = $event.target.files[0] ? URL.createObjectURL($event.target.files[0]) : null"
-                                                class="block w-full text-xs text-gray-500 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border file:border-gray-200 file:bg-white file:text-xs file:font-semibold file:text-gray-600 hover:file:bg-gray-50"
+                                                class="hidden"
                                             >
-                                            <p class="text-[11px] text-gray-400 mt-1">Foto langsung dari kamera, atau pilih dari galeri/file. Kosongkan kalau gak mau ganti foto yang sudah ada.</p>
+                                            <p class="text-[11px] text-gray-400 mt-1.5">Kosongkan/jangan pilih foto baru kalau gak mau ganti foto yang sudah ada.</p>
                                         @endif
                                     </div>
                                 @endforeach
