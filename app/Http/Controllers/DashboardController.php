@@ -273,7 +273,11 @@ class DashboardController extends Controller
         // uker sendiri) -- mirip cara bangunTreeUker() ngumpulin akumulasi
         // buat admin, tapi root-nya uker_kode milik user, bukan Kanwil.
         $asetQuery = Aset::query();
-        $formQuery = HealthCheckForm::query()->with('items');
+        // items.form.uker & dokumentasiFotos di-eager-load di sini juga
+        // (bukan cuma 'items') -- biar $formTerbaruPerUker di bawah bisa
+        // diturunin dari $formList yang SAMA, bukan query kedua yang
+        // hampir identik lewat formTerbaruPerUkerScoped().
+        $formQuery = HealthCheckForm::query()->with(['items.form.uker', 'dokumentasiFotos']);
         if (! $isAdmin) {
             $asetQuery->whereIn('uker_kode', $ukerBolehDiakses);
             $formQuery->whereIn('uker_kode', $ukerBolehDiakses);
@@ -321,9 +325,13 @@ class DashboardController extends Controller
         // ===== 1b. Kesehatan Checklist per Kategori (A-D + E) =====
         // Form TERBARU per uker (bukan seluruh histori) -- biar uker yang rajin
         // isi tiap minggu gak "menang banyak" dibanding uker yang baru isi
-        // sekali. Reuse formTerbaruPerUkerScoped() yang sama dipakai itemDetail()
-        // buat modal drill-down, biar angkanya konsisten satu sumber.
-        $formTerbaruPerUker = $this->formTerbaruPerUkerScoped($request);
+        // sekali. Diturunin dari $formList yang UDAH di-fetch di atas (bukan
+        // manggil formTerbaruPerUkerScoped() lagi, yang bakal jadi query
+        // kedua yang hampir identik) -- logic groupBy/latest-nya sama persis
+        // kayak method itu, method itu sendiri tetap dipakai itemDetail()
+        // (request AJAX terpisah, gak bisa reuse $formList di sini).
+        $formTerbaruPerUker = $formList->groupBy('uker_kode')
+            ->map(fn ($forms) => $forms->sortByDesc('tanggal_pemeriksaan')->first());
 
         $semuaItemTerbaru = $formTerbaruPerUker->flatMap(fn ($f) => $f->items);
         $kesehatanPerKategori = $this->hitungKesehatanPerKategori($semuaItemTerbaru);

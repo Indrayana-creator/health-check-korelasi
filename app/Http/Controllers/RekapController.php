@@ -67,6 +67,20 @@ class RekapController extends Controller
         ];
     }
 
+    // Versi HEMAT buat caller yang cuma butuh roll-up BULAN INI (mis.
+    // hitungSkorCabang()) -- rekapCabangMingguDanBulan() di atas SELALU
+    // ngitung roll-up minggu JUGA (buat toggle di halaman index()), yang
+    // kebuang percuma kalau cuma butuh salah satunya.
+    protected function rekapCabangBulanIniSaja()
+    {
+        $formList = HealthCheckForm::with(['uker', 'items'])->get();
+        $awalBulan = now()->copy()->startOfMonth();
+        $akhirBulan = now()->copy()->endOfMonth();
+        $formBulanIni = $formList->filter(fn ($f) => $f->tanggal_pemeriksaan?->between($awalBulan, $akhirBulan));
+
+        return $this->rekapPerCabang($formBulanIni);
+    }
+
     // Roll-up per cabang (uker_spv) dari sekumpulan form -- dipakai bareng
     // buat versi mingguan maupun bulanan, cuma beda input $formList-nya.
     protected function rekapPerCabang($formList)
@@ -498,7 +512,7 @@ class RekapController extends Controller
 
     protected function hitungSkorCabang()
     {
-        $hcMap = $this->rekapCabangMingguDanBulan()['bulan']->keyBy('cabang');
+        $hcMap = $this->rekapCabangBulanIniSaja()->keyBy('cabang');
         $asetMap = $this->rekapAsetPerCabang()->keyBy('cabang');
         $slaMap = $this->slaPermintaanPerCabang()->keyBy('cabang');
 

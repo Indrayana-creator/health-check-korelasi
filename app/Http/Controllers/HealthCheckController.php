@@ -274,30 +274,33 @@ class HealthCheckController extends Controller
     {
         $this->authorize('update', $healthcheck);
 
-        $validated = $request->validate([
+        // Revisi Pak Indra -- dulu link URL (paste teks, 1 per kategori),
+        // sekarang harus foto/upload langsung, dan BOLEH lebih dari 1 foto
+        // per kategori (array file), plus bisa dihapus satu-satu. Rule-nya
+        // di-generate dari FIELD_DOKUMENTASI_VISUAL (bukan di-hardcode 1-1
+        // per field) -- biar nambah/hapus kategori dokumentasi visual cukup
+        // ubah konstanta itu aja, gak ketinggalan di validasi kayak sebelumnya.
+        $ruleDokumentasiVisual = [];
+        foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
+            $ruleDokumentasiVisual[$field] = 'nullable|array';
+            // max:10240 (10MB) -- foto ini dikompres client-side
+            // (window.kompresFotoInput/kompresFoto) sebelum submit, jadi
+            // biasanya jauh di bawah ini; batas cuma jaring pengaman kalau
+            // kompresi gagal.
+            $ruleDokumentasiVisual["{$field}.*"] = 'image|mimes:jpeg,png,jpg,webp|max:10240';
+        }
+
+        $validated = $request->validate(array_merge([
             'items' => 'required|array',
             'items.*.id' => 'required|integer|exists:health_check_items,id',
             'items.*.status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
             'items.*.catatan' => 'nullable|string',
-            // max:10240 (10MB), samain sama Dokumentasi Visual -- foto ini
-            // dikompres client-side (window.kompresFotoInput) sebelum submit
-            // juga, jadi biasanya jauh di bawah ini; batas cuma jaring
-            // pengaman kalau kompresi gagal.
             'items.*.foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',
-            // Revisi Pak Indra -- dulu link URL (paste teks, 1 per kategori),
-            // sekarang harus foto/upload langsung, dan BOLEH lebih dari 1 foto
-            // per kategori (array file), plus bisa dihapus satu-satu.
-            'foto_ruang_server_url' => 'nullable|array',
-            'foto_ruang_server_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
-            'foto_storage_cctv_url' => 'nullable|array',
-            'foto_storage_cctv_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
-            'foto_panel_ups_url' => 'nullable|array',
-            'foto_panel_ups_url.*' => 'image|mimes:jpeg,png,jpg,webp|max:10240',
             'hapus_foto_dokumentasi' => 'nullable|array',
             'hapus_foto_dokumentasi.*' => 'integer|exists:health_check_dokumentasi_fotos,id',
-        ]);
+        ], $ruleDokumentasiVisual));
 
         $dataUpdate = [
             'status_tindak_lanjut' => $validated['status_tindak_lanjut'],
@@ -312,10 +315,15 @@ class HealthCheckController extends Controller
         // proses approval datanya.
         if ($healthcheck->itemsBisaDiedit()) {
             $jumlahBaruBermasalah = 0;
+            // 1 query buat semua item, bukan 1 query PER item -- form checklist
+            // biasanya punya 20-40 item, jadi ini motong 20-40 SELECT jadi 1.
+            $itemsById = HealthCheckItem::where('health_check_form_id', $healthcheck->id)
+                ->whereIn('id', collect($validated['items'])->pluck('id'))
+                ->get()
+                ->keyBy('id');
+
             foreach ($validated['items'] as $index => $itemInput) {
-                $item = HealthCheckItem::where('id', $itemInput['id'])
-                    ->where('health_check_form_id', $healthcheck->id)
-                    ->first();
+                $item = $itemsById->get($itemInput['id']);
 
                 if ($item && $item->status !== 'Not OK' && $itemInput['status'] === 'Not OK') {
                     $jumlahBaruBermasalah++;
