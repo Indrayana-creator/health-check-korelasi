@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\User;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 
 // Simulasikan device lain yang masih login -- baris mentah di tabel
@@ -38,6 +39,22 @@ test('users can authenticate using the login screen', function () {
 
     $this->assertAuthenticated();
     $response->assertRedirect(route('dashboard', absolute: false));
+});
+
+test('login gak nyimpen remember_token walau field remember dikirim manual, biar gak bisa bypass 1-sesi-aktif lewat cookie recaller', function () {
+    // remember_token dipaksa null dulu -- factory User isi field ini dengan
+    // string acak by default (gak ada hubungannya sama proses login), jadi
+    // kalau gak di-null-kan dulu, test ini gak beneran ngetes apa-apa.
+    $user = User::factory()->create(['remember_token' => null]);
+
+    $this->post('/login', [
+        'pn' => $user->pn,
+        'password' => 'password',
+        'remember' => '1',
+    ]);
+
+    $this->assertAuthenticated();
+    expect($user->fresh()->remember_token)->toBeNull();
 });
 
 test('users can not authenticate with invalid password', function () {
@@ -126,4 +143,19 @@ test('konfirmasi login cuma bisa dipakai sekali (token sekali-pakai)', function 
 
     $this->assertGuest();
     $response->assertSessionHasErrors('pn');
+});
+
+test('halaman error 403 gak crash kalau dipicu buat guest (belum login)', function () {
+    // Simulasikan skenario: middleware/route lain suatu saat abort(403) buat
+    // request TANPA user sama sekali (bukan cuma role salah) -- errors/403.blade.php
+    // pakai <x-app-layout> yang baca auth()->user()->role tanpa null-guard,
+    // jadi kalau view ini gak nge-guard sendiri, ini bakal fatal error kalau
+    // dirender buat guest.
+    $exception = new AuthorizationException('Pesan tes akses ditolak.');
+
+    $html = view('errors.403', ['exception' => $exception])->render();
+
+    expect($html)->toContain('Bukan Wewenang Anda');
+    expect($html)->toContain('Pesan tes akses ditolak.');
+    expect($html)->toContain('Ke Halaman Login');
 });

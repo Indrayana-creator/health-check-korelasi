@@ -47,6 +47,21 @@ window.kompresFoto = function (file, maxDimensi = 1600, kualitas = 0.8) {
     });
 };
 
+// Wrapper kompresFoto() buat input file POLOS (bukan yang punya state Alpine
+// custom kayak Dokumentasi Visual) -- kompres semua file yang lagi dipilih di
+// situ, terus timpa balik input.files-nya (lewat DataTransfer) biar yang
+// kekirim pas submit udah versi terkompresi, transparan tanpa ubah UI. Dipakai
+// buat foto bukti item checklist & foto Lapor Kerusakan, biar sama-sama gak
+// nolak foto asli kamera HP kayak Dokumentasi Visual.
+window.kompresFotoInput = async function (inputEl) {
+    if (!inputEl.files || inputEl.files.length === 0) return;
+    const dt = new DataTransfer();
+    for (const file of inputEl.files) {
+        dt.items.add(await window.kompresFoto(file));
+    }
+    inputEl.files = dt.files;
+};
+
 // Lonceng notifikasi topbar -- poll berkala biar count & daftarnya keupdate
 // tanpa reload, dan filter Semua/Belum Dibaca dikerjakan di client karena
 // datanya (maks 8 notifikasi terakhir) sudah ada di memori.

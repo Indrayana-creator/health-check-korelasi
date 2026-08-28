@@ -80,7 +80,7 @@
                             </div>
                             <div>
                                 <x-input-label value="Foto (opsional)" />
-                                <input type="file" name="foto" accept="image/*" capture="environment" class="mt-1.5 block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
+                                <input type="file" name="foto" accept="image/*" capture="environment" @change="await window.kompresFotoInput($event.target)" class="mt-1.5 block w-full text-sm text-gray-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-gray-100 file:text-gray-700 hover:file:bg-gray-200">
                             </div>
                             <div class="flex gap-2 pt-1">
                                 <x-button type="submit">Kirim Laporan</x-button>

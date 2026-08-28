@@ -54,7 +54,7 @@ class AuthenticatedSessionController extends Controller
 
         DB::table('sessions')->where('user_id', $data['user_id'])->delete();
 
-        Auth::loginUsingId($data['user_id'], $data['remember']);
+        Auth::loginUsingId($data['user_id']);
         $request->session()->regenerate();
 
         return redirect()->intended(route('dashboard', absolute: false));

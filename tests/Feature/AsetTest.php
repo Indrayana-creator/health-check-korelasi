@@ -447,6 +447,24 @@ test('bulk upload aset dengan baris gagal kecatat detailnya di activity log', fu
     expect($log->detail_gagal[0])->toContain('KODE-GAK-ADA');
 });
 
+test('bulk upload aset yang 100% gagal tetap kecatat di activity log (bukan cuma yang ada berhasilnya)', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $file = buatFileXlsx([
+        ['uker_kode', 'kode_aset_kode', 'merek', 'tipe_model', 'sn', 'no_asset', 'kapasitas_memori', 'tahun_perolehan', 'kondisi', 'pemegang_nama', 'jabatan', 'pemegang_pn', 'ip_address', 'status_hardening', 'status_bitlocker', 'status_dlp', 'status_antivirus', 'keterangan'],
+        [$uker->kode, 'KODE-GAK-ADA-1', 'Epson', 'L3110', 'SN-GAGAL-1', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+        [$uker->kode, 'KODE-GAK-ADA-2', 'Epson', 'L3110', 'SN-GAGAL-2', '', '-', 2024, 'NORMAL', '', '', '', '', '', '', '', '', ''],
+    ]);
+
+    $this->actingAs($admin)->post(route('aset.bulkUpload'), ['file' => $file]);
+
+    $log = ActivityLog::where('modul', 'aset')->where('aksi', 'upload_massal')->latest()->first();
+    expect($log)->not->toBeNull();
+    expect($log->jumlah_baris)->toBe(0);
+    expect($log->detail_gagal)->toHaveCount(2);
+});
+
 test('riwayat baris gagal upload massal tampil di halaman Log History', function () {
     $admin = User::factory()->admin()->create();
     $this->actingAs($admin);

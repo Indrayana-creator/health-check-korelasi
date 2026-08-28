@@ -94,13 +94,11 @@
                             <x-input-error :messages="$errors->get('password')" class="mt-2" />
                         </div>
 
-                        <div class="block mt-4">
-                            <label for="remember_me" class="inline-flex items-center">
-                                <input id="remember_me" type="checkbox" class="rounded border-gray-300 text-cakrawala shadow-sm focus:ring-cakrawala" name="remember">
-                                <span class="ms-2 text-sm text-gray-600">{{ __('Remember me') }}</span>
-                            </label>
-                        </div>
-
+                        {{-- "Remember me" SENGAJA dihapus -- fitur itu bikin browser tetap
+                             login lewat cookie persisten yang gak lewat pengecekan "1 PN =
+                             1 sesi aktif" (LoginRequest::authenticate()), jadi device lama
+                             yang di-force-logout bisa diam-diam login lagi sendiri lewat
+                             cookie itu. Sesi sekarang selalu ngikut umur session biasa. --}}
                         <div class="flex items-center justify-between mt-6">
                             {{-- Bukan link -- reset password lewat email sekarang gak
                                  realistis (login pakai PN, kebanyakan akun gak punya

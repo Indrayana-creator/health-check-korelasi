@@ -73,7 +73,11 @@ class AsetKendalaController extends Controller
 
         $validated = $request->validate([
             'deskripsi' => 'required|string|max:1000',
-            'foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            // max:10240 (10MB), samain sama Dokumentasi Visual Health Check --
+            // foto ini dikompres client-side (window.kompresFotoInput) sebelum
+            // submit juga, jadi biasanya jauh di bawah ini; batas cuma jaring
+            // pengaman kalau kompresi gagal.
+            'foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
         ]);
 
         $fotoPath = $request->hasFile('foto') ? $request->file('foto')->store('kendala-aset', 'public') : null;

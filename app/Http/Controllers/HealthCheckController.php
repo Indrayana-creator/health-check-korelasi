@@ -59,10 +59,14 @@ class HealthCheckController extends Controller
         if ($request->boolean('dokumentasi_belum_lengkap')) {
             // Dipakai jalan pintas dari chart "Dokumentasi Visual" di
             // Dashboard -- form dianggap belum lengkap kalau salah satu dari
-            // 3 foto wajib (Kategori E) masih kosong.
+            // 3 kategori foto wajib (Kategori E) belum ada FOTO SAMA SEKALI.
+            // whereDoesntHave(), BUKAN whereNull() -- sejak Dokumentasi
+            // Visual dipindah jadi tabel relasi terpisah
+            // (health_check_dokumentasi_fotos), bukan lagi kolom scalar di
+            // tabel ini, whereNull() bakal error "kolom gak ada".
             $query->where(function ($sub) {
                 foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
-                    $sub->orWhereNull($field);
+                    $sub->orWhereDoesntHave('dokumentasiFotos', fn ($q) => $q->where('field', $field));
                 }
             });
         }
@@ -275,7 +279,11 @@ class HealthCheckController extends Controller
             'items.*.id' => 'required|integer|exists:health_check_items,id',
             'items.*.status' => 'required|in:OK,Not OK,N/A,Belum Diperiksa',
             'items.*.catatan' => 'nullable|string',
-            'items.*.foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:4096',
+            // max:10240 (10MB), samain sama Dokumentasi Visual -- foto ini
+            // dikompres client-side (window.kompresFotoInput) sebelum submit
+            // juga, jadi biasanya jauh di bawah ini; batas cuma jaring
+            // pengaman kalau kompresi gagal.
+            'items.*.foto' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:10240',
             'status_tindak_lanjut' => 'required|in:'.implode(',', HealthCheckForm::DAFTAR_STATUS_TINDAK_LANJUT),
             'catatan_tindak_lanjut' => 'nullable|string',
             // Revisi Pak Indra -- dulu link URL (paste teks, 1 per kategori),
@@ -583,7 +591,10 @@ class HealthCheckController extends Controller
             }
         }
 
-        if ($berhasil > 0) {
+        // Dicatat kalau ADA yang berhasil ATAU ada yang gagal -- bukan cuma
+        // $berhasil > 0, biar upload yang 100% gagal tetap ninggalin jejak
+        // detail_gagal buat ditelusurin dari Log History nanti.
+        if ($berhasil > 0 || ! empty($gagal)) {
             ActivityLog::catat('health_check', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}", $gagal ?: null);
         }
 

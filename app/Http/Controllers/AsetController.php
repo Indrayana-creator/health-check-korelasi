@@ -700,7 +700,12 @@ class AsetController extends Controller
             }
         }
 
-        if ($berhasil > 0) {
+        // Dicatat kalau ADA yang berhasil ATAU ada yang gagal -- bukan cuma
+        // $berhasil > 0. Upload yang 100% gagal (mis. semua baris nunjuk
+        // kode_aset_kode yang gak ada) sebelumnya gak ninggalin jejak sama
+        // sekali begitu session flash-nya expired, padahal itu justru kasus
+        // yang paling butuh detail_gagal buat ditelusurin nanti.
+        if ($berhasil > 0 || ! empty($gagal)) {
             ActivityLog::catat('aset', 'upload_massal', $berhasil, "Upload massal dari file: {$namaFile}", $gagal ?: null);
         }
 

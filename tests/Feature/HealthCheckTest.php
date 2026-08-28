@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\ActivityLog;
 use App\Models\HealthCheckForm;
 use App\Models\HealthCheckItem;
 use App\Models\Uker;
@@ -387,6 +388,29 @@ test('dokumentasi visual: gak bisa hapus foto milik form Health Check lain', fun
     Storage::disk('public')->assertExists($fotoFormLain->path);
 });
 
+test('filter dokumentasi_belum_lengkap nampilin form yang salah satu kategori fotonya masih kosong', function () {
+    Storage::fake('public');
+
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $formLengkap = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Lengkap']);
+    foreach (array_keys(HealthCheckForm::FIELD_DOKUMENTASI_VISUAL) as $field) {
+        $formLengkap->dokumentasiFotos()->create(['field' => $field, 'path' => "dummy/{$field}.jpg", 'uploaded_by' => $admin->id]);
+    }
+
+    $formBelumLengkap = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'periode' => 'Belum Lengkap']);
+    $formBelumLengkap->dokumentasiFotos()->create(['field' => 'foto_ruang_server_url', 'path' => 'dummy/a.jpg', 'uploaded_by' => $admin->id]);
+    // foto_storage_cctv_url & foto_panel_ups_url sengaja dibiarkan kosong.
+
+    $response = $this->actingAs($admin)->get(route('healthcheck.index', ['dokumentasi_belum_lengkap' => 1]));
+
+    $response->assertOk();
+    $periodeList = $response->viewData('formList')->pluck('periode');
+    expect($periodeList)->toContain('Belum Lengkap');
+    expect($periodeList)->not->toContain('Lengkap');
+});
+
 test('item checklist bisa dilampirin foto bukti kondisi fisik', function () {
     Storage::fake('public');
 
@@ -688,6 +712,23 @@ test('bulk upload health check berhasil membuat form beserta seluruh item checkl
     $form = HealthCheckForm::where('periode', 'Agustus 2026 - Bulk')->first();
     expect($form)->not->toBeNull();
     expect($form->items()->count())->toBe($totalItemSeharusnya);
+});
+
+test('bulk upload health check yang 100% gagal tetap kecatat di activity log', function () {
+    $admin = User::factory()->admin()->create();
+
+    $file = buatFileXlsxHc([
+        ['uker_kode', 'tanggal_pemeriksaan', 'periode', 'pic_pn'],
+        [999999, '2026-08-10', 'Uker Gak Ada 1', ''],
+        [999998, '2026-08-10', 'Uker Gak Ada 2', ''],
+    ]);
+
+    $this->actingAs($admin)->post(route('healthcheck.bulkUpload'), ['file' => $file]);
+
+    $log = ActivityLog::where('modul', 'health_check')->where('aksi', 'upload_massal')->latest()->first();
+    expect($log)->not->toBeNull();
+    expect($log->jumlah_baris)->toBe(0);
+    expect($log->detail_gagal)->toHaveCount(2);
 });
 
 test('bulk upload health check ditolak kalau header file gak sesuai template', function () {

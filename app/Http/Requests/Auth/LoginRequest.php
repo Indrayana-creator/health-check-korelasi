@@ -46,7 +46,12 @@ class LoginRequest extends FormRequest
     {
         $this->ensureIsNotRateLimited();
 
-        if (! Auth::attempt($this->only('pn', 'password'), $this->boolean('remember'))) {
+        // "Remember me" sengaja gak dipakai (selalu false) -- cookie
+        // persisten dari situ bikin browser bisa login ulang sendiri TANPA
+        // lewat pengecekan "sesi lain aktif" di bawah, karena login-via-
+        // recaller-cookie itu jalan otomatis di middleware Laravel, gak
+        // pernah nyentuh LoginRequest ini lagi.
+        if (! Auth::attempt($this->only('pn', 'password'))) {
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
@@ -78,7 +83,7 @@ class LoginRequest extends FormRequest
             Auth::logout();
 
             $token = Str::random(40);
-            Cache::put("login-confirm:{$token}", ['user_id' => $user->id, 'remember' => $this->boolean('remember')], now()->addMinutes(3));
+            Cache::put("login-confirm:{$token}", ['user_id' => $user->id], now()->addMinutes(3));
 
             $this->session()->flash('sesi_aktif_token', $token);
             $this->session()->flash('sesi_aktif_sejak', Carbon::createFromTimestamp($sesiLain->last_activity)->translatedFormat('d M Y, H:i'));

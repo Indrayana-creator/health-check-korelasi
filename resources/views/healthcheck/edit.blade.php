@@ -265,6 +265,7 @@
                                                         type="file"
                                                         name="items[{{ $globalIndex }}][foto]"
                                                         accept="image/*"
+                                                        @change="await window.kompresFotoInput($event.target)"
                                                         class="text-xs text-gray-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-md file:border file:border-gray-200 file:bg-white file:text-xs file:font-semibold file:text-gray-600 hover:file:bg-gray-50"
                                                     >
                                                 @endif
