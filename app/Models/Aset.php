@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Carbon;
 
 class Aset extends Model
 {
@@ -125,6 +126,28 @@ class Aset extends Model
     public function getSudahPhAttribute(): bool
     {
         return $this->umur_tahun !== null && $this->umur_tahun >= 5;
+    }
+
+    // Kriteria "Perlu Perhatian": kondisi rusak/tidak layak, ATAU sudah lewat
+    // umur pakai (>=5 tahun, samain persis sama getSudahPhAttribute()) tapi
+    // belum ditandai PH/DISMANTEL, ATAU belum pernah dicek ulang dalam
+    // $batasStale hari terakhir. Dipakai bareng oleh
+    // AsetController::perluPerhatian() (halaman) dan
+    // KirimReminderAsetPerluPerhatian (reminder mingguan), biar definisinya
+    // SATU tempat -- gak ada 2 versi logic yang bisa kena drift.
+    public function scopePerluPerhatian($query, Carbon $batasStale, ?int $tahunAmbangPh = null)
+    {
+        $tahunAmbangPh ??= now()->year - 5;
+
+        return $query->where(function ($q) use ($tahunAmbangPh, $batasStale) {
+            $q->whereIn('kondisi', ['RUSAK', 'TIDAK LAYAK'])
+                ->orWhere(function ($q2) use ($tahunAmbangPh) {
+                    $q2->whereNotNull('tahun_perolehan')
+                        ->where('tahun_perolehan', '<=', $tahunAmbangPh)
+                        ->where('kondisi', '!=', 'PH/DISMANTEL');
+                })
+                ->orWhereDoesntHave('kondisiLogs', fn ($q3) => $q3->where('created_at', '>=', $batasStale));
+        });
     }
 
     // Bikin ASET ID otomatis format resmi: Z5-K-{kode_uker 4 digit}-{kode_aset}-{urutan 4 digit}

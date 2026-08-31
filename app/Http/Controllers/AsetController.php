@@ -245,19 +245,10 @@ class AsetController extends Controller
         $tahunAmbangPh = now()->year - 5;
         $batasStale = now()->subDays(self::AMBANG_HARI_ASET_STALE);
 
-        $query = $this->scopedQuery($request)
+        $asetList = $this->scopedQuery($request)
             ->withMax('kondisiLogs', 'created_at')
-            ->where(function ($q) use ($tahunAmbangPh, $batasStale) {
-                $q->whereIn('kondisi', ['RUSAK', 'TIDAK LAYAK'])
-                    ->orWhere(function ($q2) use ($tahunAmbangPh) {
-                        $q2->whereNotNull('tahun_perolehan')
-                            ->where('tahun_perolehan', '<=', $tahunAmbangPh)
-                            ->where('kondisi', '!=', 'PH/DISMANTEL');
-                    })
-                    ->orWhereDoesntHave('kondisiLogs', fn ($q3) => $q3->where('created_at', '>=', $batasStale));
-            });
-
-        $asetList = $query->reorder('id', 'desc')->paginate(20)->withQueryString();
+            ->perluPerhatian($batasStale, $tahunAmbangPh)
+            ->reorder('id', 'desc')->paginate(20)->withQueryString();
 
         return view('aset.perlu-perhatian', compact('asetList', 'tahunAmbangPh', 'batasStale'));
     }

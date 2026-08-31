@@ -10,6 +10,8 @@ Artisan::command('inspire', function () {
 
 // Catatan: schedule di sini cuma jalan otomatis kalau ada cron OS yang
 // mancing `php artisan schedule:run` tiap menit (belum ada di server
-// dev/demo ini) -- lihat komentar CekKendalaSla & KirimReminderPengisianHealthCheck.
+// dev/demo ini) -- lihat komentar CekKendalaSla, KirimReminderPengisianHealthCheck
+// & KirimReminderAsetPerluPerhatian.
 Schedule::command('kendala:cek-sla')->dailyAt('08:00');
 Schedule::command('healthcheck:reminder-pengisian')->dailyAt('08:00');
+Schedule::command('aset:reminder-perlu-perhatian')->dailyAt('08:00');
