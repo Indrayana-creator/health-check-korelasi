@@ -111,19 +111,19 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Waktu</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">User</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Modul</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Aksi</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Jumlah Baris</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Keterangan</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Waktu</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">User</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Modul</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Aksi</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Jumlah Baris</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Keterangan</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($logs as $log)
-                        <tr class="hover:bg-gray-50" x-data="{ open: false }">
+                        <tr class="hover:bg-cakrawala/5" x-data="{ open: false }">
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $log->created_at->format('d M Y H:i') }}</td>
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $log->user?->name }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ ucfirst(str_replace('_', ' ', $log->modul)) }}</td>

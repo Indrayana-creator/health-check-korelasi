@@ -22,13 +22,13 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">ASET ID</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Merek / Type</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kondisi</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Alasan</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">ASET ID</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Merek / Type</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Kondisi</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Alasan</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
@@ -38,8 +38,13 @@
                             $rusak = in_array($aset->kondisi, ['RUSAK', 'TIDAK LAYAK']);
                             $lewatUmur = $aset->tahun_perolehan && $aset->tahun_perolehan <= $tahunAmbangPh && $aset->kondisi !== 'PH/DISMANTEL';
                             $belumDicek = ! $aset->kondisi_logs_max_created_at || \Illuminate\Support\Carbon::parse($aset->kondisi_logs_max_created_at)->lt($batasStale);
+                            $aksenAlasan = match (true) {
+                                $rusak => 'border-l-[3px] border-l-red-400 bg-red-50/60',
+                                $lewatUmur => 'border-l-[3px] border-l-amber-400 bg-amber-50/60',
+                                default => 'border-l-[3px] border-l-gray-300',
+                            };
                         @endphp
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-cakrawala/5 {{ $aksenAlasan }}">
                             <td class="px-4 py-3 font-mono text-xs text-gray-700">
                                 <a href="{{ route('aset.show', $aset) }}" class="text-cakrawala hover:underline">{{ $aset->no_asset }}</a>
                             </td>

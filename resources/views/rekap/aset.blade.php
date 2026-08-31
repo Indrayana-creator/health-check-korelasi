@@ -154,23 +154,23 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Cabang</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker Lapor</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Total Aset</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Normal</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Rusak</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tidak Layak</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Lainnya</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">% Sehat</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">% Data Lengkap</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Cabang</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker Lapor</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Total Aset</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Normal</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Rusak</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Tidak Layak</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Lainnya</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">% Sehat</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">% Data Lengkap</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($rekap as $r)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-cakrawala/5">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $r['cabang'] }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $r['jumlah_uker_lapor'] }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $r['total'] }}</td>

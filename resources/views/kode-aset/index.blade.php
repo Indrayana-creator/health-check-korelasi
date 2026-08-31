@@ -39,17 +39,17 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kode</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kategori</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Kode</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Kategori</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Nama</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($kodeAsetList as $k)
-                        <tr class="hover:bg-gray-50">
+                        <tr class="hover:bg-cakrawala/5">
                             <td class="px-4 py-3 font-mono text-xs text-gray-700">{{ $k->kode }}</td>
                             <td class="px-4 py-3">
                                 <x-badge color="gray">{{ $k->kategori }}</x-badge>

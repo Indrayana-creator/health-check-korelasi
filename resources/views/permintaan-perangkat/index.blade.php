@@ -121,26 +121,34 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
                         @if ($isAdmin)
                             <th class="px-4 py-2.5 w-8">
                                 <input type="checkbox" class="rounded border-gray-300" @change="selected = $event.target.checked ? @js($permintaanList->pluck('id')) : []" :checked="selected.length > 0 && selected.length === {{ $permintaanList->count() }}">
                             </th>
                         @endif
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">No Nota Dinas</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tanggal Request</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Fungsi Requester</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Jumlah</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Keterangan</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">No Nota Dinas</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Tanggal Request</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Fungsi Requester</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Jumlah</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Keterangan</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Status</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($permintaanList as $p)
-                        <tr class="hover:bg-gray-50" x-data="{ open: false, riwayatOpen: false, copiedLacak: false }">
+                        @php
+                            $aksenStatus = match ($p->status) {
+                                'Done Terkirim' => 'border-l-[3px] border-l-green-400',
+                                'Pending LGA' => 'border-l-[3px] border-l-amber-400',
+                                'Pending ESO' => 'border-l-[3px] border-l-blue-400',
+                                default => 'border-l-[3px] border-l-transparent',
+                            };
+                        @endphp
+                        <tr class="hover:bg-cakrawala/5 {{ $aksenStatus }}" x-data="{ open: false, riwayatOpen: false, copiedLacak: false }">
                             @if ($isAdmin)
                                 <td class="px-4 py-3">
                                     <input type="checkbox" class="rounded border-gray-300" value="{{ $p->id }}" x-model.number="selected">

@@ -28,22 +28,22 @@
 <x-table-scroll-hint />
 <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-100">
-        <thead class="bg-gray-50">
+        <thead class="bg-cakrawala">
             <tr>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Cabang</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker Lapor</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Total Item</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">OK</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Not OK</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">N/A</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Belum</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Compliance</th>
-                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Cabang</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker Lapor</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Total Item</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">OK</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Not OK</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">N/A</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Belum</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Compliance</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Status</th>
             </tr>
         </thead>
         <tbody class="divide-y divide-gray-100">
             @forelse ($rekap as $r)
-                <tr class="hover:bg-gray-50">
+                <tr class="hover:bg-cakrawala/5">
                     <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $r['cabang'] }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600">{{ $r['jumlah_uker_lapor'] }}</td>
                     <td class="px-4 py-3 text-sm text-gray-600">{{ $r['total_item'] }}</td>

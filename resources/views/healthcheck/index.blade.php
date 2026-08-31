@@ -109,21 +109,29 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
                         <x-sortable-th field="periode">Periode</x-sortable-th>
                         <x-sortable-th field="tanggal_pemeriksaan">Tanggal</x-sortable-th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Compliance</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tindak Lanjut</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Approval</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Compliance</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Tindak Lanjut</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Approval</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($formList as $form)
-                        @php $persen = $form->persenCompliance(); @endphp
-                        <tr class="hover:bg-gray-50">
+                        @php
+                            $persen = $form->persenCompliance();
+                            $aksenApproval = match ($form->status_approval) {
+                                'Disetujui' => 'border-l-[3px] border-l-green-400',
+                                'Menunggu Approval' => 'border-l-[3px] border-l-amber-400',
+                                'Ditolak' => 'border-l-[3px] border-l-red-400',
+                                default => 'border-l-[3px] border-l-transparent',
+                            };
+                        @endphp
+                        <tr class="hover:bg-cakrawala/5 {{ $aksenApproval }}">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $form->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->periode }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan }}</td>

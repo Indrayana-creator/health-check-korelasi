@@ -102,15 +102,15 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Foto</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kategori</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Item Bermasalah</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Catatan</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Periode</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Tindak Lanjut</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Foto</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Kategori</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Item Bermasalah</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Catatan</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Periode</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Tindak Lanjut</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
@@ -120,7 +120,7 @@
                             $mendesak = $item->status_tindak_lanjut === 'Belum Ditindaklanjuti' && \App\Http\Controllers\MonitoringController::itemMendesak($item);
                             $melewatiSla = $item->status_tindak_lanjut === 'Sedang Diproses' && \App\Http\Controllers\MonitoringController::itemMelewatiSlaDiproses($item);
                         @endphp
-                        <tr class="hover:bg-gray-50 {{ ($mendesak || $melewatiSla) ? 'border-l-2 border-l-red-400' : '' }}" x-data="{ open: false, riwayatOpen: false }">
+                        <tr class="hover:bg-cakrawala/5 {{ ($mendesak || $melewatiSla) ? 'border-l-2 border-l-red-400' : '' }}" x-data="{ open: false, riwayatOpen: false }">
                             <td class="px-4 py-3">
                                 @if ($item->foto_url)
                                     <a href="{{ $item->foto_url }}" target="_blank" rel="noopener">
@@ -227,10 +227,10 @@
                                                 <table class="w-full table-fixed divide-y divide-gray-100 text-sm">
                                                     <thead class="bg-gray-50 sticky top-0">
                                                         <tr>
-                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Status</th>
-                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Waktu</th>
-                                                            <th class="w-48 px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">User</th>
-                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Catatan</th>
+                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-white uppercase tracking-wide">Status</th>
+                                                            <th class="w-36 px-3 py-2 text-left text-[11px] font-bold text-white uppercase tracking-wide">Waktu</th>
+                                                            <th class="w-48 px-3 py-2 text-left text-[11px] font-bold text-white uppercase tracking-wide">User</th>
+                                                            <th class="px-3 py-2 text-left text-[11px] font-bold text-white uppercase tracking-wide">Catatan</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody class="divide-y divide-gray-100">

@@ -118,22 +118,29 @@
         <x-table-scroll-hint />
         <div class="bg-white border border-gray-200 rounded-2xl overflow-hidden overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-100" :class="density === 'compact' ? '[&_td]:py-1.5' : '[&_td]:py-3'">
-                <thead class="bg-gray-50">
+                <thead class="bg-cakrawala">
                     <tr>
                         <x-sortable-th field="no_asset">ASET ID</x-sortable-th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Uker</th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Kode Aset</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Kode Aset</th>
                         <x-sortable-th field="merek">Merek / Type</x-sortable-th>
                         <x-sortable-th field="sn">SN</x-sortable-th>
                         <x-sortable-th field="tahun_perolehan">Umur</x-sortable-th>
                         <x-sortable-th field="kondisi">Kondisi</x-sortable-th>
-                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-gray-500 uppercase tracking-wide">Nama User</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Nama User</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($asetList as $aset)
-                        <tr class="hover:bg-gray-50">
+                        @php
+                            $aksenKondisi = match ($aset->kondisi) {
+                                'NORMAL' => 'border-l-[3px] border-l-green-400',
+                                'RUSAK', 'TIDAK LAYAK' => 'border-l-[3px] border-l-red-400',
+                                default => 'border-l-[3px] border-l-transparent',
+                            };
+                        @endphp
+                        <tr class="hover:bg-cakrawala/5 {{ $aksenKondisi }}">
                             <td class="px-4 font-mono text-xs text-gray-700"><a href="{{ route('aset.show', $aset) }}" class="hover:text-cakrawala hover:underline">{{ $aset->no_asset }}</a></td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->uker?->nama }}</td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->kode_aset_kode }} - {{ $aset->kodeAset?->nama }}</td>
