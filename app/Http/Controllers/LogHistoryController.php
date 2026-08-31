@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -19,6 +20,12 @@ class LogHistoryController extends Controller
         }
         if ($request->filled('modul')) {
             $query->where('modul', $request->input('modul'));
+        }
+        if ($request->filled('aksi')) {
+            $query->where('aksi', $request->input('aksi'));
+        }
+        if ($request->filled('user_id')) {
+            $query->where('user_id', $request->input('user_id'));
         }
 
         return $query->orderByDesc('created_at');
@@ -41,7 +48,15 @@ class LogHistoryController extends Controller
             ->sortDesc()
             ->values();
 
-        return view('log-history.index', compact('logs', 'ringkasan', 'tahunRingkasan', 'tahunTersedia'));
+        // Opsi filter Aksi & User -- ditarik dari data yang beneran ada
+        // (bukan daftar tetap yang bisa basi kalau modul baru nambah jenis
+        // aksi baru), biar dropdown-nya selalu ngikut isi log yang nyata.
+        $aksiTersedia = ActivityLog::distinct()->orderBy('aksi')->pluck('aksi');
+        $userTersedia = User::whereIn('id', ActivityLog::whereNotNull('user_id')->distinct()->pluck('user_id'))
+            ->orderBy('name')
+            ->get();
+
+        return view('log-history.index', compact('logs', 'ringkasan', 'tahunRingkasan', 'tahunTersedia', 'aksiTersedia', 'userTersedia'));
     }
 
     // ===================== EXPORT =====================

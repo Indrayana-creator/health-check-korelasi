@@ -85,6 +85,24 @@
                         <option value="pekerja_uker" @selected(request('modul') == 'pekerja_uker')>Import Pekerja/Uker</option>
                     </x-select>
                 </div>
+                <div class="min-w-[180px]">
+                    <x-input-label class="text-xs font-semibold text-gray-500 mb-1">Filter Aksi</x-input-label>
+                    <x-select name="aksi" class="block w-full">
+                        <option value="">Semua Aksi</option>
+                        @foreach ($aksiTersedia as $a)
+                            <option value="{{ $a }}" @selected(request('aksi') == $a)>{{ str_replace('_', ' ', $a) }}</option>
+                        @endforeach
+                    </x-select>
+                </div>
+                <div class="min-w-[200px]">
+                    <x-input-label class="text-xs font-semibold text-gray-500 mb-1">Filter User</x-input-label>
+                    <x-select name="user_id" class="block w-full">
+                        <option value="">Semua User</option>
+                        @foreach ($userTersedia as $u)
+                            <option value="{{ $u->id }}" @selected(request('user_id') == $u->id)>{{ $u->name }}</option>
+                        @endforeach
+                    </x-select>
+                </div>
                 <x-button type="submit">Terapkan</x-button>
             </form>
         </x-card>

@@ -66,3 +66,35 @@ test('export log history tetap ikut filter modul yang aktif', function () {
 
     $response->assertOk();
 });
+
+test('admin bisa filter log history berdasarkan aksi', function () {
+    $admin = User::factory()->admin()->create();
+    $this->actingAs($admin);
+    ActivityLog::catat('aset', 'tambah', 1, 'Aset ditambahkan');
+    ActivityLog::catat('aset', 'hapus', 1, 'Aset dihapus');
+
+    $response = $this->actingAs($admin)->get(route('log-history.index', ['aksi' => 'hapus']));
+
+    $response->assertOk();
+    $logs = $response->viewData('logs');
+    expect($logs->total())->toBe(1);
+    expect($logs->first()->aksi)->toBe('hapus');
+});
+
+test('admin bisa filter log history berdasarkan user yang ngelakuin aksi', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $userLain = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($admin);
+    ActivityLog::catat('aset', 'tambah', 1, 'Log dari admin');
+    $this->actingAs($userLain);
+    ActivityLog::catat('aset', 'tambah', 1, 'Log dari user lain');
+
+    $response = $this->actingAs($admin)->get(route('log-history.index', ['user_id' => $userLain->id]));
+
+    $response->assertOk();
+    $logs = $response->viewData('logs');
+    expect($logs->total())->toBe(1);
+    expect($logs->first()->user_id)->toBe($userLain->id);
+});
