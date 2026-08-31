@@ -394,8 +394,15 @@ class DashboardController extends Controller
             $awalBulan = now()->copy()->startOfMonth();
             $akhirBulan = now()->copy()->endOfMonth();
 
+            // Batas atas pakai endOfDay(), BUKAN toDateString() -- form yang
+            // tanggal_pemeriksaan-nya persis HARI INI kesimpen dengan jam-menit-
+            // detik ikut ("2026-08-31 08:09:48"), padahal kolomnya cuma di-cast
+            // 'date' pas DIBACA doang, bukan pas DITULIS. String "...08:09:48"
+            // itu SECARA STRING lebih besar dari "2026-08-31" (upper bound
+            // toDateString() lama), jadi kepental keluar whereBetween tiap kali
+            // query ini jalan PAS di hari TERAKHIR bulan berjalan.
             $cabangTerbaikBulanIni = HealthCheckForm::with(['uker', 'items'])
-                ->whereBetween('tanggal_pemeriksaan', [$awalBulan->toDateString(), $akhirBulan->toDateString()])
+                ->whereBetween('tanggal_pemeriksaan', [$awalBulan->startOfDay(), $akhirBulan->copy()->endOfDay()])
                 ->get()
                 ->groupBy(fn ($form) => $form->uker?->uker_spv ?? 'Tidak diketahui')
                 ->map(function ($formsDalamCabang, $namaCabang) {
