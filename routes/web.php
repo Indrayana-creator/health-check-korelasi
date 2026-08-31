@@ -57,6 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/aset/export/pdf', [AsetController::class, 'exportPdf'])->name('aset.export.pdf');
     Route::get('/aset/qr-sheet', [AsetController::class, 'qrSheet'])->name('aset.qrSheet');
     Route::get('/aset/sampah', [AsetController::class, 'trash'])->name('aset.trash');
+    Route::get('/aset/perlu-perhatian', [AsetController::class, 'perluPerhatian'])->name('aset.perluPerhatian');
     Route::post('/aset/{id}/restore', [AsetController::class, 'restore'])->name('aset.restore');
     Route::get('/aset/{aset}/kondisi-riwayat', [AsetController::class, 'kondisiRiwayat'])->name('aset.kondisiRiwayat');
     Route::get('/aset/{aset}/qr', [AsetController::class, 'qrCode'])->name('aset.qrCode');

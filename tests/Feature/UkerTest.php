@@ -149,3 +149,67 @@ test('admin bisa export kelola uker Excel & PDF', function () {
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
+
+// ===================== Riwayat Perubahan Uker =====================
+
+test('update uker yang ganti nama & induk otomatis kecatat di riwayat perubahan', function () {
+    $admin = User::factory()->admin()->create();
+    $indukLama = Uker::factory()->create(['nama' => 'Kanwil Lama']);
+    $indukBaru = Uker::factory()->create(['nama' => 'Kanwil Baru']);
+    // jenis & alamat disamain persis sama default ukerPayload() di bawah,
+    // biar cuma nama & kode_spv yang keitung berubah (bukan ikut kehitung
+    // juga cuma karena beda dari nilai acak bawaan factory).
+    $uker = Uker::factory()->create([
+        'kode' => 26001, 'nama' => 'KC Nama Lama', 'jenis' => 'KC', 'alamat' => 'Jl. Percobaan No. 1',
+        'kode_spv' => $indukLama->kode, 'uker_spv' => $indukLama->nama,
+    ]);
+
+    $this->actingAs($admin)->put(
+        route('ukers.update', $uker),
+        ukerPayload($indukBaru, ['kode' => $uker->kode, 'nama' => 'KC Nama Baru'])
+    );
+
+    $uker->refresh();
+    $logs = $uker->perubahanLogs;
+    expect($logs)->toHaveCount(2); // nama & kode_spv berubah
+
+    $logNama = $logs->firstWhere('field', 'nama');
+    expect($logNama->nilai_lama)->toBe('KC Nama Lama');
+    expect($logNama->nilai_baru)->toBe('KC Nama Baru');
+    expect($logNama->changed_by)->toBe($admin->id);
+
+    $logInduk = $logs->firstWhere('field', 'kode_spv');
+    expect((int) $logInduk->nilai_lama)->toBe($indukLama->kode);
+    expect((int) $logInduk->nilai_baru)->toBe($indukBaru->kode);
+});
+
+test('update uker tanpa ganti apapun gak nambah riwayat perubahan', function () {
+    $admin = User::factory()->admin()->create();
+    $induk = Uker::factory()->create();
+    $uker = Uker::factory()->create(['kode' => 26002, 'nama' => 'KC Tetap', 'jenis' => 'KC', 'alamat' => 'Jl. Tetap', 'kode_spv' => $induk->kode, 'uker_spv' => $induk->nama]);
+
+    $this->actingAs($admin)->put(
+        route('ukers.update', $uker),
+        ukerPayload($induk, ['kode' => $uker->kode, 'nama' => 'KC Tetap', 'jenis' => 'KC', 'alamat' => 'Jl. Tetap'])
+    );
+
+    expect($uker->fresh()->perubahanLogs)->toHaveCount(0);
+});
+
+test('riwayat perubahan uker tampil di halaman edit', function () {
+    $admin = User::factory()->admin()->create();
+    $indukLama = Uker::factory()->create();
+    $indukBaru = Uker::factory()->create();
+    $uker = Uker::factory()->create(['kode' => 26003, 'nama' => 'KC Sebelum Ganti Nama', 'kode_spv' => $indukLama->kode]);
+
+    $this->actingAs($admin)->put(
+        route('ukers.update', $uker),
+        ukerPayload($indukBaru, ['kode' => $uker->kode, 'nama' => 'KC Sesudah Ganti Nama'])
+    );
+
+    $response = $this->actingAs($admin)->get(route('ukers.edit', $uker));
+
+    $response->assertOk();
+    $response->assertSee('KC Sebelum Ganti Nama');
+    $response->assertSee('KC Sesudah Ganti Nama');
+});

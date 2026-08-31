@@ -66,6 +66,33 @@
                     </div>
                 </form>
             </x-card>
+
+            <x-card padding="p-6" class="mt-5">
+                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Perubahan</h3>
+                @if ($uker->perubahanLogs->isEmpty())
+                    <p class="text-gray-400 text-sm">Belum ada perubahan tercatat buat uker ini.</p>
+                @else
+                    <div class="space-y-2.5">
+                        @foreach ($uker->perubahanLogs as $log)
+                            @php
+                                $tampilLama = $log->field === 'kode_spv' ? (\App\Models\Uker::where('kode', $log->nilai_lama)->value('nama') ?? $log->nilai_lama) : $log->nilai_lama;
+                                $tampilBaru = $log->field === 'kode_spv' ? (\App\Models\Uker::where('kode', $log->nilai_baru)->value('nama') ?? $log->nilai_baru) : $log->nilai_baru;
+                            @endphp
+                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
+                                <div>
+                                    <p class="font-semibold text-gray-700">
+                                        {{ \App\Models\UkerPerubahanLog::LABEL_FIELD[$log->field] ?? $log->field }}:
+                                        <span class="text-gray-500 font-normal">{{ $tampilLama ?: '-' }}</span>
+                                        <span class="mx-1 text-gray-400">&rarr;</span>
+                                        {{ $tampilBaru ?: '-' }}
+                                    </p>
+                                    <p class="text-gray-400 text-xs mt-0.5">{{ $log->changedBy?->name ?? '-' }} &middot; {{ $log->created_at?->format('d M Y H:i') }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-card>
         </div>
     </div>
 </x-app-layout>

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
 use App\Models\Uker;
+use App\Models\UkerPerubahanLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -66,6 +67,7 @@ class UkerController extends Controller
     public function edit(Uker $uker)
     {
         $ukerIndukList = Uker::where('kode', '!=', $uker->kode)->orderBy('nama')->get();
+        $uker->load('perubahanLogs.changedBy');
 
         return view('ukers.edit', compact('uker', 'ukerIndukList'));
     }
@@ -76,6 +78,22 @@ class UkerController extends Controller
 
         $induk = Uker::where('kode', $validated['kode_spv'])->first();
         $validated['uker_spv'] = $induk?->nama;
+
+        // Riwayat perubahan -- 1 baris per FIELD yang beneran berubah (nilai
+        // lama, DARI SEBELUM update()). uker_spv sengaja gak dicatat sendiri
+        // (nilainya cuma turunan otomatis dari kode_spv di atas, nyatet
+        // kode_spv aja udah cukup).
+        foreach (['nama', 'jenis', 'alamat', 'kode_spv'] as $field) {
+            if ((string) $uker->{$field} !== (string) $validated[$field]) {
+                UkerPerubahanLog::create([
+                    'uker_kode' => $uker->kode,
+                    'field' => $field,
+                    'nilai_lama' => $uker->{$field},
+                    'nilai_baru' => $validated[$field],
+                    'changed_by' => $request->user()->id,
+                ]);
+            }
+        }
 
         $uker->update($validated);
         ActivityLog::catat('uker', 'update', 1, "Uker {$uker->nama} ({$uker->kode}) diupdate");

@@ -28,6 +28,13 @@ class Uker extends Model
         return $this->hasMany(Pekerja::class, 'uker_kode', 'kode');
     }
 
+    public function perubahanLogs()
+    {
+        return $this->hasMany(UkerPerubahanLog::class, 'uker_kode', 'kode')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     // Uker level KC (Kantor Cabang) ke atas (KANWIL, AREA, KC) -- gak
     // termasuk KCP/Unit/Lainnya. Dipakai khusus buat dropdown pilihan uker
     // di form Tambah/Edit Pekerja & Tambah/Edit User, karena yang punya akun

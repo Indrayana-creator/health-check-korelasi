@@ -234,6 +234,34 @@ class AsetController extends Controller
         return view('aset.index', compact('asetList', 'ukerFilterList', 'totalKeseluruhan', 'totalNormal', 'totalPerluPerhatian'));
     }
 
+    // Gabungan 3 kondisi "butuh perhatian" yang sebelumnya tersebar di
+    // filter-filter terpisah (kondisi Rusak/Tidak Layak, perlu_dicek_ulang,
+    // dan gak ada sama sekali buat "sudah lewat umur pakai tapi belum
+    // ditandai PH") -- jadi 1 worklist actionable. Ambang umur PH (5 tahun)
+    // SENGAJA disamain persis sama Aset::getSudahPhAttribute(), biar badge
+    // "PH" yang udah ada di halaman lain konsisten sama daftar ini.
+    public function perluPerhatian(Request $request)
+    {
+        $tahunAmbangPh = now()->year - 5;
+        $batasStale = now()->subDays(self::AMBANG_HARI_ASET_STALE);
+
+        $query = $this->scopedQuery($request)
+            ->withMax('kondisiLogs', 'created_at')
+            ->where(function ($q) use ($tahunAmbangPh, $batasStale) {
+                $q->whereIn('kondisi', ['RUSAK', 'TIDAK LAYAK'])
+                    ->orWhere(function ($q2) use ($tahunAmbangPh) {
+                        $q2->whereNotNull('tahun_perolehan')
+                            ->where('tahun_perolehan', '<=', $tahunAmbangPh)
+                            ->where('kondisi', '!=', 'PH/DISMANTEL');
+                    })
+                    ->orWhereDoesntHave('kondisiLogs', fn ($q3) => $q3->where('created_at', '>=', $batasStale));
+            });
+
+        $asetList = $query->reorder('id', 'desc')->paginate(20)->withQueryString();
+
+        return view('aset.perlu-perhatian', compact('asetList', 'tahunAmbangPh', 'batasStale'));
+    }
+
     // Halaman detail read-only -- sebelumnya gak ada sama sekali, satu-
     // satunya cara "lihat" data lengkap aset (IP, status keamanan,
     // keterangan, riwayat kondisi) adalah buka halaman Edit, yang nyampur
@@ -244,8 +272,72 @@ class AsetController extends Controller
         $this->authorize('view', $aset);
 
         $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'mutasiLogs.changedBy', 'mutasiLogs.ukerLama', 'mutasiLogs.ukerBaru', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
+        $timeline = $this->timelineRiwayat($aset);
 
-        return view('aset.show', compact('aset'));
+        return view('aset.show', compact('aset', 'timeline'));
+    }
+
+    // Gabungan 4 sumber riwayat (kondisi, mutasi uker, permintaan edit, laporan
+    // kerusakan) jadi SATU timeline kronologis -- sebelumnya 4 card terpisah
+    // yang gak nunjukin urutan kejadian relatif satu sama lain (mis. aset
+    // dipindah uker, LALU baru ketauan rusak -- gak kelihatan urutannya kalau
+    // dipisah per jenis). Bentuknya diseragamin (judul/deskripsi/oleh/badge/
+    // foto) biar 1 blok blade bisa render semua jenis tanpa @if berlapis.
+    protected function timelineRiwayat(Aset $aset)
+    {
+        $kondisi = $aset->kondisiLogs->map(fn ($log) => [
+            'jenis' => 'kondisi',
+            'created_at' => $log->created_at,
+            'judul' => 'Perubahan Kondisi',
+            'deskripsi' => $log->kondisi_lama
+                ? "{$log->kondisi_lama} → {$log->kondisi_baru}"
+                : "Kondisi awal: {$log->kondisi_baru}",
+            'oleh' => $log->changedBy?->name,
+            'badge' => null,
+            'catatan' => null,
+            'foto_url' => null,
+        ]);
+
+        $mutasi = $aset->mutasiLogs->map(fn ($log) => [
+            'jenis' => 'mutasi',
+            'created_at' => $log->created_at,
+            'judul' => 'Mutasi Uker',
+            'deskripsi' => ($log->ukerLama?->nama ?? '(tidak diketahui)').' → '.($log->ukerBaru?->nama ?? '-'),
+            'oleh' => $log->changedBy?->name,
+            'badge' => null,
+            'catatan' => null,
+            'foto_url' => null,
+        ]);
+
+        $edit = $aset->editRequests->map(fn ($r) => [
+            'jenis' => 'edit',
+            'created_at' => $r->created_at,
+            'judul' => 'Permintaan Edit',
+            'deskripsi' => $r->alasan ?: '(tanpa alasan)',
+            'oleh' => $r->requester?->name,
+            'badge' => ['label' => $r->status, 'color' => match ($r->status) {
+                'Disetujui' => 'green', 'Menunggu' => 'yellow', 'Ditolak' => 'red', default => 'gray',
+            }],
+            'catatan' => $r->catatan_admin,
+            'foto_url' => null,
+        ]);
+
+        $kendala = $aset->laporanKendala->map(fn ($k) => [
+            'jenis' => 'kendala',
+            'created_at' => $k->created_at,
+            'judul' => 'Laporan Kerusakan',
+            'deskripsi' => $k->deskripsi,
+            'oleh' => $k->reporter?->name,
+            'badge' => ['label' => $k->status, 'color' => match ($k->status) {
+                'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'gray',
+            }],
+            'catatan' => $k->catatan_admin,
+            'foto_url' => $k->foto_url,
+        ]);
+
+        return $kondisi->concat($mutasi)->concat($edit)->concat($kendala)
+            ->sortByDesc('created_at')
+            ->values();
     }
 
     // QR code buat ditempel fisik di perangkat -- di-scan langsung buka

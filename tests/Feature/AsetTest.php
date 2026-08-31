@@ -3,7 +3,9 @@
 use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
+use App\Models\AsetKendala;
 use App\Models\AsetKondisiLog;
+use App\Models\AsetMutasiLog;
 use App\Models\KodeAset;
 use App\Models\Uker;
 use App\Models\User;
@@ -908,4 +910,119 @@ test('cetak QR massal ditolak kalau jumlah aset kelewat batas', function () {
     $response = $this->actingAs($admin)->get(route('aset.qrSheet', ['uker_kode' => $uker->kode]));
 
     $response->assertStatus(422);
+});
+
+// ===================== Halaman Aset Perlu Perhatian =====================
+
+test('aset perlu perhatian nampilin aset kondisi rusak/tidak layak', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    $asetRusak = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'RUSAK', 'no_asset' => 'ASET-RUSAK', 'tahun_perolehan' => now()->year]);
+    $asetRusak->kondisiLogs()->create(['kondisi_baru' => 'RUSAK', 'changed_by' => $admin->id]);
+
+    $asetNormal = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL', 'no_asset' => 'ASET-NORMAL', 'tahun_perolehan' => now()->year]);
+    $asetNormal->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id]);
+
+    $response = $this->actingAs($admin)->get(route('aset.perluPerhatian'));
+
+    $response->assertOk();
+    $response->assertSee('ASET-RUSAK');
+    $response->assertDontSee('ASET-NORMAL');
+});
+
+test('aset perlu perhatian nampilin aset lewat umur pakai tapi belum ditandai PH', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    $asetTua = Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode,
+        'kondisi' => 'NORMAL', 'no_asset' => 'ASET-TUA-BELUM-PH', 'tahun_perolehan' => now()->year - 6,
+    ]);
+    $asetTua->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id]);
+
+    // Sama-sama tua, tapi UDAH ditandai PH/DISMANTEL -- gak boleh ikut nongol.
+    $asetTuaSudahPh = Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode,
+        'kondisi' => 'PH/DISMANTEL', 'no_asset' => 'ASET-TUA-SUDAH-PH', 'tahun_perolehan' => now()->year - 6,
+    ]);
+    $asetTuaSudahPh->kondisiLogs()->create(['kondisi_baru' => 'PH/DISMANTEL', 'changed_by' => $admin->id]);
+
+    $response = $this->actingAs($admin)->get(route('aset.perluPerhatian'));
+
+    $response->assertOk();
+    $response->assertSee('ASET-TUA-BELUM-PH');
+    $response->assertSee('Lewat Umur Pakai');
+    $response->assertDontSee('ASET-TUA-SUDAH-PH');
+});
+
+test('aset perlu perhatian nampilin aset yang belum pernah dicek kondisinya', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    // Gak ada kondisiLogs SAMA SEKALI (khas aset hasil bulk upload lama).
+    Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'NORMAL', 'no_asset' => 'ASET-BELUM-DICEK', 'tahun_perolehan' => now()->year]);
+
+    $response = $this->actingAs($admin)->get(route('aset.perluPerhatian'));
+
+    $response->assertOk();
+    $response->assertSee('ASET-BELUM-DICEK');
+    $response->assertSee('Belum Dicek');
+});
+
+test('aset perlu perhatian: user biasa cuma lihat dari subtree sendiri', function () {
+    $ukerSendiri = Uker::factory()->create();
+    $ukerLain = Uker::factory()->create();
+    $user = User::factory()->forUker($ukerSendiri->kode)->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    Aset::factory()->create(['uker_kode' => $ukerSendiri->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'RUSAK', 'no_asset' => 'ASET-SENDIRI-RUSAK']);
+    Aset::factory()->create(['uker_kode' => $ukerLain->kode, 'kode_aset_kode' => $kodeAset->kode, 'kondisi' => 'RUSAK', 'no_asset' => 'ASET-LAIN-RUSAK']);
+
+    $response = $this->actingAs($user)->get(route('aset.perluPerhatian'));
+
+    $response->assertOk();
+    $response->assertSee('ASET-SENDIRI-RUSAK');
+    $response->assertDontSee('ASET-LAIN-RUSAK');
+});
+
+// ===================== Timeline Riwayat Aset =====================
+
+test('timeline riwayat aset gabungin kondisi, mutasi, edit request, & laporan kerusakan jadi 1 urutan', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerAsal = Uker::factory()->create(['nama' => 'KC Timeline Asal']);
+    $ukerTujuan = Uker::factory()->create(['nama' => 'KC Timeline Tujuan']);
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $ukerAsal->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    AsetKondisiLog::create(['aset_id' => $aset->id, 'kondisi_lama' => null, 'kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id]);
+    AsetMutasiLog::create(['aset_id' => $aset->id, 'uker_kode_lama' => $ukerAsal->kode, 'uker_kode_baru' => $ukerTujuan->kode, 'changed_by' => $admin->id]);
+    AsetEditRequest::create(['aset_id' => $aset->id, 'requested_by' => $admin->id, 'alasan' => 'Alasan edit timeline', 'status' => 'Menunggu']);
+    AsetKendala::create(['aset_id' => $aset->id, 'deskripsi' => 'Deskripsi kendala timeline', 'reported_by' => $admin->id]);
+
+    $response = $this->actingAs($admin)->get(route('aset.show', $aset));
+
+    $response->assertOk();
+    $timeline = $response->viewData('timeline');
+    expect($timeline)->toHaveCount(4);
+    expect($timeline->pluck('jenis')->all())->toEqualCanonicalizing(['kondisi', 'mutasi', 'edit', 'kendala']);
+    $response->assertSee('KC Timeline Tujuan');
+    $response->assertSee('Alasan edit timeline');
+    $response->assertSee('Deskripsi kendala timeline');
+});
+
+test('timeline riwayat aset kosong buat aset baru tanpa histori apapun', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+
+    $response = $this->actingAs($admin)->get(route('aset.show', $aset));
+
+    $response->assertOk();
+    expect($response->viewData('timeline'))->toHaveCount(0);
+    $response->assertSee('Belum ada riwayat buat aset ini');
 });

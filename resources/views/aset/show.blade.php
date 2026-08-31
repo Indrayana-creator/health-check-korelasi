@@ -202,104 +202,38 @@
             </x-card>
 
             <x-card padding="p-6" class="print:hidden">
-                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Perubahan Kondisi</h3>
-                @if ($aset->kondisiLogs->isEmpty())
-                    <p class="text-gray-400 text-sm">Belum ada riwayat perubahan kondisi.</p>
+                <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Aset</h3>
+                <p class="text-xs text-gray-400 mb-4">Gabungan kronologis perubahan kondisi, mutasi uker, permintaan edit, dan laporan kerusakan.</p>
+                @if ($timeline->isEmpty())
+                    <p class="text-gray-400 text-sm">Belum ada riwayat buat aset ini.</p>
                 @else
-                    <div class="space-y-2.5">
-                        @foreach ($aset->kondisiLogs as $log)
-                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
-                                <div>
-                                    <p class="font-semibold text-gray-700">
-                                        @if ($log->kondisi_lama)
-                                            {{ $log->kondisi_lama }}
-                                        @else
-                                            <span class="text-gray-400 italic">(baru dicatat)</span>
+                    <div class="relative pl-6">
+                        <div class="absolute left-[7px] top-1.5 bottom-1.5 w-px bg-gray-200"></div>
+                        <div class="space-y-5">
+                            @foreach ($timeline as $t)
+                                <div class="relative">
+                                    <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ring-2 ring-white {{ match($t['jenis']) { 'kondisi' => 'bg-cakrawala', 'mutasi' => 'bg-purple-500', 'edit' => 'bg-yellow-500', 'kendala' => 'bg-red-500', default => 'bg-gray-400' } }}"></span>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <div class="min-w-0 flex-1">
+                                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">{{ $t['judul'] }}</p>
+                                            <p class="text-sm text-gray-700 mt-0.5">{{ $t['deskripsi'] }}</p>
+                                            @if ($t['catatan'])
+                                                <p class="text-gray-400 text-xs mt-0.5">Catatan: {{ $t['catatan'] }}</p>
+                                            @endif
+                                            @if ($t['foto_url'])
+                                                <a href="{{ $t['foto_url'] }}" target="_blank" rel="noopener">
+                                                    <img src="{{ $t['foto_url'] }}" alt="Foto" class="w-14 h-14 rounded-lg object-cover border border-gray-100 mt-1.5">
+                                                </a>
+                                            @endif
+                                            <p class="text-gray-400 text-xs mt-1">{{ $t['oleh'] ?? '-' }} &middot; {{ $t['created_at']?->format('d M Y H:i') }}</p>
+                                        </div>
+                                        @if ($t['badge'])
+                                            <x-badge :color="$t['badge']['color']" class="flex-none">{{ $t['badge']['label'] }}</x-badge>
                                         @endif
-                                        <span class="mx-1 text-gray-400">&rarr;</span>
-                                        {{ $log->kondisi_baru }}
-                                    </p>
-                                    <p class="text-gray-400 text-xs mt-0.5">{{ $log->changedBy?->name ?? '-' }} &middot; {{ $log->created_at?->format('d M Y H:i') }}</p>
+                                    </div>
                                 </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </x-card>
-
-            <x-card padding="p-6" class="print:hidden">
-                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Mutasi Uker</h3>
-                @if ($aset->mutasiLogs->isEmpty())
-                    <p class="text-gray-400 text-sm">Belum pernah dipindah ke Uker lain.</p>
-                @else
-                    <div class="space-y-2.5">
-                        @foreach ($aset->mutasiLogs as $log)
-                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
-                                <div>
-                                    <p class="font-semibold text-gray-700">
-                                        {{ $log->ukerLama?->nama ?? '(tidak diketahui)' }}
-                                        <span class="mx-1 text-gray-400">&rarr;</span>
-                                        {{ $log->ukerBaru?->nama }}
-                                    </p>
-                                    <p class="text-gray-400 text-xs mt-0.5">{{ $log->changedBy?->name ?? '-' }} &middot; {{ $log->created_at?->format('d M Y H:i') }}</p>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </x-card>
-
-            <x-card padding="p-6" class="print:hidden">
-                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Permintaan Edit</h3>
-                @if ($aset->editRequests->isEmpty())
-                    <p class="text-gray-400 text-sm">Belum ada permintaan edit buat aset ini.</p>
-                @else
-                    <div class="space-y-2.5">
-                        @foreach ($aset->editRequests as $r)
-                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
-                                <div>
-                                    <p class="text-gray-700">{{ $r->alasan ?: '(tanpa alasan)' }}</p>
-                                    <p class="text-gray-400 text-xs mt-0.5">
-                                        Diajukan {{ $r->requester?->name ?? '-' }} &middot; {{ $r->created_at?->format('d M Y H:i') }}
-                                        @if ($r->catatan_admin)
-                                            &middot; Catatan: {{ $r->catatan_admin }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <x-badge :color="match($r->status) { 'Disetujui' => 'green', 'Menunggu' => 'yellow', 'Ditolak' => 'red', default => 'gray' }" class="flex-none">
-                                    {{ $r->status }}
-                                </x-badge>
-                            </div>
-                        @endforeach
-                    </div>
-                @endif
-            </x-card>
-
-            <x-card padding="p-6" class="print:hidden">
-                <h3 class="font-extrabold text-sm text-gray-800 mb-4">Riwayat Laporan Kerusakan</h3>
-                @if ($aset->laporanKendala->isEmpty())
-                    <p class="text-gray-400 text-sm">Belum ada laporan kerusakan buat aset ini.</p>
-                @else
-                    <div class="space-y-3">
-                        @foreach ($aset->laporanKendala as $k)
-                            <div class="flex items-start gap-3 text-sm border-b border-gray-100 pb-3">
-                                @if ($k->foto_url)
-                                    <img src="{{ $k->foto_url }}" alt="Foto kerusakan" class="w-14 h-14 rounded-lg object-cover flex-none border border-gray-100">
-                                @endif
-                                <div class="min-w-0 flex-1">
-                                    <p class="text-gray-700">{{ $k->deskripsi }}</p>
-                                    <p class="text-gray-400 text-xs mt-0.5">
-                                        Dilaporkan {{ $k->reporter?->name ?? '-' }} &middot; {{ $k->created_at?->format('d M Y H:i') }}
-                                        @if ($k->catatan_admin)
-                                            &middot; Catatan: {{ $k->catatan_admin }}
-                                        @endif
-                                    </p>
-                                </div>
-                                <x-badge :color="match($k->status) { 'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'gray' }" class="flex-none">
-                                    {{ $k->status }}
-                                </x-badge>
-                            </div>
-                        @endforeach
+                            @endforeach
+                        </div>
                     </div>
                 @endif
             </x-card>
