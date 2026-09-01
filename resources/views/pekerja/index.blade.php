@@ -45,6 +45,7 @@
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Nama</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Jabatan</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">No HP</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Petugas IT</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
@@ -56,6 +57,16 @@
                             <td class="px-4 py-3 text-sm font-semibold text-gray-800">{{ $p->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $p->jabatan ?: '-' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $p->uker?->nama ?: '-' }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-600">
+                                @if ($p->whatsapp_url)
+                                    <a href="{{ $p->whatsapp_url }}" target="_blank" rel="noopener" class="inline-flex items-center gap-1.5 text-green-600 hover:text-green-700 hover:underline font-semibold">
+                                        <svg viewBox="0 0 24 24" fill="currentColor" class="w-3.5 h-3.5"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.39 1.26 4.81L2 22l5.44-1.35a9.9 9.9 0 004.6 1.13h.01c5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.85 9.85 0 0012.04 2zm5.8 14.1c-.24.68-1.4 1.3-1.93 1.35-.5.06-1.02.27-3.4-.71-2.87-1.19-4.7-4.1-4.85-4.29-.14-.19-1.16-1.55-1.16-2.95 0-1.4.73-2.08.99-2.37.26-.28.57-.35.76-.35.19 0 .38 0 .55.01.18.01.42-.07.65.5.24.58.82 2 .89 2.14.07.14.12.31.02.5-.09.19-.14.31-.28.47-.14.16-.29.36-.42.48-.14.14-.28.29-.12.57.16.28.71 1.17 1.52 1.9 1.05.94 1.93 1.23 2.21 1.37.28.14.44.12.6-.07.16-.19.68-.79.86-1.06.18-.28.36-.23.6-.14.24.09 1.55.73 1.82.86.27.14.44.21.51.32.07.12.07.68-.17 1.36z"></path></svg>
+                                        {{ $p->no_hp }}
+                                    </a>
+                                @else
+                                    <span class="text-gray-400">-</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3">
                                 @if ($p->is_petugas_it)
                                     <x-badge color="green">Ya</x-badge>
@@ -80,7 +91,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-10 text-center">
+                            <td colspan="7" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M12.5 7a4 4 0 11-8 0 4 4 0 018 0zM22 21v-2a4 4 0 00-3-3.87M17 3.13a4 4 0 010 7.75"></path></svg>
                                 @if (request('q'))
                                     <p class="text-gray-400 text-sm mb-3">Gak ada pekerja yang cocok dengan pencarian ini.</p>

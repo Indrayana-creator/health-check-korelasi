@@ -228,3 +228,34 @@ test('edit pekerja lama yang PN-nya udah gak 8 digit (data legacy) tetap bisa di
     $response->assertRedirect(route('pekerja.index'));
     expect($pekerjaLegacy->fresh()->jabatan)->toBe('Jabatan Baru');
 });
+
+// ===================== Link WhatsApp =====================
+
+test('no_hp diawali 08 dengan strip dinormalisasi jadi link wa.me diawali 62', function () {
+    $pekerja = Pekerja::factory()->make(['no_hp' => '0812-3456-7890']);
+
+    expect($pekerja->whatsapp_url)->toBe('https://wa.me/6281234567890');
+});
+
+test('no_hp yang udah polos diawali 62 tetap kebentuk link wa.me yang bener', function () {
+    $pekerja = Pekerja::factory()->make(['no_hp' => '6281234567890']);
+
+    expect($pekerja->whatsapp_url)->toBe('https://wa.me/6281234567890');
+});
+
+test('pekerja tanpa no_hp gak punya link whatsapp', function () {
+    $pekerja = Pekerja::factory()->make(['no_hp' => null]);
+
+    expect($pekerja->whatsapp_url)->toBeNull();
+});
+
+test('link whatsapp tampil di halaman Kelola Pekerja buat yang punya no_hp', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    Pekerja::factory()->create(['uker_kode' => $uker->kode, 'no_hp' => '0812-3456-7890', 'nama' => 'Petugas WA']);
+
+    $response = $this->actingAs($admin)->get(route('pekerja.index'));
+
+    $response->assertOk();
+    $response->assertSee('https://wa.me/6281234567890', false);
+});

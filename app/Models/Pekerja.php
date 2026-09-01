@@ -28,4 +28,27 @@ class Pekerja extends Model
     {
         return $this->hasOne(User::class, 'pn', 'pn');
     }
+
+    // Link "wa.me" siap klik -- no_hp bisa kesimpen dalam format apa aja
+    // (pakai strip, diawali 08, atau udah 62), jadi dinormalisasi di sini
+    // tiap kali dipanggil, bukan cuma pas nyimpen.
+    public function getWhatsappUrlAttribute(): ?string
+    {
+        if (! $this->no_hp) {
+            return null;
+        }
+
+        $digit = preg_replace('/\D/', '', $this->no_hp);
+        if (! $digit) {
+            return null;
+        }
+
+        if (str_starts_with($digit, '0')) {
+            $digit = '62'.substr($digit, 1);
+        } elseif (! str_starts_with($digit, '62')) {
+            $digit = '62'.$digit;
+        }
+
+        return "https://wa.me/{$digit}";
+    }
 }
