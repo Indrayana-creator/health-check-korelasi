@@ -131,6 +131,9 @@
                         <div class="min-w-0">
                             <p class="text-sm font-bold text-white truncate">{{ auth()->user()->name }}</p>
                             <p class="text-[11px] text-white/65">{{ auth()->user()->role === 'admin' ? 'Administrator' : 'Petugas Cabang' }}</p>
+                            @if (auth()->user()->ukerRelasi)
+                                <p class="text-[11px] text-white/50 truncate">{{ auth()->user()->ukerRelasi->nama }}</p>
+                            @endif
                         </div>
                     </div>
                     <form method="POST" action="{{ route('logout') }}">
@@ -285,6 +288,9 @@
                             <div class="px-4 pt-1 pb-2">
                                 <p class="text-sm font-bold text-gray-800">{{ auth()->user()->name }}</p>
                                 <p class="text-xs text-gray-500">{{ auth()->user()->role === 'admin' ? 'Administrator' : 'Petugas Cabang' }}</p>
+                                @if (auth()->user()->ukerRelasi)
+                                    <p class="text-xs text-gray-400">{{ auth()->user()->ukerRelasi->nama }}</p>
+                                @endif
                             </div>
                             <div class="border-t border-gray-100"></div>
                             <x-dropdown-link :href="route('profile.edit')">
