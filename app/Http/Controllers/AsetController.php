@@ -278,6 +278,7 @@ class AsetController extends Controller
     {
         $kondisi = $aset->kondisiLogs->map(fn ($log) => [
             'jenis' => 'kondisi',
+            'id' => $log->id,
             'created_at' => $log->created_at,
             'judul' => 'Perubahan Kondisi',
             'deskripsi' => $log->kondisi_lama
@@ -291,6 +292,7 @@ class AsetController extends Controller
 
         $mutasi = $aset->mutasiLogs->map(fn ($log) => [
             'jenis' => 'mutasi',
+            'id' => $log->id,
             'created_at' => $log->created_at,
             'judul' => 'Mutasi Uker',
             'deskripsi' => ($log->ukerLama?->nama ?? '(tidak diketahui)').' → '.($log->ukerBaru?->nama ?? '-'),
@@ -302,6 +304,7 @@ class AsetController extends Controller
 
         $edit = $aset->editRequests->map(fn ($r) => [
             'jenis' => 'edit',
+            'id' => $r->id,
             'created_at' => $r->created_at,
             'judul' => 'Permintaan Edit',
             'deskripsi' => $r->alasan ?: '(tanpa alasan)',
@@ -315,6 +318,7 @@ class AsetController extends Controller
 
         $kendala = $aset->laporanKendala->map(fn ($k) => [
             'jenis' => 'kendala',
+            'id' => $k->id,
             'created_at' => $k->created_at,
             'judul' => 'Laporan Kerusakan',
             'deskripsi' => $k->deskripsi,
@@ -326,8 +330,16 @@ class AsetController extends Controller
             'foto_url' => $k->foto_url,
         ]);
 
+        // sortByDesc('created_at') doang gak stabil kalau 2 kejadian dari
+        // sumber beda punya created_at yang PERSIS sama (id gak sebanding
+        // lintas tabel, tapi tetap dipakai sebagai tie-breaker biar urutan
+        // tampilnya konsisten tiap reload, bukan acakan ulang tiap request).
         return $kondisi->concat($mutasi)->concat($edit)->concat($kendala)
-            ->sortByDesc('created_at')
+            ->sortBy([
+                ['created_at', 'desc'],
+                ['jenis', 'asc'],
+                ['id', 'asc'],
+            ])
             ->values();
     }
 
