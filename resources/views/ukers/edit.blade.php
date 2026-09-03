@@ -49,14 +49,15 @@
                             initial-label="{{ $uker->uker_spv }}"
                             model-value="kodeSpvTerpilih"
                             placeholder="Ketik nama atau kode cabang induk..."
+                            required
                         />
                         <p class="text-xs text-gray-400 mt-1.5">Kalau ini uker level Kanwil paling atas, pilih dirinya sendiri sebagai induk.</p>
                         <x-input-error :messages="$errors->get('kode_spv')" class="mt-1.5" />
                     </div>
 
                     <div>
-                        <x-input-label value="Alamat (opsional)" />
-                        <textarea name="alamat" rows="3" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala">{{ old('alamat', $uker->alamat) }}</textarea>
+                        <x-input-label value="Alamat" required />
+                        <textarea name="alamat" rows="3" class="mt-1.5 block w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala" required>{{ old('alamat', $uker->alamat) }}</textarea>
                         <x-input-error :messages="$errors->get('alamat')" class="mt-1.5" />
                     </div>
 

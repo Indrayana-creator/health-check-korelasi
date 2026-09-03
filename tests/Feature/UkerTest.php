@@ -56,6 +56,26 @@ test('admin bisa menambah uker baru dan uker_spv otomatis ikut nama induk', func
     expect($uker->uker_spv)->toBe('Kanwil Jakarta');
 });
 
+test('alamat wajib diisi saat menambah uker', function () {
+    $admin = User::factory()->admin()->create();
+    $induk = Uker::factory()->create();
+    $payload = ukerPayload($induk, ['alamat' => '']);
+
+    $response = $this->actingAs($admin)->post(route('ukers.store'), $payload);
+
+    $response->assertSessionHasErrors('alamat');
+    expect(Uker::where('kode', $payload['kode'])->exists())->toBeFalse();
+});
+
+test('cabang induk wajib dipilih saat menambah uker', function () {
+    $admin = User::factory()->admin()->create();
+    $induk = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('ukers.store'), ukerPayload($induk, ['kode_spv' => '']));
+
+    $response->assertSessionHasErrors('kode_spv');
+});
+
 test('kode uker harus unik saat ditambahkan', function () {
     $admin = User::factory()->admin()->create();
     $induk = Uker::factory()->create();

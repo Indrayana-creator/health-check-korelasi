@@ -44,7 +44,7 @@ class UkerController extends Controller
         return [
             'kode' => ['required', 'integer', Rule::unique('ukers', 'kode')->ignore($uker?->kode, 'kode')],
             'nama' => 'required|string|max:255',
-            'alamat' => 'nullable|string|max:1000',
+            'alamat' => 'required|string|max:1000',
             'jenis' => 'required|in:'.implode(',', self::DAFTAR_JENIS),
             'kode_spv' => 'required|integer|exists:ukers,kode',
         ];

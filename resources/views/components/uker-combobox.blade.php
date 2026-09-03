@@ -10,7 +10,7 @@
     Otomatis update teks tampilan kalau modelValue berubah dari luar (misal hasil
     auto-fill dari lookup PN), lewat $watch di x-init.
 --}}
-@props(['name', 'label' => 'Uker', 'daftarUker', 'modelValue', 'placeholder' => '-- Cari & pilih uker --', 'initialLabel' => ''])
+@props(['name', 'label' => 'Uker', 'daftarUker', 'modelValue', 'placeholder' => '-- Cari & pilih uker --', 'initialLabel' => '', 'required' => false])
 
 <div
     x-data="{
@@ -29,7 +29,7 @@
     })"
     class="relative"
 >
-    <label class="block text-sm font-semibold text-gray-700">{{ $label }}</label>
+    <label class="block text-sm font-semibold text-gray-700">{{ $label }} @if ($required)<span class="text-red-500">*</span>@endif</label>
     <input type="hidden" name="{{ $name }}" :value="{{ $modelValue }}">
     <input
         type="text"
