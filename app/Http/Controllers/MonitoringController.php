@@ -23,7 +23,7 @@ class MonitoringController extends Controller
     // Aset/Health Check/Struktur Organisasi, bukan scoping baru.
     protected function scopedQuery(Request $request)
     {
-        $query = HealthCheckItem::with(['form.uker', 'statusLogs.changedBy'])->where('status', 'Not OK');
+        $query = HealthCheckItem::with(['form.uker.petugasIt', 'statusLogs.changedBy'])->where('status', 'Not OK');
 
         if ($request->user()->role !== 'admin') {
             $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);

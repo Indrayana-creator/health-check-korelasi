@@ -23,7 +23,7 @@ class AsetKendalaController extends Controller
 {
     protected function scopedQuery(Request $request)
     {
-        $query = AsetKendala::with(['aset.uker', 'reporter']);
+        $query = AsetKendala::with(['aset.uker.petugasIt', 'reporter']);
 
         if ($request->user()->role !== 'admin') {
             $ukerBolehDiakses = Uker::descendantKodes($request->user()->uker_kode);

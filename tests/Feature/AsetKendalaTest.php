@@ -3,6 +3,7 @@
 use App\Models\Aset;
 use App\Models\AsetKendala;
 use App\Models\KodeAset;
+use App\Models\Pekerja;
 use App\Models\Uker;
 use App\Models\User;
 use App\Notifications\AsetKendalaDilaporkan;
@@ -111,6 +112,21 @@ test('admin bisa lihat semua laporan kerusakan, user cuma subtree sendiri', func
     $responseAdmin->assertOk();
     $responseAdmin->assertSee('Punya sendiri');
     $responseAdmin->assertSee('Punya cabang lain');
+});
+
+test('halaman laporan kerusakan aset nampilin link WhatsApp petugas IT uker terkait', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode]);
+    AsetKendala::create(['aset_id' => $aset->id, 'deskripsi' => 'Rusak parah', 'reported_by' => $admin->id]);
+    Pekerja::factory()->create(['uker_kode' => $uker->kode, 'is_petugas_it' => true, 'no_hp' => '0812-3456-7890', 'nama' => 'Petugas Contoh']);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.laporanAset.index'));
+
+    $response->assertOk();
+    $response->assertSee('https://wa.me/6281234567890', false);
+    $response->assertSee('Petugas Contoh');
 });
 
 test('admin bisa update status laporan kerusakan', function () {

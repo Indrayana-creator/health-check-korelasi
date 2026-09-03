@@ -71,6 +71,39 @@ test('monitoring bisa difilter berdasarkan uker, kategori, dan status tindak lan
     expect($responseStatus->viewData('items')->first()->kategori)->toBe('B - CCTV & Storage');
 });
 
+test('halaman monitoring nampilin link WhatsApp petugas IT uker terkait tiap item Not OK', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+    Pekerja::factory()->create(['uker_kode' => $uker->kode, 'is_petugas_it' => true, 'no_hp' => '0812-3456-7890', 'nama' => 'Petugas Contoh']);
+    // Pekerja lain di uker yang sama tapi BUKAN petugas IT -- gak boleh ikut nongol.
+    Pekerja::factory()->create(['uker_kode' => $uker->kode, 'is_petugas_it' => false, 'no_hp' => '0899-9999-9999', 'nama' => 'Bukan Petugas IT']);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index'));
+
+    $response->assertOk();
+    $response->assertSee('https://wa.me/6281234567890', false);
+    $response->assertSee('Petugas Contoh');
+    $response->assertDontSee('Bukan Petugas IT');
+});
+
+test('kalau unit pelapor sendiri gak punya petugas IT terdaftar, link WhatsApp ngambil dari cabang induknya', function () {
+    $admin = User::factory()->admin()->create();
+    $kc = Uker::factory()->create(['nama' => 'KC Induk']);
+    $unit = Uker::factory()->create(['nama' => 'Unit Anak', 'kode_spv' => $kc->kode]);
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $unit->kode]);
+    HealthCheckItem::factory()->create(['health_check_form_id' => $form->id, 'status' => 'Not OK']);
+    // Petugas IT cuma terdaftar di KC induk, BUKAN di unit anak.
+    Pekerja::factory()->create(['uker_kode' => $kc->kode, 'is_petugas_it' => true, 'no_hp' => '0812-3456-7890', 'nama' => 'Petugas KC Induk']);
+
+    $response = $this->actingAs($admin)->get(route('monitoring.index'));
+
+    $response->assertOk();
+    $response->assertSee('https://wa.me/6281234567890', false);
+    $response->assertSee('Petugas KC Induk');
+});
+
 test('stat card monitoring menghitung total, belum ditindaklanjuti, dan selesai dengan benar', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();

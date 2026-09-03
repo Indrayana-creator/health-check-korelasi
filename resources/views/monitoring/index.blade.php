@@ -130,7 +130,12 @@
                                     <span class="text-gray-300 text-xs">-</span>
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $item->form?->uker?->nama }}</td>
+                            <td class="px-4 py-3 text-sm font-semibold text-gray-700">
+                                <div>{{ $item->form?->uker?->nama }}</div>
+                                @foreach ($item->form?->uker?->petugasItEfektif() ?? [] as $petugas)
+                                    <x-whatsapp-link :pekerja="$petugas" class="text-[11px] mt-0.5" />
+                                @endforeach
+                            </td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $item->kategori }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700 max-w-xs">
                                 {{ $item->item_pemeriksaan }}

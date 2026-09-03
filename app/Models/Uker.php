@@ -28,6 +28,49 @@ class Uker extends Model
         return $this->hasMany(Pekerja::class, 'uker_kode', 'kode');
     }
 
+    // Dipakai buat tombol "hubungi langsung" di halaman Monitoring Kendala
+    // (Checklist Not OK & Laporan Manual Aset) -- gak butuh Pekerja::class
+    // penuh, cukup yang ditandai petugas IT di uker ini.
+    public function petugasIt()
+    {
+        return $this->hasMany(Pekerja::class, 'uker_kode', 'kode')->where('is_petugas_it', true);
+    }
+
+    protected static array $petugasItEfektifCache = [];
+
+    // Petugas IT biasanya cuma didaftarkan di level KC/Cabang, BUKAN di tiap
+    // Unit/KCP di bawahnya -- kalau uker ini sendiri gak punya petugas
+    // terdaftar (kasus umum buat kendala yang dilaporkan dari Unit), jalan
+    // naik ke cabang induknya (kode_spv) sampai ketemu atau mentok di puncak
+    // (Kanwil nunjuk dirinya sendiri sebagai induk). Di-cache per kode per
+    // request -- halaman Monitoring bisa nampilin puluhan item dari uker yang
+    // sama, gak perlu jalan naik ulang tiap baris.
+    public function petugasItEfektif()
+    {
+        if (array_key_exists($this->kode, static::$petugasItEfektifCache)) {
+            return static::$petugasItEfektifCache[$this->kode];
+        }
+
+        $uker = $this;
+        $hasil = collect();
+        for ($i = 0; $i < 5; $i++) {
+            if ($uker->petugasIt->isNotEmpty()) {
+                $hasil = $uker->petugasIt;
+                break;
+            }
+            if (! $uker->kode_spv || $uker->kode_spv === $uker->kode) {
+                break;
+            }
+            $indukBerikutnya = static::where('kode', $uker->kode_spv)->first();
+            if (! $indukBerikutnya) {
+                break;
+            }
+            $uker = $indukBerikutnya;
+        }
+
+        return static::$petugasItEfektifCache[$this->kode] = $hasil;
+    }
+
     public function perubahanLogs()
     {
         return $this->hasMany(UkerPerubahanLog::class, 'uker_kode', 'kode')

@@ -103,6 +103,9 @@
                             <td class="px-4 py-3 text-sm">
                                 <a href="{{ route('aset.show', $k->aset_id) }}" class="font-semibold text-cakrawala hover:underline">{{ $k->aset?->no_asset }}</a>
                                 <p class="text-gray-400 text-xs mt-0.5">{{ $k->aset?->uker?->nama }}</p>
+                                @foreach ($k->aset?->uker?->petugasItEfektif() ?? [] as $petugas)
+                                    <x-whatsapp-link :pekerja="$petugas" class="text-[11px] mt-0.5" />
+                                @endforeach
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600 max-w-xs">{{ $k->deskripsi }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $k->reporter?->name ?? '-' }}</td>
