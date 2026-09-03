@@ -85,13 +85,12 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($laporanList as $k)
                         @php
-                            $aksenStatus = match ($k->status) {
-                                'Selesai Diperbaiki' => 'border-l-[3px] border-l-green-400',
-                                'Sedang Diproses' => 'border-l-[3px] border-l-amber-400',
-                                default => 'border-l-[3px] border-l-red-400',
-                            };
+                            // default (mis. 'Belum Ditindaklanjuti') sengaja merah, bukan abu-abu --
+                            // itu status default begitu kendala baru dilaporkan, jadi paling perlu
+                            // kelihatan mendesak, bukan netral.
+                            $warnaStatus = match ($k->status) { 'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'red' };
                         @endphp
-                        <tr class="hover:bg-cakrawala/5 {{ $aksenStatus }}" x-data="{ open: false }">
+                        <tr class="hover:bg-cakrawala/5 {{ \App\Support\StatusColor::aksenBorder($warnaStatus) }}" x-data="{ open: false }">
                             <td class="px-4 py-3">
                                 @if ($k->foto_url)
                                     <a href="{{ $k->foto_url }}" target="_blank" rel="noopener">
@@ -109,7 +108,7 @@
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $k->reporter?->name ?? '-' }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $k->created_at->format('d M Y H:i') }}</td>
                             <td class="px-4 py-3">
-                                <x-badge :color="match($k->status) { 'Selesai Diperbaiki' => 'green', 'Sedang Diproses' => 'yellow', default => 'gray' }">
+                                <x-badge :color="$warnaStatus">
                                     {{ $k->status }}
                                 </x-badge>
                                 @if ($k->catatan_admin)

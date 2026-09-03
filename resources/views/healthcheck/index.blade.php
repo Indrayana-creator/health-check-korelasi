@@ -124,14 +124,9 @@
                     @forelse ($formList as $form)
                         @php
                             $persen = $form->persenCompliance();
-                            $aksenApproval = match ($form->status_approval) {
-                                'Disetujui' => 'border-l-[3px] border-l-green-400',
-                                'Menunggu Approval' => 'border-l-[3px] border-l-amber-400',
-                                'Ditolak' => 'border-l-[3px] border-l-red-400',
-                                default => 'border-l-[3px] border-l-transparent',
-                            };
+                            $warnaApproval = match ($form->status_approval) { 'Disetujui' => 'green', 'Menunggu Approval' => 'yellow', 'Ditolak' => 'red', default => 'gray' };
                         @endphp
-                        <tr class="hover:bg-cakrawala/5 {{ $aksenApproval }}">
+                        <tr class="hover:bg-cakrawala/5 {{ \App\Support\StatusColor::aksenBorder($warnaApproval) }}">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $form->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->periode }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan }}</td>
@@ -146,7 +141,7 @@
                                 </x-badge>
                             </td>
                             <td class="px-4 py-3">
-                                <x-badge :color="match($form->status_approval) { 'Disetujui' => 'green', 'Menunggu Approval' => 'yellow', 'Ditolak' => 'red', default => 'gray' }">
+                                <x-badge :color="$warnaApproval">
                                     {{ $form->status_approval }}
                                 </x-badge>
                             </td>

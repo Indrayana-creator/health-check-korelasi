@@ -134,13 +134,9 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($asetList as $aset)
                         @php
-                            $aksenKondisi = match ($aset->kondisi) {
-                                'NORMAL' => 'border-l-[3px] border-l-green-400',
-                                'RUSAK', 'TIDAK LAYAK' => 'border-l-[3px] border-l-red-400',
-                                default => 'border-l-[3px] border-l-transparent',
-                            };
+                            $warnaKondisi = match ($aset->kondisi) { 'NORMAL' => 'green', 'RUSAK', 'TIDAK LAYAK' => 'red', default => 'gray' };
                         @endphp
-                        <tr class="hover:bg-cakrawala/5 {{ $aksenKondisi }}">
+                        <tr class="hover:bg-cakrawala/5 {{ \App\Support\StatusColor::aksenBorder($warnaKondisi) }}">
                             <td class="px-4 font-mono text-xs text-gray-700"><a href="{{ route('aset.show', $aset) }}" class="hover:text-cakrawala hover:underline">{{ $aset->no_asset }}</a></td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->uker?->nama }}</td>
                             <td class="px-4 text-sm text-gray-700">{{ $aset->kode_aset_kode }} - {{ $aset->kodeAset?->nama }}</td>
@@ -155,7 +151,7 @@
                                 @endif
                             </td>
                             <td class="px-4">
-                                <x-badge :color="match($aset->kondisi) { 'NORMAL' => 'green', 'RUSAK', 'TIDAK LAYAK' => 'red', default => 'gray' }">
+                                <x-badge :color="$warnaKondisi">
                                     {{ $aset->kondisi ?? 'Belum Diisi' }}
                                 </x-badge>
                             </td>

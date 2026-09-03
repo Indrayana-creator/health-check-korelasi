@@ -141,14 +141,9 @@
                 <tbody class="divide-y divide-gray-100">
                     @forelse ($permintaanList as $p)
                         @php
-                            $aksenStatus = match ($p->status) {
-                                'Done Terkirim' => 'border-l-[3px] border-l-green-400',
-                                'Pending LGA' => 'border-l-[3px] border-l-amber-400',
-                                'Pending ESO' => 'border-l-[3px] border-l-blue-400',
-                                default => 'border-l-[3px] border-l-transparent',
-                            };
+                            $warnaStatus = match ($p->status) { 'Done Terkirim' => 'green', 'Pending LGA' => 'yellow', 'Pending ESO' => 'blue', default => 'gray' };
                         @endphp
-                        <tr class="hover:bg-cakrawala/5 {{ $aksenStatus }}" x-data="{ open: false, riwayatOpen: false, copiedLacak: false }">
+                        <tr class="hover:bg-cakrawala/5 {{ \App\Support\StatusColor::aksenBorder($warnaStatus) }}" x-data="{ open: false, riwayatOpen: false, copiedLacak: false }">
                             @if ($isAdmin)
                                 <td class="px-4 py-3">
                                     <input type="checkbox" class="rounded border-gray-300" value="{{ $p->id }}" x-model.number="selected">
@@ -161,7 +156,7 @@
                             <td class="px-4 py-3 text-sm text-gray-500 max-w-xs">{{ $p->keterangan }}</td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $p->uker?->nama }}</td>
                             <td class="px-4 py-3">
-                                <x-badge :color="match($p->status) { 'Done Terkirim' => 'green', 'Pending LGA' => 'yellow', 'Pending ESO' => 'blue', default => 'gray' }">
+                                <x-badge :color="$warnaStatus">
                                     {{ $p->status }}
                                 </x-badge>
                                 @if ($p->sudahLama())
