@@ -75,8 +75,8 @@
                     <div class="space-y-2.5">
                         @foreach ($uker->perubahanLogs as $log)
                             @php
-                                $tampilLama = $log->field === 'kode_spv' ? (\App\Models\Uker::where('kode', $log->nilai_lama)->value('nama') ?? $log->nilai_lama) : $log->nilai_lama;
-                                $tampilBaru = $log->field === 'kode_spv' ? (\App\Models\Uker::where('kode', $log->nilai_baru)->value('nama') ?? $log->nilai_baru) : $log->nilai_baru;
+                                $tampilLama = $log->field === 'kode_spv' ? ($ukerNamaMap[$log->nilai_lama] ?? $log->nilai_lama) : $log->nilai_lama;
+                                $tampilBaru = $log->field === 'kode_spv' ? ($ukerNamaMap[$log->nilai_baru] ?? $log->nilai_baru) : $log->nilai_baru;
                             @endphp
                             <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
                                 <div>

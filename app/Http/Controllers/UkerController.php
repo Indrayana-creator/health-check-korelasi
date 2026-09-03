@@ -69,7 +69,12 @@ class UkerController extends Controller
         $ukerIndukList = Uker::where('kode', '!=', $uker->kode)->orderBy('nama')->get();
         $uker->load('perubahanLogs.changedBy');
 
-        return view('ukers.edit', compact('uker', 'ukerIndukList'));
+        // Dipakai buat nerjemahin kode_spv lama/baru di Riwayat Perubahan jadi
+        // nama uker -- ditarik SEKALI di sini (bukan query per baris log di
+        // view) biar gak N+1 pas uker-nya punya banyak riwayat ganti induk.
+        $ukerNamaMap = Uker::pluck('nama', 'kode');
+
+        return view('ukers.edit', compact('uker', 'ukerIndukList', 'ukerNamaMap'));
     }
 
     public function update(Request $request, Uker $uker)
