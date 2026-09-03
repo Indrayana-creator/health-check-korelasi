@@ -142,9 +142,17 @@ class Aset extends Model
         return $query->where(function ($q) use ($tahunAmbangPh, $batasStale) {
             $q->whereIn('kondisi', ['RUSAK', 'TIDAK LAYAK'])
                 ->orWhere(function ($q2) use ($tahunAmbangPh) {
+                    // where('kondisi', '!=', 'PH/DISMANTEL') doang gak nangkep
+                    // aset yang kondisi-nya NULL (aset lama hasil bulk upload
+                    // yang belum pernah diisi kondisinya) -- secara SQL,
+                    // NULL != 'PH/DISMANTEL' hasilnya NULL (dianggap gak lolos
+                    // WHERE), jadi aset yang belum diklasifikasi malah kelewat
+                    // dari daftar "Perlu Perhatian" padahal harusnya PALING
+                    // butuh diperiksa. Makanya kondisi NULL disamain diperlakukan
+                    // kayak "belum PH/DISMANTEL", bukan malah dianggap gak lolos.
                     $q2->whereNotNull('tahun_perolehan')
                         ->where('tahun_perolehan', '<=', $tahunAmbangPh)
-                        ->where('kondisi', '!=', 'PH/DISMANTEL');
+                        ->where(fn ($q4) => $q4->whereNull('kondisi')->orWhere('kondisi', '!=', 'PH/DISMANTEL'));
                 })
                 ->orWhereDoesntHave('kondisiLogs', fn ($q3) => $q3->where('created_at', '>=', $batasStale));
         });

@@ -958,6 +958,32 @@ test('aset perlu perhatian nampilin aset lewat umur pakai tapi belum ditandai PH
     $response->assertDontSee('ASET-TUA-SUDAH-PH');
 });
 
+test('aset perlu perhatian nampilin aset lewat umur pakai yang kondisinya belum pernah diisi (NULL)', function () {
+    // Regresi: where('kondisi', '!=', 'PH/DISMANTEL') doang gak nangkep
+    // kondisi NULL secara SQL (NULL != 'x' = NULL, dianggap gak lolos WHERE),
+    // jadi aset lama hasil bulk upload yang belum pernah diisi kondisinya
+    // malah kelewat dari daftar -- padahal ini justru yang paling perlu
+    // diperhatikan.
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $kodeAset = KodeAset::factory()->create();
+
+    $asetTuaKosong = Aset::factory()->create([
+        'uker_kode' => $uker->kode, 'kode_aset_kode' => $kodeAset->kode,
+        'kondisi' => null, 'no_asset' => 'ASET-TUA-KONDISI-KOSONG', 'tahun_perolehan' => now()->year - 6,
+    ]);
+    // Log kondisi yang masih baru (dalam 180 hari) -- biar kepastian ini
+    // ketangkep lewat cabang "lewat umur pakai", bukan kebetulan ketangkep
+    // lewat cabang "belum pernah dicek".
+    $asetTuaKosong->kondisiLogs()->create(['kondisi_baru' => 'NORMAL', 'changed_by' => $admin->id]);
+
+    $response = $this->actingAs($admin)->get(route('aset.perluPerhatian'));
+
+    $response->assertOk();
+    $response->assertSee('ASET-TUA-KONDISI-KOSONG');
+    $response->assertSee('Lewat Umur Pakai');
+});
+
 test('aset perlu perhatian nampilin aset yang belum pernah dicek kondisinya', function () {
     $admin = User::factory()->admin()->create();
     $uker = Uker::factory()->create();
