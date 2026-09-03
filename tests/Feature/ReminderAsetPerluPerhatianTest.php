@@ -70,3 +70,21 @@ test('user cuma diingatkan sekali per minggu, gak spam tiap command dijalankan u
 
     expect($user->notifications()->where('type', ReminderAsetPerluPerhatian::class)->count())->toBe(1);
 });
+
+test('user baru yang ditambahkan setelah run pertama minggu ini tetap kebagian reminder', function () {
+    // Regresi: dedup lama cuma ngecek user PERTAMA di uker itu -- kalau user
+    // itu udah dapet reminder, user lain (termasuk yang baru ditambahkan
+    // belakangan) ikut ke-skip diam-diam walau belum pernah dapet sama sekali.
+    $uker = Uker::factory()->create();
+    $userLama = User::factory()->forUker($uker->kode)->create();
+    Aset::factory()->create(['uker_kode' => $uker->kode]);
+
+    $this->artisan('aset:reminder-perlu-perhatian', ['--paksa' => true])->assertSuccessful();
+    expect($userLama->notifications()->where('type', ReminderAsetPerluPerhatian::class)->count())->toBe(1);
+
+    $userBaru = User::factory()->forUker($uker->kode)->create();
+    $this->artisan('aset:reminder-perlu-perhatian', ['--paksa' => true])->assertSuccessful();
+
+    expect($userLama->notifications()->where('type', ReminderAsetPerluPerhatian::class)->count())->toBe(1);
+    expect($userBaru->notifications()->where('type', ReminderAsetPerluPerhatian::class)->count())->toBe(1);
+});
