@@ -67,12 +67,34 @@ test('import pekerja mengisi tabel ukers dan pekerja', function () {
     $response->assertSessionHas('status');
 
     expect(Uker::where('kode', 101)->first()?->nama)->toBe('KC Test');
-    expect(DB::table('pekerja')->where('pn', '00001')->first()?->nama)->toBe('Budi');
-    expect(DB::table('pekerja')->where('pn', '00002')->first()?->uker_kode)->toBe(101);
+    expect(DB::table('pekerja')->where('pn', '00000001')->first()?->nama)->toBe('Budi');
+    expect(DB::table('pekerja')->where('pn', '00000002')->first()?->uker_kode)->toBe(101);
 
     $log = ActivityLog::where('modul', 'pekerja_uker')->first();
     expect($log)->not->toBeNull();
     expect($log->jumlah_baris)->toBe(2);
+});
+
+test('import pekerja pad PN kurang dari 8 digit dengan nol di depan, dan skip PN yang bukan angka murni', function () {
+    $user = User::factory()->admin()->create();
+
+    $spreadsheet = new Spreadsheet;
+    $sheet = $spreadsheet->getActiveSheet();
+    $sheet->setTitle('DATABASE');
+    $sheet->fromArray(['NO', 'PN', 'C', 'Nama', 'Jabatan', 'Status', 'G', 'KODE BRANCH', 'NAMA UKER', 'Kode Supervisi', 'Supervisi'], null, 'A1');
+    // PN pendek (bukan teks 8 digit) -- harus dipad jadi 8 digit.
+    $sheet->fromArray(['1', '13819', '', 'Pendek', 'Staff', 'Aktif', '', '101', 'KC Test', '1', 'Kanwil Test'], null, 'A2');
+    // PN bukan angka murni -- harus di-skip, bukan ditulis apa adanya.
+    $sheet->fromArray(['2', 'ABC123', '', 'Rusak', 'Staff', 'Aktif', '', '101', 'KC Test', '1', 'Kanwil Test'], null, 'A3');
+
+    $response = $this->actingAs($user)->post(route('import.pekerja'), [
+        'file' => buatUploadedXlsx($spreadsheet, 'pekerja-pn-aneh.xlsx'),
+    ]);
+
+    $response->assertRedirect();
+    expect(DB::table('pekerja')->where('pn', '00013819')->first()?->nama)->toBe('Pendek');
+    expect(DB::table('pekerja')->where('nama', 'Rusak')->exists())->toBeFalse();
+    $response->assertSessionHas('status', fn ($status) => str_contains($status, '1 baris dilewati'));
 });
 
 test('import petugas IT menandai is_petugas_it berdasarkan PN', function () {
@@ -85,8 +107,8 @@ test('import petugas IT menandai is_petugas_it berdasarkan PN', function () {
 
     $response->assertRedirect();
 
-    $budi = DB::table('pekerja')->where('pn', '00001')->first();
-    $siti = DB::table('pekerja')->where('pn', '00002')->first();
+    $budi = DB::table('pekerja')->where('pn', '00000001')->first();
+    $siti = DB::table('pekerja')->where('pn', '00000002')->first();
     expect((bool) $budi->is_petugas_it)->toBeTrue();
     expect($budi->no_hp)->toBe('08123456789');
     expect((bool) $siti->is_petugas_it)->toBeTrue();

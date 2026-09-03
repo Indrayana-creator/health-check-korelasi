@@ -7,6 +7,23 @@ use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class DataImportService
 {
+    // PN mestinya 8 digit angka (sama kayak aturan di PekerjaController::rules()).
+    // Sel Excel yang diformat angka (bukan teks) bikin getValue() ngasih nilai
+    // mentah tanpa nol di depan (mis. "13819" bukan "00013819") -- makanya
+    // dinormalisasi paksa di sini, bukan cuma trim doang, biar gak nulis PN
+    // yang bentuknya salah langsung ke DB lewat DB::table() (jalur ini gak
+    // lewat PekerjaController::rules() sama sekali). Baris yang PN-nya bukan
+    // angka murni atau lebih dari 8 digit dianggap rusak, di-skip.
+    protected function normalisasiPn(string $raw): ?string
+    {
+        $raw = trim($raw);
+        if ($raw === '' || ! ctype_digit($raw) || strlen($raw) > 8) {
+            return null;
+        }
+
+        return str_pad($raw, 8, '0', STR_PAD_LEFT);
+    }
+
     /**
      * Import dari Database_All_Pekerja_BRI_SBY.xlsx (sheet "DATABASE").
      * Sekaligus ngisi tabel `ukers` (dari kolom KODE BRANCH / NAMA UKER / dst)
@@ -24,12 +41,13 @@ class DataImportService
         $highestRow = $sheet->getHighestRow();
         $ukerCount = 0;
         $pekerjaCount = 0;
+        $pnInvalid = 0;
         $seenUkerCodes = [];
 
         // Kolom sesuai struktur asli: A=NO, B=PN, D=Nama Pekerja, E=Jabatan,
         // F=Status, H=KODE BRANCH, I=NAMA UKER, J=Kode Supervisi, K=Supervisi
         for ($row = 2; $row <= $highestRow; $row++) {
-            $pn = trim((string) $sheet->getCell("B{$row}")->getValue());
+            $pnMentah = trim((string) $sheet->getCell("B{$row}")->getValue());
             $namaPekerja = trim((string) $sheet->getCell("D{$row}")->getValue());
             $jabatan = trim((string) $sheet->getCell("E{$row}")->getValue());
             $status = trim((string) $sheet->getCell("F{$row}")->getValue());
@@ -38,8 +56,15 @@ class DataImportService
             $kodeSpv = $sheet->getCell("J{$row}")->getValue();
             $ukerSpv = trim((string) $sheet->getCell("K{$row}")->getValue());
 
-            if ($pn === '' || $kodeBranch === null) {
+            if ($pnMentah === '' || $kodeBranch === null) {
                 continue; // baris kosong/rusak, skip
+            }
+
+            $pn = $this->normalisasiPn($pnMentah);
+            if ($pn === null) {
+                $pnInvalid++;
+
+                continue;
             }
 
             $kodeBranch = (int) $kodeBranch;
@@ -80,6 +105,7 @@ class DataImportService
         return [
             'uker_diproses' => $ukerCount,
             'pekerja_diproses' => $pekerjaCount,
+            'pn_invalid' => $pnInvalid,
         ];
     }
 
@@ -110,12 +136,18 @@ class DataImportService
 
             $highestRow = $sheet->getHighestRow();
             for ($row = $startRow; $row <= $highestRow; $row++) {
-                $pn = trim((string) $sheet->getCell("{$colPn}{$row}")->getValue());
+                $pnMentah = trim((string) $sheet->getCell("{$colPn}{$row}")->getValue());
                 $noHp = trim((string) $sheet->getCell("{$colHp}{$row}")->getValue());
 
-                if ($pn === '') {
+                if ($pnMentah === '') {
                     continue;
                 }
+
+                // Dinormalisasi sama persis kayak importPekerjaFile() -- kalau
+                // gak dipad ke 8 digit di sini juga, PN dari Excel gak bakal
+                // ketemu row pekerja yang PN-nya udah dalam bentuk baku,
+                // ke-itung "tidak ketemu" padahal orangnya sebenarnya ada.
+                $pn = $this->normalisasiPn($pnMentah) ?? $pnMentah;
 
                 $updated = DB::table('pekerja')
                     ->where('pn', $pn)

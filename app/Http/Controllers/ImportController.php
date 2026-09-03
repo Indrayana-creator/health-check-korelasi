@@ -30,10 +30,12 @@ class ImportController extends Controller
             "Import pekerja+uker dari file: {$namaFile} ({$hasil['uker_diproses']} uker, {$hasil['pekerja_diproses']} pekerja)"
         );
 
-        return back()->with(
-            'status',
-            "Import pekerja+uker selesai: {$hasil['uker_diproses']} uker, {$hasil['pekerja_diproses']} pekerja diproses."
-        );
+        $pesan = "Import pekerja+uker selesai: {$hasil['uker_diproses']} uker, {$hasil['pekerja_diproses']} pekerja diproses.";
+        if ($hasil['pn_invalid'] > 0) {
+            $pesan .= " {$hasil['pn_invalid']} baris dilewati karena PN bukan angka murni atau lebih dari 8 digit.";
+        }
+
+        return back()->with('status', $pesan);
     }
 
     public function petugasIt(Request $request, DataImportService $service)
