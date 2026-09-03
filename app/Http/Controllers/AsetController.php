@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
+use App\Models\AsetHapusRequest;
 use App\Models\AsetKondisiLog;
 use App\Models\AsetMutasiLog;
 use App\Models\KodeAset;
@@ -12,6 +13,8 @@ use App\Models\Uker;
 use App\Models\User;
 use App\Notifications\AsetEditRequestDecided;
 use App\Notifications\AsetEditRequestSubmitted;
+use App\Notifications\AsetHapusRequestDecided;
+use App\Notifications\AsetHapusRequestSubmitted;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Endroid\QrCode\Builder\Builder;
 use Endroid\QrCode\Encoding\Encoding;
@@ -262,10 +265,12 @@ class AsetController extends Controller
     {
         $this->authorize('view', $aset);
 
-        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'mutasiLogs.changedBy', 'mutasiLogs.ukerLama', 'mutasiLogs.ukerBaru', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester')]);
+        $aset->load(['uker', 'kodeAset', 'kondisiLogs.changedBy', 'mutasiLogs.changedBy', 'mutasiLogs.ukerLama', 'mutasiLogs.ukerBaru', 'laporanKendala.reporter', 'editRequests' => fn ($q) => $q->latest()->with('requester'), 'hapusRequests' => fn ($q) => $q->latest()->with('requester')]);
         $timeline = $this->timelineRiwayat($aset);
+        $bisaDihapus = $aset->bisaDihapus($request->user());
+        $permintaanHapusMenunggu = $aset->permintaanHapusMenunggu();
 
-        return view('aset.show', compact('aset', 'timeline'));
+        return view('aset.show', compact('aset', 'timeline', 'bisaDihapus', 'permintaanHapusMenunggu'));
     }
 
     // Gabungan 4 sumber riwayat (kondisi, mutasi uker, permintaan edit, laporan
@@ -330,11 +335,25 @@ class AsetController extends Controller
             'foto_url' => $k->foto_url,
         ]);
 
+        $hapus = $aset->hapusRequests->map(fn ($r) => [
+            'jenis' => 'hapus',
+            'id' => $r->id,
+            'created_at' => $r->created_at,
+            'judul' => 'Permintaan Hapus',
+            'deskripsi' => $r->alasan ?: '(tanpa alasan)',
+            'oleh' => $r->requester?->name,
+            'badge' => ['label' => $r->status, 'color' => match ($r->status) {
+                'Disetujui' => 'green', 'Menunggu' => 'yellow', 'Ditolak' => 'red', default => 'gray',
+            }],
+            'catatan' => $r->catatan_admin,
+            'foto_url' => null,
+        ]);
+
         // sortByDesc('created_at') doang gak stabil kalau 2 kejadian dari
         // sumber beda punya created_at yang PERSIS sama (id gak sebanding
         // lintas tabel, tapi tetap dipakai sebagai tie-breaker biar urutan
         // tampilnya konsisten tiap reload, bukan acakan ulang tiap request).
-        return $kondisi->concat($mutasi)->concat($edit)->concat($kendala)
+        return $kondisi->concat($mutasi)->concat($edit)->concat($kendala)->concat($hapus)
             ->sortBy([
                 ['created_at', 'desc'],
                 ['jenis', 'asc'],
@@ -528,6 +547,72 @@ class AsetController extends Controller
         return back()->with('status', 'Permintaan edit ditolak.');
     }
 
+    // Beda dari requestEdit() -- authorize('update') di sini SENGAJA, bukan
+    // 'delete' (yang justru butuh permintaan hapus buat non-admin, circular
+    // kalau dipakai di sini). Syaratnya cuma "boleh liat/edit aset ini",
+    // sama kayak syarat buat ngajuin permintaan edit.
+    public function requestDelete(Request $request, Aset $aset)
+    {
+        $this->authorize('update', $aset);
+
+        $validated = $request->validate(['alasan' => 'nullable|string|max:255']);
+
+        $sudahAda = AsetHapusRequest::where('aset_id', $aset->id)
+            ->where('requested_by', $request->user()->id)
+            ->where('status', 'Menunggu')
+            ->exists();
+
+        if (! $sudahAda) {
+            $hapusRequest = AsetHapusRequest::create([
+                'aset_id' => $aset->id,
+                'requested_by' => $request->user()->id,
+                'alasan' => $validated['alasan'] ?? null,
+                'status' => 'Menunggu',
+            ]);
+
+            User::where('role', 'admin')->get()->each->notify(new AsetHapusRequestSubmitted($hapusRequest));
+        }
+
+        return redirect()->route('aset.show', $aset)->with('status', 'Permintaan hapus berhasil diajukan, menunggu approval admin.');
+    }
+
+    public function approveDelete(Request $request, AsetHapusRequest $hapusRequest)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa approve permintaan hapus.');
+        }
+
+        $hapusRequest->update([
+            'status' => 'Disetujui',
+            'handled_by' => $request->user()->id,
+            'handled_at' => now(),
+        ]);
+        ActivityLog::catat('aset', 'approve_hapus', 1, "Permintaan hapus aset {$hapusRequest->aset?->no_asset} disetujui");
+        $hapusRequest->requester?->notify(new AsetHapusRequestDecided($hapusRequest));
+
+        return back()->with('status', 'Permintaan hapus disetujui.');
+    }
+
+    public function rejectDelete(Request $request, AsetHapusRequest $hapusRequest)
+    {
+        if ($request->user()->role !== 'admin') {
+            abort(403, 'Hanya admin yang bisa menolak permintaan hapus.');
+        }
+
+        $validated = $request->validate(['catatan_admin' => 'required|string']);
+
+        $hapusRequest->update([
+            'status' => 'Ditolak',
+            'catatan_admin' => $validated['catatan_admin'],
+            'handled_by' => $request->user()->id,
+            'handled_at' => now(),
+        ]);
+        ActivityLog::catat('aset', 'reject_hapus', 1, "Permintaan hapus aset {$hapusRequest->aset?->no_asset} ditolak");
+        $hapusRequest->requester?->notify(new AsetHapusRequestDecided($hapusRequest));
+
+        return back()->with('status', 'Permintaan hapus ditolak.');
+    }
+
     public function destroy(Request $request, Aset $aset)
     {
         $this->authorize('delete', $aset);
@@ -535,6 +620,18 @@ class AsetController extends Controller
         $noAsset = $aset->no_asset;
         $aset->delete();
         ActivityLog::catat('aset', 'hapus', 1, "Aset {$noAsset} dihapus");
+
+        // Sama pola kayak update() nandain permintaan edit "sudah_dipakai" --
+        // izin hapus yang udah dipakai gak boleh dipakai ulang buat aset lain
+        // (walau di sini aset-nya udah kehapus, tetep ditandai buat kerapian
+        // riwayat & jaga-jaga kalau logic-nya berubah nanti).
+        if ($request->user()->role !== 'admin') {
+            AsetHapusRequest::where('aset_id', $aset->id)
+                ->where('requested_by', $request->user()->id)
+                ->where('status', 'Disetujui')
+                ->where('sudah_dipakai', false)
+                ->update(['sudah_dipakai' => true]);
+        }
 
         return redirect()->route('aset.index')->with('status', 'Aset berhasil dihapus. Bisa dipulihkan lewat halaman Sampah.');
     }

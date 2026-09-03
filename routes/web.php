@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AsetController;
 use App\Http\Controllers\AsetEditRequestController;
+use App\Http\Controllers\AsetHapusRequestController;
 use App\Http\Controllers\AsetKendalaController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HealthCheckController;
@@ -51,8 +52,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/aset/bulk-upload', [AsetController::class, 'bulkUploadForm'])->name('aset.bulkUploadForm');
     Route::get('/aset/template', [AsetController::class, 'downloadTemplate'])->name('aset.downloadTemplate');
     Route::post('/aset/bulk-upload', [AsetController::class, 'bulkUpload'])->name('aset.bulkUpload');
-    Route::get('/aset/bulk-delete', [AsetController::class, 'bulkDeleteForm'])->name('aset.bulkDeleteForm');
-    Route::post('/aset/bulk-delete', [AsetController::class, 'bulkDelete'])->name('aset.bulkDelete');
+    // Delete Massal (Excel) khusus admin -- gak lewat alur Permintaan Hapus
+    // per-aset, jadi kalau dibiarkan non-admin akses, itu jalan pintas yang
+    // ngelewatin approval sama sekali. Tetap ditaruh di sini (sebelum
+    // Route::resource) biar urutan routing gak ketiban /aset/{aset}.
+    Route::middleware('role:admin')->group(function () {
+        Route::get('/aset/bulk-delete', [AsetController::class, 'bulkDeleteForm'])->name('aset.bulkDeleteForm');
+        Route::post('/aset/bulk-delete', [AsetController::class, 'bulkDelete'])->name('aset.bulkDelete');
+    });
     Route::get('/aset/export/excel', [AsetController::class, 'exportExcel'])->name('aset.export.excel');
     Route::get('/aset/export/pdf', [AsetController::class, 'exportPdf'])->name('aset.export.pdf');
     Route::get('/aset/qr-sheet', [AsetController::class, 'qrSheet'])->name('aset.qrSheet');
@@ -79,6 +86,7 @@ Route::middleware('auth')->group(function () {
     // Data aset (admin lihat semua, user/uker cuma lihat punya sendiri)
     Route::resource('aset', AsetController::class);
     Route::post('/aset/{aset}/request-edit', [AsetController::class, 'requestEdit'])->name('aset.requestEdit');
+    Route::post('/aset/{aset}/request-delete', [AsetController::class, 'requestDelete'])->name('aset.requestDelete');
 
     // Health check per uker
     Route::resource('healthcheck', HealthCheckController::class)->except(['show']);
@@ -171,6 +179,11 @@ Route::middleware('auth')->group(function () {
         Route::get('/aset-edit-requests/export/pdf', [AsetEditRequestController::class, 'exportPdf'])->name('aset.editRequests.export.pdf');
         Route::post('/aset-edit-requests/{editRequest}/approve', [AsetController::class, 'approveEdit'])->name('aset.editRequests.approve');
         Route::post('/aset-edit-requests/{editRequest}/reject', [AsetController::class, 'rejectEdit'])->name('aset.editRequests.reject');
+        Route::get('/aset-hapus-requests', [AsetHapusRequestController::class, 'index'])->name('aset.hapusRequests.index');
+        Route::get('/aset-hapus-requests/export/excel', [AsetHapusRequestController::class, 'exportExcel'])->name('aset.hapusRequests.export.excel');
+        Route::get('/aset-hapus-requests/export/pdf', [AsetHapusRequestController::class, 'exportPdf'])->name('aset.hapusRequests.export.pdf');
+        Route::post('/aset-hapus-requests/{hapusRequest}/approve', [AsetController::class, 'approveDelete'])->name('aset.hapusRequests.approve');
+        Route::post('/aset-hapus-requests/{hapusRequest}/reject', [AsetController::class, 'rejectDelete'])->name('aset.hapusRequests.reject');
         Route::get('/ukers/export/excel', [UkerController::class, 'exportExcel'])->name('ukers.export.excel');
         Route::get('/ukers/export/pdf', [UkerController::class, 'exportPdf'])->name('ukers.export.pdf');
         Route::resource('ukers', UkerController::class)->except(['show']);

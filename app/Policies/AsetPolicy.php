@@ -26,9 +26,24 @@ class AsetPolicy
             : Response::deny('Anda tidak punya akses ke aset ini.');
     }
 
+    // BEDA dari update() -- user biasa gak otomatis bisa hapus aset di
+    // cabangnya sendiri cuma karena boleh liat/edit. Harus ada permintaan
+    // hapus yang udah Disetujui admin & belum pernah dipakai (lihat
+    // Aset::bisaDihapus()), biar penghapusan data fisik gak sembarangan,
+    // tetap ke-review admin dulu.
     public function delete(User $user, Aset $aset): Response
     {
-        return $this->update($user, $aset);
+        if ($user->role === 'admin') {
+            return Response::allow();
+        }
+
+        if (! in_array($aset->uker_kode, Uker::descendantKodes($user->uker_kode))) {
+            return Response::deny('Anda tidak punya akses ke aset ini.');
+        }
+
+        return $aset->bisaDihapus($user)
+            ? Response::allow()
+            : Response::deny('Ajukan permintaan hapus dan tunggu disetujui admin sebelum bisa menghapus data ini.');
     }
 
     public function restore(User $user, Aset $aset): Response

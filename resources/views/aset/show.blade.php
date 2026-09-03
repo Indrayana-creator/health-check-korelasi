@@ -20,9 +20,36 @@
                             Edit
                         </x-button>
                     @endif
+                    @if ($bisaDihapus)
+                        <form action="{{ route('aset.destroy', $aset) }}" method="POST" onsubmit="return confirm('Hapus aset ini? Data bisa dipulihkan lewat halaman Sampah.')">
+                            @csrf
+                            @method('DELETE')
+                            <x-button type="submit" variant="danger" size="sm">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                                Hapus
+                            </x-button>
+                        </form>
+                    @endif
                     <x-button variant="secondary" :href="route('aset.index')" size="sm">Kembali</x-button>
                 </div>
             </div>
+
+            @if (! $bisaDihapus && auth()->user()->role !== 'admin')
+                <x-card padding="p-4" class="print:hidden !bg-gray-50 !border-gray-300">
+                    <p class="font-bold text-gray-700 mb-1 text-sm">Penghapusan data ini terkunci.</p>
+
+                    @if ($permintaanHapusMenunggu)
+                        <p class="text-sm text-gray-600">Permintaan hapus sudah diajukan, menunggu approval admin.</p>
+                    @else
+                        <p class="text-sm text-gray-600 mb-3">Ajukan permintaan hapus dulu, tunggu admin approve sebelum bisa menghapus data ini.</p>
+                        <form action="{{ route('aset.requestDelete', $aset) }}" method="POST" class="flex flex-wrap gap-2">
+                            @csrf
+                            <x-text-input type="text" name="alasan" placeholder="Alasan minta hapus (opsional)" class="flex-1 min-w-[200px]" />
+                            <x-button type="submit" variant="secondary">Ajukan Permintaan Hapus</x-button>
+                        </form>
+                    @endif
+                </x-card>
+            @endif
 
             <x-card padding="p-6" class="print:hidden">
                 <div class="flex items-center justify-between gap-4 flex-wrap">
@@ -212,7 +239,7 @@
                         <div class="space-y-5">
                             @foreach ($timeline as $t)
                                 <div class="relative">
-                                    <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ring-2 ring-white {{ match($t['jenis']) { 'kondisi' => 'bg-cakrawala', 'mutasi' => 'bg-purple-500', 'edit' => 'bg-yellow-500', 'kendala' => 'bg-red-500', default => 'bg-gray-400' } }}"></span>
+                                    <span class="absolute -left-6 top-1 w-3.5 h-3.5 rounded-full ring-2 ring-white {{ match($t['jenis']) { 'kondisi' => 'bg-cakrawala', 'mutasi' => 'bg-purple-500', 'edit' => 'bg-yellow-500', 'kendala' => 'bg-red-500', 'hapus' => 'bg-gray-800', default => 'bg-gray-400' } }}"></span>
                                     <div class="flex items-start justify-between gap-3">
                                         <div class="min-w-0 flex-1">
                                             <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">{{ $t['judul'] }}</p>

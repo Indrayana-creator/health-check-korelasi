@@ -114,6 +114,32 @@ class Aset extends Model
         return $this->editRequests()->where('status', 'Menunggu')->latest()->first();
     }
 
+    public function hapusRequests()
+    {
+        return $this->hasMany(AsetHapusRequest::class);
+    }
+
+    // Sama polanya kayak bisaDiedit() -- admin selalu bisa hapus tanpa izin,
+    // user biasa cuma bisa kalau ada permintaan hapus yang sudah Disetujui
+    // dan belum pernah dipakai.
+    public function bisaDihapus(User $user): bool
+    {
+        if ($user->role === 'admin') {
+            return true;
+        }
+
+        return $this->hapusRequests()
+            ->where('requested_by', $user->id)
+            ->where('status', 'Disetujui')
+            ->where('sudah_dipakai', false)
+            ->exists();
+    }
+
+    public function permintaanHapusMenunggu(): ?AsetHapusRequest
+    {
+        return $this->hapusRequests()->where('status', 'Menunggu')->latest()->first();
+    }
+
     public function getUmurTahunAttribute(): ?int
     {
         if (! $this->tahun_perolehan) {

@@ -1,6 +1,6 @@
 <x-app-layout>
     <x-slot name="header">
-        <h2 class="font-extrabold text-lg text-gray-800">Permintaan Edit Aset</h2>
+        <h2 class="font-extrabold text-lg text-gray-800">Permintaan Hapus Aset</h2>
     </x-slot>
 
     <div class="p-7 space-y-4 max-w-[1360px]">
@@ -10,8 +10,8 @@
             ['label' => 'Kelola Uker', 'href' => route('ukers.index'), 'active' => false],
             ['label' => 'Kelola Kode Aset', 'href' => route('kode-aset.index'), 'active' => false],
             ['label' => 'Kelola Pekerja', 'href' => route('pekerja.index'), 'active' => false],
-            ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => true],
-            ['label' => 'Permintaan Hapus', 'href' => route('aset.hapusRequests.index'), 'active' => false],
+            ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
+            ['label' => 'Permintaan Hapus', 'href' => route('aset.hapusRequests.index'), 'active' => true],
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
             ['label' => 'Login History', 'href' => route('login-history.index'), 'active' => false],
         ]" />
@@ -19,8 +19,8 @@
         <x-flash-status />
 
         <div class="flex justify-end gap-2">
-            <x-button variant="secondary" :href="route('aset.editRequests.export.excel')">Export Excel</x-button>
-            <x-button variant="secondary" :href="route('aset.editRequests.export.pdf')">Export PDF</x-button>
+            <x-button variant="secondary" :href="route('aset.hapusRequests.export.excel')">Export Excel</x-button>
+            <x-button variant="secondary" :href="route('aset.hapusRequests.export.pdf')">Export PDF</x-button>
         </div>
 
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -75,7 +75,7 @@
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 @if ($r->status === 'Menunggu')
                                     <div x-data="{ open: false }" class="inline-flex items-center gap-1.5">
-                                        <form action="{{ route('aset.editRequests.approve', $r) }}" method="POST" class="inline">
+                                        <form action="{{ route('aset.hapusRequests.approve', $r) }}" method="POST" class="inline">
                                             @csrf
                                             <x-icon-button variant="success" label="Approve" type="submit">
                                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M20 6L9 17l-5-5"></path></svg>
@@ -99,7 +99,7 @@
                                                 x-transition:leave="ease-in duration-150" x-transition:leave-start="opacity-100 scale-100" x-transition:leave-end="opacity-0 scale-95"
                                             >
                                                 <h3 class="font-extrabold text-sm text-gray-800 mb-3">Alasan Penolakan</h3>
-                                                <form action="{{ route('aset.editRequests.reject', $r) }}" method="POST">
+                                                <form action="{{ route('aset.hapusRequests.reject', $r) }}" method="POST">
                                                     @csrf
                                                     <textarea name="catatan_admin" rows="3" class="w-full border-gray-300 rounded-lg text-sm focus:border-cakrawala focus:ring-cakrawala mb-3" required></textarea>
                                                     <div class="flex gap-2">
@@ -111,7 +111,7 @@
                                         </div>
                                     </div>
                                 @else
-                                    <x-icon-button variant="neutral" label="Lihat Aset" :href="route('aset.edit', $r->aset)">
+                                    <x-icon-button variant="neutral" label="Lihat Aset" :href="route('aset.show', $r->aset)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                                     </x-icon-button>
                                 @endif
@@ -120,8 +120,8 @@
                     @empty
                         <tr>
                             <td colspan="6" class="px-4 py-10 text-center">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"></path></svg>
-                                <p class="text-gray-400 text-sm">Belum ada permintaan edit.</p>
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                                <p class="text-gray-400 text-sm">Belum ada permintaan hapus.</p>
                             </td>
                         </tr>
                     @endforelse

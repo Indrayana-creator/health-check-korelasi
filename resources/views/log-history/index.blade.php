@@ -25,6 +25,7 @@
             ['label' => 'Kelola Kode Aset', 'href' => route('kode-aset.index'), 'active' => false],
             ['label' => 'Kelola Pekerja', 'href' => route('pekerja.index'), 'active' => false],
             ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => false],
+            ['label' => 'Permintaan Hapus', 'href' => route('aset.hapusRequests.index'), 'active' => false],
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => true],
         ]" />
 

@@ -3,6 +3,7 @@
 use App\Models\ActivityLog;
 use App\Models\Aset;
 use App\Models\AsetEditRequest;
+use App\Models\AsetHapusRequest;
 use App\Models\AsetKendala;
 use App\Models\AsetKondisiLog;
 use App\Models\AsetMutasiLog;
@@ -239,7 +240,7 @@ test('user tidak bisa mengedit aset milik uker lain', function () {
     expect(Aset::find($aset->id))->not->toBeNull();
 });
 
-test('user bisa melihat dan menghapus aset milik uker sendiri, tapi tidak bisa update tanpa izin edit', function () {
+test('user bisa melihat aset milik uker sendiri, tapi tidak bisa update atau hapus tanpa izin', function () {
     $uker = Uker::factory()->create();
     $kodeAset = KodeAset::factory()->create();
     $user = User::factory()->forUker($uker->kode)->create();
@@ -253,9 +254,51 @@ test('user bisa melihat dan menghapus aset milik uker sendiri, tapi tidak bisa u
         ->assertForbidden();
     expect($aset->fresh()->merek)->toBe('Dell');
 
-    // Hapus gak butuh izin edit, tetap boleh langsung
+    // Belum ada permintaan hapus yang disetujui -> gak boleh hapus langsung
+    $this->actingAs($user)->delete(route('aset.destroy', $aset))->assertForbidden();
+    expect(Aset::find($aset->id))->not->toBeNull();
+});
+
+test('user bisa hapus aset kalau permintaan hapus sudah disetujui admin, dan izin itu cuma sekali pakai', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode]);
+
+    $this->actingAs($user)->post(route('aset.requestDelete', $aset), ['alasan' => 'Rusak berat, sudah gak kepake'])
+        ->assertRedirect(route('aset.show', $aset));
+
+    $hapusRequest = AsetHapusRequest::first();
+    expect($hapusRequest)->not->toBeNull();
+    expect($hapusRequest->status)->toBe('Menunggu');
+
+    // Ngajuin dobel selagi masih Menunggu gak bikin request baru
+    $this->actingAs($user)->post(route('aset.requestDelete', $aset), ['alasan' => 'lagi']);
+    expect(AsetHapusRequest::count())->toBe(1);
+
+    $this->actingAs($admin)->post(route('aset.hapusRequests.approve', $hapusRequest))->assertRedirect();
+    expect($hapusRequest->fresh()->status)->toBe('Disetujui');
+
     $this->actingAs($user)->delete(route('aset.destroy', $aset))->assertRedirect(route('aset.index'));
     expect(Aset::find($aset->id))->toBeNull();
+    expect($hapusRequest->fresh()->sudah_dipakai)->toBeTrue();
+});
+
+test('admin bisa menolak permintaan hapus aset', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+    $aset = Aset::factory()->create(['uker_kode' => $uker->kode]);
+
+    $this->actingAs($user)->post(route('aset.requestDelete', $aset), ['alasan' => 'Rusak']);
+    $hapusRequest = AsetHapusRequest::first();
+
+    $this->actingAs($admin)->post(route('aset.hapusRequests.reject', $hapusRequest), ['catatan_admin' => 'Masih dipakai'])
+        ->assertRedirect();
+    expect($hapusRequest->fresh()->status)->toBe('Ditolak');
+
+    $this->actingAs($user)->delete(route('aset.destroy', $aset))->assertForbidden();
+    expect(Aset::find($aset->id))->not->toBeNull();
 });
 
 test('user bisa update aset kalau permintaan edit sudah disetujui admin', function () {
@@ -400,6 +443,16 @@ test('admin bisa lihat form bulk upload & bulk delete aset', function () {
 
     $this->actingAs($admin)->get(route('aset.bulkUploadForm'))->assertOk();
     $this->actingAs($admin)->get(route('aset.bulkDeleteForm'))->assertOk();
+});
+
+test('user biasa gak bisa akses fitur delete massal aset -- harus lewat alur Permintaan Hapus', function () {
+    $uker = Uker::factory()->create();
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $this->actingAs($user)->get(route('aset.bulkDeleteForm'))->assertForbidden();
+
+    $file = buatFileXlsx([['sn'], ['SN-APAPUN']]);
+    $this->actingAs($user)->post(route('aset.bulkDelete'), ['file' => $file])->assertForbidden();
 });
 
 test('download template aset menghasilkan file xlsx', function () {
