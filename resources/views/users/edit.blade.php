@@ -89,6 +89,46 @@
                     </div>
                 </form>
             </x-card>
+
+            <x-card padding="p-6" class="mt-5">
+                <h3 class="font-extrabold text-sm text-gray-800 mb-1">Riwayat Perubahan</h3>
+                <p class="text-xs text-gray-400 mb-4">Jejak audit tiap perubahan role/uker/status akun ini -- penting buat access-review, khususnya kalau ada akun yang jadi admin.</p>
+
+                @if ($user->perubahanLogs->isEmpty())
+                    <p class="text-gray-400 text-sm">Belum ada perubahan tercatat buat akun ini.</p>
+                @else
+                    <div class="space-y-2.5">
+                        @foreach ($user->perubahanLogs as $log)
+                            @php
+                                $tampilkan = function ($nilai) use ($log, $ukerNamaMap) {
+                                    if ($log->field === 'uker_kode') {
+                                        return $ukerNamaMap[$nilai] ?? $nilai;
+                                    }
+                                    if ($log->field === 'is_active') {
+                                        return $nilai === '1' ? 'Aktif' : 'Nonaktif';
+                                    }
+                                    if ($log->field === 'role') {
+                                        return $nilai === 'admin' ? 'Admin' : 'User';
+                                    }
+
+                                    return $nilai;
+                                };
+                            @endphp
+                            <div class="flex items-start justify-between gap-3 text-sm border-b border-gray-100 pb-2.5">
+                                <div>
+                                    <p class="font-semibold text-gray-700">
+                                        {{ \App\Models\UserPerubahanLog::LABEL_FIELD[$log->field] ?? $log->field }}:
+                                        <span class="text-gray-500 font-normal">{{ $tampilkan($log->nilai_lama) ?: '-' }}</span>
+                                        <span class="mx-1 text-gray-400">&rarr;</span>
+                                        {{ $tampilkan($log->nilai_baru) ?: '-' }}
+                                    </p>
+                                    <p class="text-gray-400 text-xs mt-0.5">{{ $log->changedBy?->name ?? '-' }} &middot; {{ $log->created_at?->format('d M Y H:i') }}</p>
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </x-card>
         </div>
     </div>
 </x-app-layout>

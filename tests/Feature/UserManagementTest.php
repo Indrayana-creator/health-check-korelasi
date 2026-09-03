@@ -1,8 +1,10 @@
 <?php
 
+use App\Models\LoginLog;
 use App\Models\Pekerja;
 use App\Models\Uker;
 use App\Models\User;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 test('guest tidak bisa akses kelola user', function () {
@@ -48,6 +50,106 @@ test('admin bisa melihat, menambah, dan mengedit user', function () {
     expect($budi->fresh()->name)->toBe('Budi Santoso');
     expect($budi->fresh()->role)->toBe('admin');
     expect($budi->fresh()->uker_kode)->toBeNull();
+});
+
+test('update user yang ganti role & uker otomatis kecatat di riwayat perubahan', function () {
+    $admin = User::factory()->admin()->create();
+    $ukerLama = Uker::factory()->create();
+    $pekerja = Pekerja::factory()->create();
+    $budi = User::factory()->create(['pn' => $pekerja->pn, 'name' => 'Budi', 'role' => 'user', 'uker_kode' => $ukerLama->kode]);
+
+    $this->actingAs($admin)->put(route('users.update', $budi), [
+        'name' => 'Budi',
+        'pn' => $pekerja->pn,
+        'role' => 'admin',
+        'uker_kode' => '',
+    ]);
+
+    $logs = $budi->fresh()->perubahanLogs;
+    expect($logs)->toHaveCount(2); // role & uker_kode berubah, name gak berubah
+
+    $logRole = $logs->firstWhere('field', 'role');
+    expect($logRole->nilai_lama)->toBe('user');
+    expect($logRole->nilai_baru)->toBe('admin');
+    expect($logRole->changed_by)->toBe($admin->id);
+
+    $logUker = $logs->firstWhere('field', 'uker_kode');
+    expect((int) $logUker->nilai_lama)->toBe($ukerLama->kode);
+    expect($logUker->nilai_baru)->toBeNull();
+});
+
+test('update user tanpa ganti apapun gak nambah riwayat perubahan', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $pekerja = Pekerja::factory()->create();
+    $budi = User::factory()->create(['pn' => $pekerja->pn, 'name' => 'Budi', 'role' => 'user', 'uker_kode' => $uker->kode]);
+
+    $this->actingAs($admin)->put(route('users.update', $budi), [
+        'name' => 'Budi',
+        'pn' => $pekerja->pn,
+        'role' => 'user',
+        'uker_kode' => $uker->kode,
+    ]);
+
+    expect($budi->fresh()->perubahanLogs)->toHaveCount(0);
+});
+
+test('nonaktifkan/aktifkan user kecatat di riwayat perubahan sebagai field is_active', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create(['is_active' => true]);
+
+    $this->actingAs($admin)->post(route('users.toggleActive', $user));
+
+    $log = $user->fresh()->perubahanLogs->first();
+    expect($log->field)->toBe('is_active');
+    expect($log->nilai_lama)->toBe('1');
+    expect($log->nilai_baru)->toBe('0');
+});
+
+test('riwayat perubahan user tampil di halaman edit', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $pekerja = Pekerja::factory()->create();
+    $budi = User::factory()->create(['pn' => $pekerja->pn, 'name' => 'Budi', 'role' => 'user', 'uker_kode' => $uker->kode]);
+
+    $this->actingAs($admin)->put(route('users.update', $budi), [
+        'name' => 'Budi', 'pn' => $pekerja->pn, 'role' => 'admin', 'uker_kode' => '',
+    ]);
+
+    $response = $this->actingAs($admin)->get(route('users.edit', $budi));
+
+    $response->assertOk();
+    $response->assertSee('Role');
+    $response->assertSee('Admin');
+});
+
+test('kolom Login Terakhir di Kelola User nunjukin waktu login berhasil paling baru', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $this->travelTo(now()->subDays(3));
+    LoginLog::create(['user_id' => $user->id, 'pn_dicoba' => $user->pn, 'status' => LoginLog::STATUS_BERHASIL, 'ip_address' => '10.0.0.1']);
+    $this->travelBack();
+    // Percobaan GAGAL yang lebih baru gak boleh dianggap "login terakhir" --
+    // cuma yang statusnya berhasil yang dihitung.
+    LoginLog::create(['user_id' => $user->id, 'pn_dicoba' => $user->pn, 'status' => LoginLog::STATUS_GAGAL_KREDENSIAL, 'ip_address' => '10.0.0.2']);
+
+    $response = $this->actingAs($admin)->get(route('users.index'));
+
+    $response->assertOk();
+    $loginTerakhir = $response->viewData('loginTerakhirPerUser');
+    expect($loginTerakhir[$user->id])->not->toBeNull();
+    expect(Carbon::parse($loginTerakhir[$user->id])->isSameDay(now()->subDays(3)))->toBeTrue();
+});
+
+test('user yang belum pernah login berhasil nampilin "Belum pernah login" di Kelola User', function () {
+    $admin = User::factory()->admin()->create();
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($admin)->get(route('users.index'));
+
+    $response->assertOk();
+    $response->assertSee('Belum pernah login');
 });
 
 test('user baru bisa dibuat tanpa mengisi email sama sekali (email opsional, gak lagi wajib)', function () {

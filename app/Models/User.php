@@ -68,6 +68,13 @@ class User extends Authenticatable
         return $this->belongsTo(Pekerja::class, 'pn', 'pn');
     }
 
+    public function perubahanLogs()
+    {
+        return $this->hasMany(UserPerubahanLog::class)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
     // Jabatan diambil otomatis dari data pekerja yang nempel ke PN,
     // bukan disimpan manual -- biar selalu sinkron sama data master
     public function getJabatanAttribute(): ?string

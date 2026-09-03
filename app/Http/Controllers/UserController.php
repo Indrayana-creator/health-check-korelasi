@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\ActivityLog;
+use App\Models\LoginLog;
 use App\Models\Uker;
 use App\Models\User;
+use App\Models\UserPerubahanLog;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
@@ -15,15 +18,29 @@ use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
 class UserController extends Controller
 {
+    // Dipakai bareng index() & export -- buat kebutuhan access-review: akun
+    // yang gak pernah/lama gak login itu sinyal umum yang dicari auditor
+    // (mis. akun nganggur yang harusnya dinonaktifkan). SATU query buat
+    // semua user yang diminta, bukan query per baris.
+    protected function loginTerakhirPerUser(iterable $userIds)
+    {
+        return LoginLog::where('status', LoginLog::STATUS_BERHASIL)
+            ->whereIn('user_id', $userIds)
+            ->selectRaw('user_id, MAX(created_at) as terakhir')
+            ->groupBy('user_id')
+            ->pluck('terakhir', 'user_id');
+    }
+
     public function index()
     {
         $users = User::with('ukerRelasi')->orderBy('name')->paginate(20);
+        $loginTerakhirPerUser = $this->loginTerakhirPerUser($users->pluck('id'));
 
         $totalUser = User::count();
         $totalAdmin = User::where('role', 'admin')->count();
         $totalPetugas = $totalUser - $totalAdmin;
 
-        return view('users.index', compact('users', 'totalUser', 'totalAdmin', 'totalPetugas'));
+        return view('users.index', compact('users', 'totalUser', 'totalAdmin', 'totalPetugas', 'loginTerakhirPerUser'));
     }
 
     public function create()
@@ -79,13 +96,37 @@ class UserController extends Controller
                 $q->orWhere('kode', $user->uker_kode);
             }
         })->orderBy('nama')->get();
+        $user->load('perubahanLogs.changedBy');
+        // Buat nerjemahin kode_spv riwayat perubahan jadi nama uker di view
+        // -- ditarik sekali di sini (bukan query per baris log), sama pola
+        // kayak UkerController::edit().
+        $ukerNamaMap = Uker::pluck('nama', 'kode');
 
-        return view('users.edit', compact('user', 'ukerList'));
+        return view('users.edit', compact('user', 'ukerList', 'ukerNamaMap'));
     }
 
     public function update(Request $request, User $user)
     {
         $validated = $request->validate($this->rules($request, $user));
+        $ukerKodeBaru = $validated['role'] === 'user' ? $validated['uker_kode'] : null;
+
+        // Riwayat perubahan terstruktur -- penting buat access-review: kalau
+        // ada akun yang role-nya berubah jadi admin (atau uker-nya dipindah),
+        // harus jelas kapan & sama siapa, bukan cuma teks bebas "User X
+        // diupdate" di ActivityLog. Dicatat SEBELUM save() biar $user->{$field}
+        // masih nilai LAMA. Pola sama kayak UkerController::update().
+        $nilaiBaruPerField = ['name' => $validated['name'], 'role' => $validated['role'], 'uker_kode' => $ukerKodeBaru];
+        foreach ($nilaiBaruPerField as $field => $nilaiBaru) {
+            if ((string) $user->{$field} !== (string) $nilaiBaru) {
+                UserPerubahanLog::create([
+                    'user_id' => $user->id,
+                    'field' => $field,
+                    'nilai_lama' => $user->{$field},
+                    'nilai_baru' => $nilaiBaru,
+                    'changed_by' => $request->user()->id,
+                ]);
+            }
+        }
 
         // Email SENGAJA gak disentuh sama sekali di sini (bukan di-set ke
         // null) -- kalau user lama kebetulan masih punya email dari
@@ -93,7 +134,7 @@ class UserController extends Controller
         $user->name = $validated['name'];
         $user->pn = $validated['pn'] ?? null;
         $user->role = $validated['role'];
-        $user->uker_kode = $validated['role'] === 'user' ? $validated['uker_kode'] : null;
+        $user->uker_kode = $ukerKodeBaru;
         if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }
@@ -124,8 +165,17 @@ class UserController extends Controller
             abort(403, 'Anda tidak bisa menonaktifkan akun Anda sendiri.');
         }
 
+        $statusLama = $user->is_active;
         $user->is_active = ! $user->is_active;
         $user->save();
+
+        UserPerubahanLog::create([
+            'user_id' => $user->id,
+            'field' => 'is_active',
+            'nilai_lama' => $statusLama ? '1' : '0',
+            'nilai_baru' => $user->is_active ? '1' : '0',
+            'changed_by' => $request->user()->id,
+        ]);
 
         $aksi = $user->is_active ? 'aktifkan' : 'nonaktifkan';
         ActivityLog::catat('user', $aksi, 1, "User {$user->name} (PN {$user->pn}) di-".($user->is_active ? 'aktifkan' : 'nonaktifkan'));
@@ -156,21 +206,25 @@ class UserController extends Controller
 
     protected function exportHeaders(): array
     {
-        return ['Nama', 'PN', 'Role', 'Uker', 'Status'];
+        return ['Nama', 'PN', 'Role', 'Uker', 'Status', 'Login Terakhir'];
     }
 
-    protected function exportRow(User $user): array
+    protected function exportRow(User $user, $loginTerakhirPerUser): array
     {
+        $terakhir = $loginTerakhirPerUser[$user->id] ?? null;
+
         return [
             $user->name, $user->pn,
             $user->role === 'admin' ? 'Admin' : 'User', $user->ukerRelasi?->nama,
             $user->is_active ? 'Aktif' : 'Nonaktif',
+            $terakhir ? Carbon::parse($terakhir)->format('d-m-Y H:i') : 'Belum pernah login',
         ];
     }
 
     public function exportExcel()
     {
         $users = User::with('ukerRelasi')->orderBy('name')->get();
+        $loginTerakhirPerUser = $this->loginTerakhirPerUser($users->pluck('id'));
 
         $spreadsheet = new Spreadsheet;
         $sheet = $spreadsheet->getActiveSheet();
@@ -178,15 +232,15 @@ class UserController extends Controller
 
         $headers = $this->exportHeaders();
         $sheet->fromArray($headers, null, 'A1');
-        $sheet->getStyle('A1:E1')->getFont()->setBold(true);
+        $sheet->getStyle('A1:F1')->getFont()->setBold(true);
 
         $row = 2;
         foreach ($users as $u) {
-            $sheet->fromArray($this->exportRow($u), null, "A{$row}");
+            $sheet->fromArray($this->exportRow($u, $loginTerakhirPerUser), null, "A{$row}");
             $row++;
         }
 
-        foreach (range('A', 'E') as $col) {
+        foreach (range('A', 'F') as $col) {
             $sheet->getColumnDimension($col)->setAutoSize(true);
         }
 
@@ -203,8 +257,9 @@ class UserController extends Controller
     public function exportPdf()
     {
         $users = User::with('ukerRelasi')->orderBy('name')->get();
+        $loginTerakhirPerUser = $this->loginTerakhirPerUser($users->pluck('id'));
         $headers = $this->exportHeaders();
-        $rows = $users->map(fn ($u) => $this->exportRow($u));
+        $rows = $users->map(fn ($u) => $this->exportRow($u, $loginTerakhirPerUser));
         $judul = 'Kelola User';
 
         $pdf = Pdf::loadView('rekap.pdf-generik', compact('headers', 'rows', 'judul'))->setPaper('a4', 'landscape');

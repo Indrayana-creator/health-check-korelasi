@@ -60,6 +60,7 @@
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Role</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Uker</th>
                         <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Status</th>
+                        <th class="px-4 py-2.5 text-left text-[11px] font-bold text-white uppercase tracking-wide">Login Terakhir</th>
                         <th class="px-4 py-2.5"></th>
                     </tr>
                 </thead>
@@ -81,6 +82,13 @@
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $user->ukerRelasi?->nama ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 <x-badge :color="$user->is_active ? 'green' : 'gray'">{{ $user->is_active ? 'Aktif' : 'Nonaktif' }}</x-badge>
+                            </td>
+                            <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                                @if ($loginTerakhirPerUser[$user->id] ?? null)
+                                    {{ \Illuminate\Support\Carbon::parse($loginTerakhirPerUser[$user->id])->format('d M Y H:i') }}
+                                @else
+                                    <span class="text-gray-400">Belum pernah login</span>
+                                @endif
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 <div class="inline-flex items-center gap-1.5">
@@ -113,7 +121,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-10 text-center">
+                            <td colspan="8" class="px-4 py-10 text-center">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="w-8 h-8 mx-auto mb-2 text-gray-300"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8z"></path></svg>
                                 <p class="text-gray-400 text-sm mb-3">Belum ada user.</p>
                                 <x-button size="sm" :href="route('users.create')">Tambah User</x-button>
