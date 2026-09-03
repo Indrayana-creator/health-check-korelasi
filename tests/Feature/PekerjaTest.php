@@ -11,6 +11,7 @@ function pekerjaPayload(array $overrides = []): array
         'pn' => '90000001',
         'nama' => 'Pekerja Percobaan',
         'jabatan' => 'Staff IT',
+        'no_hp' => '0812-3456-7890',
     ], $overrides);
 }
 
@@ -121,6 +122,26 @@ test('uker_kode wajib diisi saat menambah pekerja', function () {
     $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload());
 
     $response->assertSessionHasErrors('uker_kode');
+    expect(Pekerja::where('pn', '90000001')->exists())->toBeFalse();
+});
+
+test('jabatan wajib diisi saat menambah pekerja', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload(['uker_kode' => $uker->kode, 'jabatan' => '']));
+
+    $response->assertSessionHasErrors('jabatan');
+    expect(Pekerja::where('pn', '90000001')->exists())->toBeFalse();
+});
+
+test('no_hp wajib diisi saat menambah pekerja', function () {
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+
+    $response = $this->actingAs($admin)->post(route('pekerja.store'), pekerjaPayload(['uker_kode' => $uker->kode, 'no_hp' => '']));
+
+    $response->assertSessionHasErrors('no_hp');
     expect(Pekerja::where('pn', '90000001')->exists())->toBeFalse();
 });
 

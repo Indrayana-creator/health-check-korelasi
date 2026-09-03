@@ -31,8 +31,8 @@
                     </div>
 
                     <div>
-                        <x-input-label value="Jabatan (opsional)" />
-                        <x-text-input type="text" name="jabatan" value="{{ old('jabatan', $pekerja->jabatan) }}" class="mt-1.5 block w-full" />
+                        <x-input-label value="Jabatan" required />
+                        <x-text-input type="text" name="jabatan" value="{{ old('jabatan', $pekerja->jabatan) }}" class="mt-1.5 block w-full" required />
                         <x-input-error :messages="$errors->get('jabatan')" class="mt-1.5" />
                     </div>
 
@@ -44,14 +44,15 @@
                             model-value="ukerKodeTerpilih"
                             :initial-label="$ukerList->firstWhere('kode', old('uker_kode', $pekerja->uker_kode))?->nama"
                             placeholder="Ketik nama atau kode uker..."
+                            required
                         />
                         <p class="text-xs text-gray-400 mt-1.5">Cuma level KC (Kantor Cabang) ke atas -- yang punya akun login cuma kantor cabang.</p>
                         <x-input-error :messages="$errors->get('uker_kode')" class="mt-1.5" />
                     </div>
 
                     <div>
-                        <x-input-label value="No. HP (opsional)" />
-                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp', $pekerja->no_hp) }}" placeholder="contoh: 0812-3456-7890" class="mt-1.5 block w-full" />
+                        <x-input-label value="No. HP" required />
+                        <x-text-input type="text" name="no_hp" value="{{ old('no_hp', $pekerja->no_hp) }}" placeholder="contoh: 0812-3456-7890" class="mt-1.5 block w-full" required />
                         <x-input-error :messages="$errors->get('no_hp')" class="mt-1.5" />
                     </div>
 

@@ -57,12 +57,12 @@ class PekerjaController extends Controller
                 Rule::unique('pekerja', 'pn')->ignore($pekerja?->pn, 'pn'),
             ]),
             'nama' => 'required|string|max:150',
-            'jabatan' => 'nullable|string|max:100',
+            'jabatan' => 'required|string|max:100',
             'status' => 'nullable|string|max:50',
             'uker_kode' => 'required|integer|exists:ukers,kode',
             // Nomor HP Indonesia -- diawali "08", boleh pakai strip (0812-3456-7890)
             // atau angka polos, total 10-14 digit. Dulu bebas ketik apa aja.
-            'no_hp' => ['nullable', 'string', 'max:20', function ($attribute, $value, $fail) {
+            'no_hp' => ['required', 'string', 'max:20', function ($attribute, $value, $fail) {
                 if (! $value) {
                     return;
                 }
