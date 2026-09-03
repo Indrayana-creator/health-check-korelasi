@@ -12,10 +12,13 @@
         {{ $slot }}
         <span class="text-blue-200 group-hover:text-white">
             @if ($sortAktif)
+                {{-- Warna amber sengaja beda dari putih (warna hover kolom lain)
+                     -- kalau sama-sama putih, gak ada beda keliatan antara
+                     "kolom ini lagi disort" vs "kursor lagi nongkrong di sini". --}}
                 @if ($dirSekarang === 'asc')
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-white"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-amber-300"><path d="M12 19V5M5 12l7-7 7 7"></path></svg>
                 @else
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-white"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3 text-amber-300"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>
                 @endif
             @else
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-3 h-3"><path d="M8 9l4-4 4 4M8 15l4 4 4-4"></path></svg>
