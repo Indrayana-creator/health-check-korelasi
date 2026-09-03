@@ -6,6 +6,7 @@ use App\Models\ActivityLog;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
@@ -51,10 +52,13 @@ class LogHistoryController extends Controller
         // Opsi filter Aksi & User -- ditarik dari data yang beneran ada
         // (bukan daftar tetap yang bisa basi kalau modul baru nambah jenis
         // aksi baru), biar dropdown-nya selalu ngikut isi log yang nyata.
-        $aksiTersedia = ActivityLog::distinct()->orderBy('aksi')->pluck('aksi');
-        $userTersedia = User::whereIn('id', ActivityLog::whereNotNull('user_id')->distinct()->pluck('user_id'))
-            ->orderBy('name')
-            ->get();
+        // activity_logs cuma nambah (insert-only, gak pernah diubah/dihapus),
+        // jadi di-cache 10 menit -- gak usah scan distinct ke tabel yang
+        // terus membesar di SETIAP request halaman ini, cukup basi dikit gpp
+        // buat isi dropdown filter.
+        $aksiTersedia = Cache::remember('log-history:aksi-tersedia', now()->addMinutes(10), fn () => ActivityLog::distinct()->orderBy('aksi')->pluck('aksi'));
+        $userIdTersedia = Cache::remember('log-history:user-id-tersedia', now()->addMinutes(10), fn () => ActivityLog::whereNotNull('user_id')->distinct()->pluck('user_id'));
+        $userTersedia = User::whereIn('id', $userIdTersedia)->orderBy('name')->get();
 
         return view('log-history.index', compact('logs', 'ringkasan', 'tahunRingkasan', 'tahunTersedia', 'aksiTersedia', 'userTersedia'));
     }
