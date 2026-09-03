@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\LoginLog;
 use App\Models\User;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
@@ -143,6 +144,82 @@ test('konfirmasi login cuma bisa dipakai sekali (token sekali-pakai)', function 
 
     $this->assertGuest();
     $response->assertSessionHasErrors('pn');
+});
+
+// ===================== Login Log (audit trail) =====================
+
+test('login berhasil kecatat di login_logs', function () {
+    $user = User::factory()->create();
+
+    $this->post('/login', ['pn' => $user->pn, 'password' => 'password']);
+
+    $log = LoginLog::latest('id')->first();
+    expect($log)->not->toBeNull();
+    expect($log->status)->toBe(LoginLog::STATUS_BERHASIL);
+    expect($log->user_id)->toBe($user->id);
+    expect($log->pn_dicoba)->toBe($user->pn);
+});
+
+test('login gagal karena password salah kecatat sebagai gagal_kredensial, tetap kesimpen user_id-nya', function () {
+    $user = User::factory()->create();
+
+    $this->post('/login', ['pn' => $user->pn, 'password' => 'salah-banget']);
+
+    $log = LoginLog::latest('id')->first();
+    expect($log->status)->toBe(LoginLog::STATUS_GAGAL_KREDENSIAL);
+    expect($log->user_id)->toBe($user->id);
+});
+
+test('login gagal karena PN gak ketemu tetap kecatat, user_id-nya null', function () {
+    $this->post('/login', ['pn' => '99999999', 'password' => 'apapun']);
+
+    $log = LoginLog::latest('id')->first();
+    expect($log->status)->toBe(LoginLog::STATUS_GAGAL_KREDENSIAL);
+    expect($log->user_id)->toBeNull();
+    expect($log->pn_dicoba)->toBe('99999999');
+});
+
+test('login akun nonaktif kecatat sebagai gagal_nonaktif', function () {
+    $user = User::factory()->create(['is_active' => false]);
+
+    $this->post('/login', ['pn' => $user->pn, 'password' => 'password']);
+
+    $log = LoginLog::latest('id')->first();
+    expect($log->status)->toBe(LoginLog::STATUS_GAGAL_NONAKTIF);
+    expect($log->user_id)->toBe($user->id);
+});
+
+test('login yang ditolak karena sesi lain aktif kecatat, lalu konfirmasi lanjut kecatat lagi sebagai berhasil', function () {
+    $user = User::factory()->create();
+    buatSesiLain($user->id);
+
+    $this->post('/login', ['pn' => $user->pn, 'password' => 'password']);
+    $token = session('sesi_aktif_token');
+
+    expect(LoginLog::where('status', LoginLog::STATUS_DITOLAK_SESI_LAIN)->where('user_id', $user->id)->exists())->toBeTrue();
+
+    $this->post(route('login.confirm'), ['token' => $token]);
+
+    expect(LoginLog::where('status', LoginLog::STATUS_BERHASIL)->where('user_id', $user->id)->count())->toBe(1);
+});
+
+test('user biasa tidak bisa akses login history', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get(route('login-history.index'))->assertForbidden();
+});
+
+test('admin bisa lihat login history dan filter berdasarkan status', function () {
+    $admin = User::factory()->admin()->create();
+    LoginLog::create(['user_id' => $admin->id, 'pn_dicoba' => $admin->pn, 'status' => LoginLog::STATUS_BERHASIL, 'ip_address' => '127.0.0.1']);
+    LoginLog::create(['user_id' => $admin->id, 'pn_dicoba' => $admin->pn, 'status' => LoginLog::STATUS_GAGAL_KREDENSIAL, 'ip_address' => '127.0.0.1']);
+
+    $response = $this->actingAs($admin)->get(route('login-history.index', ['status' => LoginLog::STATUS_GAGAL_KREDENSIAL]));
+
+    $response->assertOk();
+    $logs = $response->viewData('logs');
+    expect($logs->total())->toBe(1);
+    expect($logs->first()->status)->toBe(LoginLog::STATUS_GAGAL_KREDENSIAL);
 });
 
 test('halaman error 403 gak crash kalau dipicu buat guest (belum login)', function () {

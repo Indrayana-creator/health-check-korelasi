@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Auth;
 
+use App\Models\LoginLog;
 use App\Models\User;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Contracts\Validation\ValidationRule;
@@ -53,6 +54,7 @@ class LoginRequest extends FormRequest
         // pernah nyentuh LoginRequest ini lagi.
         if (! Auth::attempt($this->only('pn', 'password'))) {
             RateLimiter::hit($this->throttleKey());
+            LoginLog::catat(User::where('pn', $this->string('pn'))->value('id'), $this->string('pn'), LoginLog::STATUS_GAGAL_KREDENSIAL, $this);
 
             throw ValidationException::withMessages([
                 'pn' => trans('auth.failed'),
@@ -64,6 +66,7 @@ class LoginRequest extends FormRequest
         if (! $user->is_active) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
+            LoginLog::catat($user->id, $user->pn, LoginLog::STATUS_GAGAL_NONAKTIF, $this);
 
             throw ValidationException::withMessages([
                 'pn' => 'Akun Anda sudah dinonaktifkan. Hubungi admin kalau ini keliru.',
@@ -87,11 +90,14 @@ class LoginRequest extends FormRequest
 
             $this->session()->flash('sesi_aktif_token', $token);
             $this->session()->flash('sesi_aktif_sejak', Carbon::createFromTimestamp($sesiLain->last_activity)->translatedFormat('d M Y, H:i'));
+            LoginLog::catat($user->id, $user->pn, LoginLog::STATUS_DITOLAK_SESI_LAIN, $this);
 
             throw ValidationException::withMessages([
                 'sesi_aktif' => 'Akun ini masih aktif di perangkat lain.',
             ]);
         }
+
+        LoginLog::catat($user->id, $user->pn, LoginLog::STATUS_BERHASIL, $this);
     }
 
     // Sesi LAIN (bukan punya request ini sendiri) milik user yang sama, yang

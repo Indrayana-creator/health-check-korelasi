@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Models\LoginLog;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -56,6 +57,7 @@ class AuthenticatedSessionController extends Controller
 
         Auth::loginUsingId($data['user_id']);
         $request->session()->regenerate();
+        LoginLog::catat($data['user_id'], Auth::user()->pn, LoginLog::STATUS_BERHASIL, $request);
 
         return redirect()->intended(route('dashboard', absolute: false));
     }

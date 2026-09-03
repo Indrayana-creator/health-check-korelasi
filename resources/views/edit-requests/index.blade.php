@@ -12,6 +12,7 @@
             ['label' => 'Kelola Pekerja', 'href' => route('pekerja.index'), 'active' => false],
             ['label' => 'Permintaan Edit', 'href' => route('aset.editRequests.index'), 'active' => true],
             ['label' => 'Log History', 'href' => route('log-history.index'), 'active' => false],
+            ['label' => 'Login History', 'href' => route('login-history.index'), 'active' => false],
         ]" />
 
         <x-flash-status />

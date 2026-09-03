@@ -111,6 +111,7 @@
                                 ['route' => 'pekerja.index', 'pattern' => 'pekerja.*', 'label' => 'Kelola Pekerja', 'icon' => 'M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2M12 11a4 4 0 100-8 4 4 0 000 8z'],
                                 ['route' => 'kode-aset.index', 'pattern' => 'kode-aset.*', 'label' => 'Kelola Kode Aset', 'icon' => 'M20.59 13.41L11 3.83V3H3v8h.83l9.58 9.59a2 2 0 002.83 0l4.35-4.35a2 2 0 000-2.83zM6.5 7.5a1 1 0 110-2 1 1 0 010 2z'],
                                 ['route' => 'log-history.index', 'pattern' => 'log-history.*', 'label' => 'Log History', 'icon' => 'M12 22a10 10 0 100-20 10 10 0 000 20zM12 6v6l4 2'],
+                                ['route' => 'login-history.index', 'pattern' => 'login-history.*', 'label' => 'Login History', 'icon' => 'M15 3h4a2 2 0 012 2v14a2 2 0 01-2 2h-4M10 17l5-5-5-5M15 12H3'],
                             ];
                         @endphp
                         @foreach ($navAdmin as $item)

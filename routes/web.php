@@ -8,6 +8,7 @@ use App\Http\Controllers\HealthCheckController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\KodeAsetController;
 use App\Http\Controllers\LogHistoryController;
+use App\Http\Controllers\LoginLogController;
 use App\Http\Controllers\MonitoringController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PekerjaController;
@@ -163,6 +164,9 @@ Route::middleware('auth')->group(function () {
         Route::get('/log-history', [LogHistoryController::class, 'index'])->name('log-history.index');
         Route::get('/log-history/export/excel', [LogHistoryController::class, 'exportExcel'])->name('log-history.export.excel');
         Route::get('/log-history/export/pdf', [LogHistoryController::class, 'exportPdf'])->name('log-history.export.pdf');
+        Route::get('/login-history', [LoginLogController::class, 'index'])->name('login-history.index');
+        Route::get('/login-history/export/excel', [LoginLogController::class, 'exportExcel'])->name('login-history.export.excel');
+        Route::get('/login-history/export/pdf', [LoginLogController::class, 'exportPdf'])->name('login-history.export.pdf');
         Route::get('/aset-edit-requests', [AsetEditRequestController::class, 'index'])->name('aset.editRequests.index');
         Route::get('/aset-edit-requests/export/excel', [AsetEditRequestController::class, 'exportExcel'])->name('aset.editRequests.export.excel');
         Route::get('/aset-edit-requests/export/pdf', [AsetEditRequestController::class, 'exportPdf'])->name('aset.editRequests.export.pdf');
