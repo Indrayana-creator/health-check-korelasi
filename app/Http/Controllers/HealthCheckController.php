@@ -711,7 +711,7 @@ class HealthCheckController extends Controller
                 $sheet->fromArray([
                     $form->uker?->nama,
                     $form->periode,
-                    $form->tanggal_pemeriksaan,
+                    $form->tanggal_pemeriksaan?->format('d-m-Y'),
                     $r['kategori'],
                     $r['total'],
                     $r['ok'],

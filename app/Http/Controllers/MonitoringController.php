@@ -253,7 +253,7 @@ class MonitoringController extends Controller
             $item->item_pemeriksaan,
             $item->catatan,
             $item->form?->periode,
-            $item->form?->tanggal_pemeriksaan,
+            $item->form?->tanggal_pemeriksaan?->format('d-m-Y'),
             $item->status_tindak_lanjut,
             $item->catatan_tindak_lanjut,
         ];

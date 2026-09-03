@@ -129,7 +129,7 @@
                         <tr class="hover:bg-cakrawala/5 {{ \App\Support\StatusColor::aksenBorder($warnaApproval) }}">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $form->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->periode }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan->format('d M Y') }}</td>
                             <td class="px-4 py-3">
                                 <x-badge :color="\App\Support\ComplianceScale::badgeColor($persen)">
                                     {{ $persen }}%

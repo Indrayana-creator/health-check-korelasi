@@ -35,7 +35,7 @@
                         <tr class="hover:bg-cakrawala/5">
                             <td class="px-4 py-3 text-sm font-semibold text-gray-700">{{ $form->uker?->nama }}</td>
                             <td class="px-4 py-3 text-sm text-gray-700">{{ $form->periode }}</td>
-                            <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan }}</td>
+                            <td class="px-4 py-3 text-sm text-gray-700">{{ $form->tanggal_pemeriksaan->format('d M Y') }}</td>
                             <td class="px-4 py-3 text-sm text-gray-500">{{ $form->deleted_at?->format('d M Y, H:i') }}</td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
                                 <form action="{{ route('healthcheck.restore', $form->id) }}" method="POST" class="inline" onsubmit="return confirm('Pulihkan form ini?')">

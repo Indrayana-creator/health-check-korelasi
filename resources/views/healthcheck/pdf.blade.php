@@ -18,7 +18,7 @@
     <p class="sub">Diekspor pada: {{ now()->format('d F Y H:i') }}</p>
 
     @forelse ($ringkasanPerForm as $entry)
-        <h2>{{ $entry['form']->uker?->nama }} &mdash; {{ $entry['form']->periode }} ({{ $entry['form']->tanggal_pemeriksaan }})</h2>
+        <h2>{{ $entry['form']->uker?->nama }} &mdash; {{ $entry['form']->periode }} ({{ $entry['form']->tanggal_pemeriksaan->format('d M Y') }})</h2>
         <table>
             <thead>
                 <tr>

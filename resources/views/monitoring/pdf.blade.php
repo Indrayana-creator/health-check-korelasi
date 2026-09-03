@@ -32,7 +32,7 @@
                     <td>{{ $item->item_pemeriksaan }}</td>
                     <td>{{ $item->catatan }}</td>
                     <td>{{ $item->form?->periode }}</td>
-                    <td>{{ $item->form?->tanggal_pemeriksaan }}</td>
+                    <td>{{ $item->form?->tanggal_pemeriksaan?->format('d-m-Y') }}</td>
                     <td>{{ $item->status_tindak_lanjut }}</td>
                     <td>{{ $item->catatan_tindak_lanjut }}</td>
                 </tr>

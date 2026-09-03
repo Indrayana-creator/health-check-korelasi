@@ -903,3 +903,22 @@ test('halaman cetak QR ruangan nampilin uker sesuai KODE yang dipilih, bukan id'
     $response->assertSee('KC Target Benar');
     $response->assertDontSee('KC Lainnya');
 });
+
+test('tanggal pemeriksaan tampil bersih tanpa jam 00:00:00 di daftar & sampah Health Check', function () {
+    // Regresi: {{ $form->tanggal_pemeriksaan }} tanpa ->format() bikin Carbon
+    // ke-print pakai __toString() bawaan ("Y-m-d H:i:s"), padahal kolomnya
+    // cuma tanggal -- selalu nongol "00:00:00" di belakangnya walau gak ada
+    // jam yang relevan sama sekali.
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $form = HealthCheckForm::factory()->create(['uker_kode' => $uker->kode, 'tanggal_pemeriksaan' => now()]);
+
+    $responseIndex = $this->actingAs($admin)->get(route('healthcheck.index'));
+    $responseIndex->assertOk();
+    $responseIndex->assertDontSee('00:00:00');
+
+    $form->delete();
+    $responseTrash = $this->actingAs($admin)->get(route('healthcheck.trash'));
+    $responseTrash->assertOk();
+    $responseTrash->assertDontSee('00:00:00');
+});
