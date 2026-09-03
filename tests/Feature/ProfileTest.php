@@ -1,5 +1,7 @@
 <?php
 
+use App\Models\LoginLog;
+use App\Models\Uker;
 use App\Models\User;
 
 test('profile page is displayed', function () {
@@ -10,6 +12,30 @@ test('profile page is displayed', function () {
         ->get('/profile');
 
     $response->assertOk();
+});
+
+test('halaman profile nampilin PN & uker sendiri, read-only', function () {
+    $uker = Uker::factory()->create(['nama' => 'KC Contoh']);
+    $user = User::factory()->forUker($uker->kode)->create();
+
+    $response = $this->actingAs($user)->get('/profile');
+
+    $response->assertOk();
+    $response->assertSee($user->pn);
+    $response->assertSee('KC Contoh');
+});
+
+test('halaman profile nampilin login history milik sendiri, bukan punya user lain', function () {
+    $user = User::factory()->create();
+    $userLain = User::factory()->create();
+    LoginLog::create(['user_id' => $user->id, 'pn_dicoba' => $user->pn, 'status' => LoginLog::STATUS_BERHASIL, 'ip_address' => '10.0.0.1']);
+    LoginLog::create(['user_id' => $userLain->id, 'pn_dicoba' => $userLain->pn, 'status' => LoginLog::STATUS_BERHASIL, 'ip_address' => '10.0.0.2']);
+
+    $response = $this->actingAs($user)->get('/profile');
+
+    $response->assertOk();
+    $response->assertSee('10.0.0.1');
+    $response->assertDontSee('10.0.0.2');
 });
 
 test('profile information can be updated', function () {
