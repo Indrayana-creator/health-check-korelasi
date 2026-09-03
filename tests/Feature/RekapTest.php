@@ -327,3 +327,23 @@ test('export kartu skor cabang Excel & PDF berhasil', function () {
         ->assertOk()
         ->assertHeader('content-type', 'application/pdf');
 });
+
+test('permintaan perangkat yang dibuat di hari terakhir minggu berjalan tetap masuk rekap mingguan', function () {
+    // Regresi bug date-cast: tanggal_request di-cast 'date' (cuma motong jam
+    // pas DIBACA, bukan pas DITULIS), jadi baris yang dibuat PERSIS hari
+    // Jumat (hari terakhir minggu kerja) kesimpen dengan jam-menit-detik ikut
+    // -- kalau whereBetween masih pakai toDateString(), baris ini kepental
+    // keluar dari batas atas string-only.
+    $admin = User::factory()->admin()->create();
+    $uker = Uker::factory()->create();
+    $jumat = now()->startOfWeek(Carbon::MONDAY)->addDays(4)->setTime(16, 30);
+
+    $this->travelTo($jumat);
+    PermintaanPerangkat::factory()->create(['uker_kode' => $uker->kode, 'tanggal_request' => now()]);
+
+    $response = $this->actingAs($admin)->get(route('rekap.permintaanPerangkat'));
+
+    $response->assertOk();
+    expect($response->viewData('totalMinggu'))->toBe(1);
+    $this->travelBack();
+});

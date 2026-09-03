@@ -421,8 +421,14 @@ class RekapController extends Controller
 
         [$awalMinggu, $akhirMinggu] = PeriodeMingguan::rentang($tanggalAcuan);
 
+        // Batas atas pakai Carbon endOfDay() (bawaan PeriodeMingguan::rentang()),
+        // BUKAN toDateString() -- tanggal_request di-cast 'date', yang cuma
+        // motong jam pas DIBACA, bukan pas DITULIS, jadi baris yang tanggal
+        // request-nya persis HARI TERAKHIR minggu ini bisa kesimpen dengan jam-
+        // menit-detik ikut dan kepental keluar whereBetween string-only (sama
+        // pola bug yang udah dibenerin di DashboardController::cabangTerbaikBulanIni).
         $permintaanList = PermintaanPerangkat::with('uker')
-            ->whereBetween('tanggal_request', [$awalMinggu->toDateString(), $akhirMinggu->toDateString()])
+            ->whereBetween('tanggal_request', [$awalMinggu, $akhirMinggu])
             ->orderBy('tanggal_request')
             ->get();
 
