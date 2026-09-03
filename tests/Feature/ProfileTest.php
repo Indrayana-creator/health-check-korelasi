@@ -50,36 +50,15 @@ test('email verification status is unchanged when the email address is unchanged
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
 
-test('user can delete their account', function () {
+test('user gak bisa hapus akun sendiri lewat rute /profile DELETE -- fitur ini sengaja dihapus', function () {
+    // Breeze bawaan ngasih user hapus akun sendiri tanpa approval admin --
+    // gak cocok buat sistem internal yang PN-nya jadi acuan di banyak
+    // tempat (Health Check, Log History, dst). Penghapusan akun sekarang
+    // cuma lewat UserController::destroy() (admin only).
     $user = User::factory()->create();
 
-    $response = $this
-        ->actingAs($user)
-        ->delete('/profile', [
-            'password' => 'password',
-        ]);
+    $response = $this->actingAs($user)->delete('/profile', ['password' => 'password']);
 
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/');
-
-    $this->assertGuest();
-    $this->assertNull($user->fresh());
-});
-
-test('correct password must be provided to delete account', function () {
-    $user = User::factory()->create();
-
-    $response = $this
-        ->actingAs($user)
-        ->from('/profile')
-        ->delete('/profile', [
-            'password' => 'wrong-password',
-        ]);
-
-    $response
-        ->assertSessionHasErrorsIn('userDeletion', 'password')
-        ->assertRedirect('/profile');
-
+    $response->assertMethodNotAllowed();
     $this->assertNotNull($user->fresh());
 });

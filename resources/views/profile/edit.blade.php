@@ -17,11 +17,5 @@
                 @include('profile.partials.update-password-form')
             </div>
         </x-card>
-
-        <x-card padding="p-6 sm:p-8">
-            <div class="max-w-xl">
-                @include('profile.partials.delete-user-form')
-            </div>
-        </x-card>
     </div>
 </x-app-layout>

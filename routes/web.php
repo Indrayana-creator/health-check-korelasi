@@ -46,7 +46,6 @@ Route::post('/dashboard/kirim-pengingat-aset/{uker}', [DashboardController::clas
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Bulk upload/delete & export -- ditaruh SEBELUM Route::resource biar gak ketiban urutan
     Route::get('/aset/bulk-upload', [AsetController::class, 'bulkUploadForm'])->name('aset.bulkUploadForm');
