@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminTwoFactor;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -16,6 +17,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => EnsureRole::class,
         ]);
+        // Global, bukan per-route -- biar gak ada satu pun route admin yang
+        // kelewat digerbang MFA gara-gara lupa ditambahin middleware-nya.
+        $middleware->web(append: [EnsureAdminTwoFactor::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(

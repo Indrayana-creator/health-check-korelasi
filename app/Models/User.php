@@ -42,6 +42,8 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_secret',
+        'two_factor_recovery_codes',
     ];
 
     /**
@@ -55,6 +57,12 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            // 'encrypted' -- secret & recovery codes gak boleh kebaca
+            // plaintext walau database-nya bocor. Sengaja gak masuk
+            // $fillable, cuma di-set manual lewat TwoFactorController.
+            'two_factor_secret' => 'encrypted',
+            'two_factor_recovery_codes' => 'encrypted:array',
+            'two_factor_confirmed_at' => 'datetime',
         ];
     }
 
@@ -73,6 +81,20 @@ class User extends Authenticatable
         return $this->hasMany(UserPerubahanLog::class)
             ->orderByDesc('created_at')
             ->orderByDesc('id');
+    }
+
+    // MFA cuma diwajibkan buat admin -- akun ini yang paling luas aksesnya
+    // (approve semua permintaan, kelola user lain, lihat data sensitif),
+    // jadi paling perlu lapisan keamanan tambahan. User cabang biasa gak
+    // diwajibkan biar gak nambah friksi ke ratusan akun sekaligus.
+    public function wajibMfa(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function mfaAktif(): bool
+    {
+        return ! is_null($this->two_factor_confirmed_at);
     }
 
     // Jabatan diambil otomatis dari data pekerja yang nempel ke PN,
