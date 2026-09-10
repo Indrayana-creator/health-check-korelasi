@@ -14,8 +14,16 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="flex min-h-screen w-full items-center justify-center bg-gray-50 p-6">
-            <div class="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8">
+        {{-- flex-col + my-auto di card (BUKAN justify-center/items-center buat
+             centering vertikal) -- justify-center/items-center "true center"
+             flexbox motong konten yang lebih tinggi dari viewport rata atas-
+             bawah TANPA scrollbar (ke-clip diam-diam, gak keliatan kalau
+             gak dites di layar pendek/mobile). margin:auto di sumbu utama
+             (vertikal, karena flex-col) gak punya masalah itu -- otomatis
+             ngebagi ruang kosong buat centering kalau muat, atau nempel atas
+             & bisa discroll biasa kalau kontennya lebih tinggi dari viewport. --}}
+        <div class="min-h-screen w-full flex flex-col items-center bg-gray-50 p-6 overflow-y-auto">
+            <div class="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8 my-auto">
                 <h1 class="text-xl font-extrabold text-gray-800 mb-1.5">Setup Verifikasi 2 Langkah</h1>
                 <p class="text-sm text-gray-500 mb-6">
                     Akun admin wajib pakai verifikasi 2 langkah (MFA). Scan QR code ini pakai aplikasi authenticator

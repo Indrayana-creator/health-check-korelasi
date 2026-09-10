@@ -14,8 +14,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased">
-        <div class="flex min-h-screen w-full items-center justify-center bg-gray-50 p-6">
-            <div class="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8">
+        <div class="min-h-screen w-full flex flex-col items-center bg-gray-50 p-6 overflow-y-auto">
+            <div class="w-full max-w-md bg-white border border-gray-200 rounded-2xl p-8 my-auto">
                 <div class="w-11 h-11 rounded-xl bg-green-100 text-green-600 flex items-center justify-center mb-4">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="w-5 h-5"><path d="M20 6L9 17l-5-5"></path></svg>
                 </div>

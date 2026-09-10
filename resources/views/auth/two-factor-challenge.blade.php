@@ -14,8 +14,8 @@
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="font-sans antialiased" x-data="{ pakaiRecovery: false }">
-        <div class="flex min-h-screen w-full items-center justify-center bg-gray-50 p-6">
-            <div class="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-8">
+        <div class="min-h-screen w-full flex flex-col items-center bg-gray-50 p-6 overflow-y-auto">
+            <div class="w-full max-w-sm bg-white border border-gray-200 rounded-2xl p-8 my-auto">
                 <h1 class="text-xl font-extrabold text-gray-800 mb-1.5">Verifikasi 2 Langkah</h1>
                 <p class="text-sm text-gray-500 mb-6" x-show="!pakaiRecovery">Masukin kode 6 digit dari aplikasi authenticator Anda.</p>
                 <p class="text-sm text-gray-500 mb-6" x-show="pakaiRecovery" x-cloak>Masukin salah satu kode cadangan yang Anda simpan pas setup awal.</p>
