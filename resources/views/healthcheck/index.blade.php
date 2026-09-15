@@ -22,7 +22,9 @@
                 </x-slot>
                 <x-slot name="content">
                     <x-dropdown-link :href="route('healthcheck.bulkUploadForm')">Buat Form Massal (Excel)</x-dropdown-link>
-                    <x-dropdown-link :href="route('healthcheck.bulkDeleteForm')" class="!text-red-600">Delete Massal (Excel)</x-dropdown-link>
+                    @if (auth()->user()->isAdminMaster())
+                        <x-dropdown-link :href="route('healthcheck.bulkDeleteForm')" class="!text-red-600">Delete Massal (Excel)</x-dropdown-link>
+                    @endif
                 </x-slot>
             </x-dropdown>
             <x-dropdown align="left" width="48">
@@ -193,13 +195,15 @@
                                     <x-icon-button variant="edit" label="Isi/Edit" :href="route('healthcheck.edit', $form)">
                                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
                                     </x-icon-button>
-                                    <form action="{{ route('healthcheck.destroy', $form) }}" method="POST" class="inline" onsubmit="return confirm('Hapus form ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-icon-button variant="danger" label="Hapus" type="submit">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
-                                        </x-icon-button>
-                                    </form>
+                                    @if (auth()->user()->role !== 'admin' || auth()->user()->isAdminMaster())
+                                        <form action="{{ route('healthcheck.destroy', $form) }}" method="POST" class="inline" onsubmit="return confirm('Hapus form ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <x-icon-button variant="danger" label="Hapus" type="submit">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                                            </x-icon-button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

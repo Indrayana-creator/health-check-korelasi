@@ -14,7 +14,9 @@ class HealthCheckFormFactory extends Factory
     public function definition(): array
     {
         return [
-            'uker_kode' => Uker::factory(),
+            // Uker::factory() doang bakal resolve ke id (PK default Eloquent),
+            // padahal FK ini nunjuk ke kolom kode -- harus dituntun eksplisit.
+            'uker_kode' => Uker::factory()->create()->kode,
             'pic_pn' => null,
             'tanggal_pemeriksaan' => fake()->date(),
             'periode' => fake()->randomElement(['Triwulan I', 'Triwulan II', 'Triwulan III', 'Triwulan IV']).' '.fake()->year(),

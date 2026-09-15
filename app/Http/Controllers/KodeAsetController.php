@@ -72,8 +72,13 @@ class KodeAsetController extends Controller
         return redirect()->route('kode-aset.index')->with('status', 'Data Kode Aset berhasil diupdate.');
     }
 
-    public function destroy(KodeAset $kodeAset)
+    public function destroy(Request $request, KodeAset $kodeAset)
     {
+        // Data master, gak ada Sampah/soft-delete -- begitu kehapus, permanen.
+        if (! $request->user()->isAdminMaster()) {
+            abort(403, 'Cuma Admin Master yang bisa menghapus data kode aset.');
+        }
+
         if ($kodeAset->aset()->exists()) {
             return back()->with('status', 'Kode Aset ini masih dipakai oleh data aset, tidak bisa dihapus.');
         }

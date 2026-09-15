@@ -106,8 +106,14 @@ class UkerController extends Controller
         return redirect()->route('ukers.index')->with('status', 'Data uker berhasil diupdate.');
     }
 
-    public function destroy(Uker $uker)
+    public function destroy(Request $request, Uker $uker)
     {
+        // Data master, gak ada Sampah/soft-delete -- begitu kehapus, permanen.
+        // Cuma Admin Master yang boleh, sama kayak Kode Aset & Pekerja.
+        if (! $request->user()->isAdminMaster()) {
+            abort(403, 'Cuma Admin Master yang bisa menghapus data uker.');
+        }
+
         if ($uker->aset()->exists() || $uker->pekerja()->exists()) {
             return back()->with('status', 'Uker ini masih punya data aset/pekerja terkait, tidak bisa dihapus.');
         }

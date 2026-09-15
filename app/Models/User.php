@@ -57,6 +57,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'is_admin_master' => 'boolean',
             // 'encrypted' -- secret & recovery codes gak boleh kebaca
             // plaintext walau database-nya bocor. Sengaja gak masuk
             // $fillable, cuma di-set manual lewat TwoFactorController.
@@ -95,6 +96,19 @@ class User extends Authenticatable
     public function mfaAktif(): bool
     {
         return ! is_null($this->two_factor_confirmed_at);
+    }
+
+    // Admin Master = satu-satunya tingkatan yang boleh menghapus apa pun
+    // secara permanen (aset, health check, user, data master Uker/Kode
+    // Aset/Pekerja) atau approve Permintaan Hapus Aset. Admin biasa tetap
+    // bisa kelola & approve edit, tapi buat hapus harus lewat Admin Master
+    // -- sama kayak alur yang berlaku buat cabang. Sengaja bukan role
+    // terpisah (masih role=admin), cuma flag tambahan, biar semua
+    // pengecekan "role === 'admin'" yang sudah ada (akses halaman admin,
+    // dst) gak perlu diubah sama sekali.
+    public function isAdminMaster(): bool
+    {
+        return $this->role === 'admin' && $this->is_admin_master;
     }
 
     // Jabatan diambil otomatis dari data pekerja yang nempel ke PN,

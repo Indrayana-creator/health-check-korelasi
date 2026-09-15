@@ -79,6 +79,14 @@ class UserController extends Controller
             'role' => $validated['role'],
             'uker_kode' => $validated['role'] === 'user' ? $validated['uker_kode'] : null,
         ]);
+
+        // is_admin_master sengaja gak masuk $fillable User -- cuma boleh
+        // di-set kalau yang ngisi form ini sendiri Admin Master (dicek
+        // ulang di server, bukan cuma checkbox-nya disembunyiin di view).
+        if ($validated['role'] === 'admin' && $request->user()->isAdminMaster() && $request->boolean('is_admin_master')) {
+            $user->forceFill(['is_admin_master' => true])->save();
+        }
+
         ActivityLog::catat('user', 'tambah', 1, "User {$user->name} (PN {$user->pn}) ditambahkan");
 
         return redirect()->route('users.index')->with('status', 'User berhasil ditambahkan.');
@@ -116,6 +124,20 @@ class UserController extends Controller
         // diupdate" di ActivityLog. Dicatat SEBELUM save() biar $user->{$field}
         // masih nilai LAMA. Pola sama kayak UkerController::update().
         $nilaiBaruPerField = ['name' => $validated['name'], 'role' => $validated['role'], 'uker_kode' => $ukerKodeBaru];
+
+        // Sama kayak is_admin_master di store() -- cuma boleh diubah kalau
+        // yang ngisi form ini sendiri Admin Master. Kalau bukan, field ini
+        // gak disentuh sama sekali (dipertahankan nilai lamanya), BUKAN
+        // diam-diam di-set false -- checkbox-nya juga gak dikirim browser
+        // sama sekali kalau adminnya bukan Admin Master (lihat blade).
+        if ($validated['role'] === 'admin' && $request->user()->isAdminMaster()) {
+            $nilaiBaruPerField['is_admin_master'] = $request->boolean('is_admin_master');
+        } elseif ($validated['role'] !== 'admin' && $user->is_admin_master) {
+            // Turun jadi role user -- status Admin Master ikut lepas
+            // (gak berarti apa-apa lagi buat non-admin, tapi rapiin datanya).
+            $nilaiBaruPerField['is_admin_master'] = false;
+        }
+
         foreach ($nilaiBaruPerField as $field => $nilaiBaru) {
             if ((string) $user->{$field} !== (string) $nilaiBaru) {
                 UserPerubahanLog::create([
@@ -135,6 +157,9 @@ class UserController extends Controller
         $user->pn = $validated['pn'] ?? null;
         $user->role = $validated['role'];
         $user->uker_kode = $ukerKodeBaru;
+        if (array_key_exists('is_admin_master', $nilaiBaruPerField)) {
+            $user->is_admin_master = $nilaiBaruPerField['is_admin_master'];
+        }
         if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
         }

@@ -40,5 +40,6 @@ class UserPerubahanLog extends Model
         'role' => 'Role',
         'uker_kode' => 'Uker',
         'is_active' => 'Status Aktif',
+        'is_admin_master' => 'Admin Master',
     ];
 }

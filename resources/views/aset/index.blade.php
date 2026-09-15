@@ -24,7 +24,7 @@
                 </x-slot>
                 <x-slot name="content">
                     <x-dropdown-link :href="route('aset.bulkUploadForm')">Upload Massal (Excel)</x-dropdown-link>
-                    @if (auth()->user()->role === 'admin')
+                    @if (auth()->user()->isAdminMaster())
                         <x-dropdown-link :href="route('aset.bulkDeleteForm')" class="!text-red-600">Delete Massal (Excel)</x-dropdown-link>
                     @endif
                 </x-slot>

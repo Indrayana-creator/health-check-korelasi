@@ -70,6 +70,18 @@
                         <x-input-error :messages="$errors->get('role')" class="mt-1.5" />
                     </div>
 
+                    @if (auth()->user()->isAdminMaster())
+                        <div x-show="role === 'admin'" x-cloak class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl">
+                            <label class="flex items-start gap-2.5 cursor-pointer">
+                                <input type="checkbox" name="is_admin_master" value="1" {{ old('is_admin_master', $user->is_admin_master) ? 'checked' : '' }} class="mt-0.5 rounded border-gray-300 text-cakrawala focus:ring-cakrawala">
+                                <span>
+                                    <span class="block text-sm font-bold text-gray-800">Jadikan Admin Master</span>
+                                    <span class="block text-xs text-gray-500 mt-0.5">Cuma Admin Master yang bisa menghapus data (aset, health check, user, data master) & approve Permintaan Hapus Aset. Admin biasa tetap bisa kelola & approve edit seperti biasa.</span>
+                                </span>
+                            </label>
+                        </div>
+                    @endif
+
                     <div x-show="role === 'user'" x-cloak>
                         <x-uker-combobox
                             name="uker_kode"

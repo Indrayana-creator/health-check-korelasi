@@ -578,8 +578,8 @@ class AsetController extends Controller
 
     public function approveDelete(Request $request, AsetHapusRequest $hapusRequest)
     {
-        if ($request->user()->role !== 'admin') {
-            abort(403, 'Hanya admin yang bisa approve permintaan hapus.');
+        if (! $request->user()->isAdminMaster()) {
+            abort(403, 'Hanya Admin Master yang bisa approve permintaan hapus.');
         }
 
         $hapusRequest->update([
@@ -595,8 +595,8 @@ class AsetController extends Controller
 
     public function rejectDelete(Request $request, AsetHapusRequest $hapusRequest)
     {
-        if ($request->user()->role !== 'admin') {
-            abort(403, 'Hanya admin yang bisa menolak permintaan hapus.');
+        if (! $request->user()->isAdminMaster()) {
+            abort(403, 'Hanya Admin Master yang bisa menolak permintaan hapus.');
         }
 
         $validated = $request->validate(['catatan_admin' => 'required|string']);
@@ -624,8 +624,11 @@ class AsetController extends Controller
         // Sama pola kayak update() nandain permintaan edit "sudah_dipakai" --
         // izin hapus yang udah dipakai gak boleh dipakai ulang buat aset lain
         // (walau di sini aset-nya udah kehapus, tetep ditandai buat kerapian
-        // riwayat & jaga-jaga kalau logic-nya berubah nanti).
-        if ($request->user()->role !== 'admin') {
+        // riwayat & jaga-jaga kalau logic-nya berubah nanti). Admin biasa
+        // (bukan Admin Master) ikut kena ini karena sekarang dia juga lewat
+        // alur approval yang sama kayak cabang -- cuma Admin Master yang
+        // gak pernah punya baris AsetHapusRequest buat dipakai sama sekali.
+        if (! $request->user()->isAdminMaster()) {
             AsetHapusRequest::where('aset_id', $aset->id)
                 ->where('requested_by', $request->user()->id)
                 ->where('status', 'Disetujui')

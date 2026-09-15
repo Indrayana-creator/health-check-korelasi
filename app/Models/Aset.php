@@ -119,12 +119,14 @@ class Aset extends Model
         return $this->hasMany(AsetHapusRequest::class);
     }
 
-    // Sama polanya kayak bisaDiedit() -- admin selalu bisa hapus tanpa izin,
-    // user biasa cuma bisa kalau ada permintaan hapus yang sudah Disetujui
-    // dan belum pernah dipakai.
+    // Beda dari bisaDiedit() -- yang shortcut lolos langsung di sini cuma
+    // Admin Master, BUKAN semua admin. Admin biasa (role admin tapi bukan
+    // Admin Master) diperlakukan sama kayak user cabang: harus ada
+    // permintaan hapus yang sudah Disetujui Admin Master dan belum pernah
+    // dipakai.
     public function bisaDihapus(User $user): bool
     {
-        if ($user->role === 'admin') {
+        if ($user->isAdminMaster()) {
             return true;
         }
 

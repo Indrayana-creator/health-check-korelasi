@@ -113,8 +113,13 @@ class PekerjaController extends Controller
         return redirect()->route('pekerja.index')->with('status', 'Data pekerja berhasil diupdate.');
     }
 
-    public function destroy(Pekerja $pekerja)
+    public function destroy(Request $request, Pekerja $pekerja)
     {
+        // Data master, gak ada Sampah/soft-delete -- begitu kehapus, permanen.
+        if (! $request->user()->isAdminMaster()) {
+            abort(403, 'Cuma Admin Master yang bisa menghapus data pekerja.');
+        }
+
         // pekerja.pn dipakai FK di users.pn & health_check_forms.pic_pn (keduanya
         // nullOnDelete) -- kalau dihapus sembarangan, PN login atau PIC form lama
         // bisa ke-null-kan diam-diam. Diblok dulu, harus dibereskan manual.

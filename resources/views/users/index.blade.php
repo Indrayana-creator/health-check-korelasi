@@ -78,7 +78,12 @@
                             </td>
                             <td class="px-4 py-3 text-sm font-mono text-gray-600">{{ $user->pn ?? '-' }}</td>
                             <td class="px-4 py-3">
-                                <x-badge :color="$user->role === 'admin' ? 'nusantara' : 'gray'">{{ $user->role }}</x-badge>
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <x-badge :color="$user->role === 'admin' ? 'nusantara' : 'gray'">{{ $user->role }}</x-badge>
+                                    @if ($user->isAdminMaster())
+                                        <x-badge color="yellow">Admin Master</x-badge>
+                                    @endif
+                                </div>
                             </td>
                             <td class="px-4 py-3 text-sm text-gray-600">{{ $user->ukerRelasi?->nama ?? '-' }}</td>
                             <td class="px-4 py-3">
@@ -110,13 +115,15 @@
                                             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
                                         </x-icon-button>
                                     </form>
-                                    <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline" onsubmit="return confirm('Hapus user ini?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <x-icon-button variant="danger" label="Hapus" type="submit">
-                                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
-                                        </x-icon-button>
-                                    </form>
+                                    @if (auth()->user()->isAdminMaster())
+                                        <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline" onsubmit="return confirm('Hapus user ini?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <x-icon-button variant="danger" label="Hapus" type="submit">
+                                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" class="w-3.5 h-3.5"><path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14z"></path></svg>
+                                            </x-icon-button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -34,14 +34,14 @@
                 </div>
             </div>
 
-            @if (! $bisaDihapus && auth()->user()->role !== 'admin')
+            @if (! $bisaDihapus)
                 <x-card padding="p-4" class="print:hidden !bg-gray-50 !border-gray-300">
                     <p class="font-bold text-gray-700 mb-1 text-sm">Penghapusan data ini terkunci.</p>
 
                     @if ($permintaanHapusMenunggu)
-                        <p class="text-sm text-gray-600">Permintaan hapus sudah diajukan, menunggu approval admin.</p>
+                        <p class="text-sm text-gray-600">Permintaan hapus sudah diajukan, menunggu approval Admin Master.</p>
                     @else
-                        <p class="text-sm text-gray-600 mb-3">Ajukan permintaan hapus dulu, tunggu admin approve sebelum bisa menghapus data ini.</p>
+                        <p class="text-sm text-gray-600 mb-3">Ajukan permintaan hapus dulu, tunggu Admin Master approve sebelum bisa menghapus data ini.</p>
                         <form action="{{ route('aset.requestDelete', $aset) }}" method="POST" class="flex flex-wrap gap-2">
                             @csrf
                             <x-text-input type="text" name="alasan" placeholder="Alasan minta hapus (opsional)" class="flex-1 min-w-[200px]" />

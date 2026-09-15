@@ -73,7 +73,9 @@
                                 </x-badge>
                             </td>
                             <td class="px-4 py-3 whitespace-nowrap text-right">
-                                @if ($r->status === 'Menunggu')
+                                @if ($r->status === 'Menunggu' && ! auth()->user()->isAdminMaster())
+                                    <x-badge color="gray">Nunggu Admin Master</x-badge>
+                                @elseif ($r->status === 'Menunggu')
                                     <div x-data="{ open: false }" class="inline-flex items-center gap-1.5">
                                         <form action="{{ route('aset.hapusRequests.approve', $r) }}" method="POST" class="inline">
                                             @csrf

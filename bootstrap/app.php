@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureAdminMaster;
 use App\Http\Middleware\EnsureAdminTwoFactor;
 use App\Http\Middleware\EnsureRole;
 use Illuminate\Foundation\Application;
@@ -16,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'role' => EnsureRole::class,
+            'admin.master' => EnsureAdminMaster::class,
         ]);
         // Global, bukan per-route -- biar gak ada satu pun route admin yang
         // kelewat digerbang MFA gara-gara lupa ditambahin middleware-nya.

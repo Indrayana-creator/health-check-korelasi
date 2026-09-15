@@ -52,11 +52,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/aset/bulk-upload', [AsetController::class, 'bulkUploadForm'])->name('aset.bulkUploadForm');
     Route::get('/aset/template', [AsetController::class, 'downloadTemplate'])->name('aset.downloadTemplate');
     Route::post('/aset/bulk-upload', [AsetController::class, 'bulkUpload'])->name('aset.bulkUpload');
-    // Delete Massal (Excel) khusus admin -- gak lewat alur Permintaan Hapus
-    // per-aset, jadi kalau dibiarkan non-admin akses, itu jalan pintas yang
-    // ngelewatin approval sama sekali. Tetap ditaruh di sini (sebelum
-    // Route::resource) biar urutan routing gak ketiban /aset/{aset}.
-    Route::middleware('role:admin')->group(function () {
+    // Delete Massal (Excel) khusus Admin Master -- gak lewat alur Permintaan
+    // Hapus per-aset, jadi kalau dibiarkan admin biasa/non-admin akses, itu
+    // jalan pintas yang ngelewatin approval sama sekali. Tetap ditaruh di
+    // sini (sebelum Route::resource) biar urutan routing gak ketiban /aset/{aset}.
+    Route::middleware('admin.master')->group(function () {
         Route::get('/aset/bulk-delete', [AsetController::class, 'bulkDeleteForm'])->name('aset.bulkDeleteForm');
         Route::post('/aset/bulk-delete', [AsetController::class, 'bulkDelete'])->name('aset.bulkDelete');
     });
@@ -72,8 +72,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/healthcheck/bulk-upload', [HealthCheckController::class, 'bulkUploadForm'])->name('healthcheck.bulkUploadForm');
     Route::get('/healthcheck/template', [HealthCheckController::class, 'downloadTemplate'])->name('healthcheck.downloadTemplate');
     Route::post('/healthcheck/bulk-upload', [HealthCheckController::class, 'bulkUpload'])->name('healthcheck.bulkUpload');
-    Route::get('/healthcheck/bulk-delete', [HealthCheckController::class, 'bulkDeleteForm'])->name('healthcheck.bulkDeleteForm');
-    Route::post('/healthcheck/bulk-delete', [HealthCheckController::class, 'bulkDelete'])->name('healthcheck.bulkDelete');
+    // Sebelumnya route ini SAMA SEKALI gak digerbang (bug lama, ketemu pas
+    // ngerjain Admin Master) -- siapa pun yang login bisa mass-hapus data
+    // Health Check di uker-nya sendiri lewat upload Excel. Sekarang
+    // dibatasi Admin Master, sama kayak Delete Massal Aset.
+    Route::middleware('admin.master')->group(function () {
+        Route::get('/healthcheck/bulk-delete', [HealthCheckController::class, 'bulkDeleteForm'])->name('healthcheck.bulkDeleteForm');
+        Route::post('/healthcheck/bulk-delete', [HealthCheckController::class, 'bulkDelete'])->name('healthcheck.bulkDelete');
+    });
     Route::get('/healthcheck/export/excel', [HealthCheckController::class, 'exportExcel'])->name('healthcheck.export.excel');
     Route::get('/healthcheck/export/pdf', [HealthCheckController::class, 'exportPdf'])->name('healthcheck.export.pdf');
     Route::get('/healthcheck/sampah', [HealthCheckController::class, 'trash'])->name('healthcheck.trash');

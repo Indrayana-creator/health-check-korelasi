@@ -16,8 +16,16 @@ class HealthCheckFormPolicy
             : Response::deny('Anda tidak punya akses ke form ini.');
     }
 
+    // Beda dari update() -- admin biasa (role admin tapi bukan Admin
+    // Master) boleh kelola/ubah form Health Check, tapi gak boleh
+    // menghapusnya. Cuma Admin Master yang boleh hapus. Non-admin tetap
+    // ngikut aturan update() (uker sendiri + turunannya), gak berubah.
     public function delete(User $user, HealthCheckForm $healthcheck): Response
     {
+        if ($user->role === 'admin' && ! $user->isAdminMaster()) {
+            return Response::deny('Cuma Admin Master yang bisa menghapus form Health Check.');
+        }
+
         return $this->update($user, $healthcheck);
     }
 
